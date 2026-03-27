@@ -16,6 +16,8 @@ class JoinEngine {
       return validMaps.every((m) => '${lr[m.leftCol]}' == '${rr[m.rightCol]}');
     }
 
+    //asdasd
+
     // Create empty row with '—' for all keys
     Map<String, dynamic> emptyOf(Map<String, dynamic> sample) {
       return {for (var k in sample.keys) k: '—'};
