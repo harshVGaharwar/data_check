@@ -5,9 +5,36 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ad80c562-82fc-497c-88a7-0178cf6bab68" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/build/892b637c16d52470fb7b14b9d9897587.cache.dill.track.dill" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/b70f9274ac3b5ec9754be8774a3c9a1c.cache.dill.track.dill" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/widgets/top_bar.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/widgets/top_bar.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/controllers/pipeline_controller.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/flutter/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/flutter/generated_plugin_registrant.cc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/flutter/generated_plugin_registrant.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/flutter/generated_plugins.cmake" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/main.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/models/pipeline_config.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/models/pipeline_models.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/pages/configuration_upload_page.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/pages/dashboard_page.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/pages/login_page.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/pages/template_configuration_page.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/pages/template_creation_page.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/runner/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/runner/main.cc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/runner/my_application.cc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/runner/my_application.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/theme/app_theme.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/utils/join_engine.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/config_panel.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/edge_painter.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/nodes/join_node_body.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/nodes/output_node_body.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/nodes/source_node_body.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/pipeline_canvas_page.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/sidebar.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/status_bar.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/linux/widgets/top_bar.dart" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,6 +67,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "harshVGaharwar"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/harshVGaharwar/data_check.git",
+    "accountId": "9977af51-f353-44d0-8fe9-f322457ded9f"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 1
 }</component>
@@ -66,7 +105,7 @@
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "backend__connect",
     "io.flutter.reload.alreadyRun": "true",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "/Users/harshvardhan/development/data_check",
@@ -97,5 +136,28 @@
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
     </layout>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="origin/backend_connect" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>

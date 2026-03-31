@@ -10,6 +10,7 @@ import 'providers/template_provider.dart';
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
 
+// changes
 void main() {
   // Create shared API service instance
   final apiService = ApiService();
