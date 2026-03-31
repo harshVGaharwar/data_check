@@ -27,22 +27,8 @@ class TopBar extends StatelessWidget {
           const Text('DataFlow Builder', style: AppTextStyles.topBarTitle),
           const SizedBox(width: 12),
           Container(width: 1, height: 24, color: AppColors.border2),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: AppColors.blue.withOpacity(0.12),
-              border: Border.all(color: AppColors.blue.withOpacity(0.25)),
-            ),
-            child: const Text('Pipeline View', style: TextStyle(color: AppColors.blue, fontSize: 11, fontWeight: FontWeight.w600)),
-          ),
           const Spacer(),
           _btn('🗑 Clear', () => context.read<PipelineController>().clearCanvas()),
-          const SizedBox(width: 8),
-          _btn('💾 Save', () {}, primary: true),
-          const SizedBox(width: 8),
-          _btn('▶ Run Pipeline', () {}, green: true),
         ],
       ),
     );
@@ -66,7 +52,3 @@ class TopBar extends StatelessWidget {
     );
   }
 }
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SIDEBAR (same as HTML .sidebar with dept/template/source palette)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

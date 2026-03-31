@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ad80c562-82fc-497c-88a7-0178cf6bab68" name="Changes" comment="" />
+    <list default="true" id="ad80c562-82fc-497c-88a7-0178cf6bab68" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/build/892b637c16d52470fb7b14b9d9897587.cache.dill.track.dill" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/b70f9274ac3b5ec9754be8774a3c9a1c.cache.dill.track.dill" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/widgets/top_bar.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/widgets/top_bar.dart" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -33,6 +37,9 @@
       </list>
     </option>
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 1
 }</component>
@@ -54,13 +61,15 @@
     "Flutter.main.dart.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "main",
     "io.flutter.reload.alreadyRun": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/harshvardhan/Documents/freelance/vizualizer",
+    "last_opened_file_path": "/Users/harshvardhan/development/data_check",
     "show.migrate.to.gradle.popup": "false"
   }
 }]]></component>
