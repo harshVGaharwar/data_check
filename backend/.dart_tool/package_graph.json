@@ -9,6 +9,7 @@
       "dependencies": [
         "crypto",
         "dart_frog",
+        "http",
         "uuid"
       ],
       "devDependencies": [
@@ -44,6 +45,16 @@
         "web_socket_channel",
         "webkit_inspection_protocol",
         "yaml"
+      ]
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
       ]
     },
     {
@@ -323,21 +334,8 @@
       ]
     },
     {
-      "name": "fixnum",
+      "name": "web",
       "version": "1.1.1",
-      "dependencies": []
-    },
-    {
-      "name": "shelf_hotreload",
-      "version": "1.6.0",
-      "dependencies": [
-        "hotreloader",
-        "logging"
-      ]
-    },
-    {
-      "name": "mime",
-      "version": "2.0.0",
       "dependencies": []
     },
     {
@@ -354,6 +352,24 @@
         "string_scanner",
         "typed_data"
       ]
+    },
+    {
+      "name": "fixnum",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "shelf_hotreload",
+      "version": "1.6.0",
+      "dependencies": [
+        "hotreloader",
+        "logging"
+      ]
+    },
+    {
+      "name": "mime",
+      "version": "2.0.0",
+      "dependencies": []
     },
     {
       "name": "http_methods",
@@ -378,11 +394,6 @@
       "dependencies": [
         "web"
       ]
-    },
-    {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
     },
     {
       "name": "vm_service",

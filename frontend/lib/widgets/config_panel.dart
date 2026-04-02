@@ -127,13 +127,13 @@ class ConfigPanel extends StatelessWidget {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 isExpanded: true,
-                value: separators.contains(node.template) ? node.template : separators[0],
+                value: _sepToLabel(node.separator, separators),
                 dropdownColor: AppColors.surface2,
                 style: const TextStyle(fontSize: 12, color: AppColors.text),
                 items: separators.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                 onChanged: (v) {
                   if (v != null) {
-                    final sep = v.contains(',') ? ',' : v.contains('|') ? '|' : v.contains('t') ? '\t' : v.contains(';') ? ';' : ' ';
+                    final sep = v.contains(',') ? ',' : v.contains('|') ? '|' : v.contains('\\t') ? '\t' : v.contains(';') ? ';' : ' ';
                     node.separator = sep;
                     ctrl.notifyListeners();
                   }
@@ -302,6 +302,13 @@ class ConfigPanel extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// Map separator char → display label for the dropdown value
+  String _sepToLabel(String sep, List<String> separators) {
+    const map = {',': 'Comma (,)', '|': 'Pipe (|)', '\t': 'Tab (\\t)', ';': 'Semicolon (;)', ' ': 'Space ( )'};
+    final label = map[sep] ?? separators[0];
+    return separators.contains(label) ? label : separators[0];
   }
 
   InputDecoration _inputDecor() {

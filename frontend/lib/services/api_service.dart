@@ -118,5 +118,25 @@ class ApiService {
     }
   }
 
+  // ── Raw data fetch (for list responses) ──
+  Future<dynamic> getRawData(String endpoint) async {
+    try {
+      debugPrint('[API GET RAW] ${_uri(endpoint)}');
+      final response = await _client.get(_uri(endpoint), headers: _headers)
+          .timeout(ApiConfig.connectTimeout);
+      final json = jsonDecode(response.body);
+      debugPrint('[API RAW RESPONSE] ${response.statusCode}');
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (json is Map<String, dynamic> && json['status'] == 'success') {
+          return json['data'];
+        }
+        return json;
+      }
+    } catch (e) {
+      debugPrint('[API ERROR] getRawData $endpoint: $e');
+    }
+    return null;
+  }
+
   void dispose() => _client.close();
 }

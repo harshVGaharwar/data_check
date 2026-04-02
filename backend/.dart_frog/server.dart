@@ -12,6 +12,7 @@ import '../routes/api/v1/templates/[id].dart' as api_v1_templates_$id;
 import '../routes/api/v1/pipeline/submit-mapping.dart' as api_v1_pipeline_submit_mapping;
 import '../routes/api/v1/pipeline/save-sources.dart' as api_v1_pipeline_save_sources;
 import '../routes/api/v1/master/departments.dart' as api_v1_master_departments;
+import '../routes/api/v1/master/approval-list.dart' as api_v1_master_approval_list;
 import '../routes/api/v1/auth/logout.dart' as api_v1_auth_logout;
 import '../routes/api/v1/auth/login.dart' as api_v1_auth_login;
 
@@ -63,7 +64,7 @@ Handler buildApiV1PipelineHandler() {
 Handler buildApiV1MasterHandler() {
   final pipeline = const Pipeline();
   final router = Router()
-    ..all('/departments', (context) => api_v1_master_departments.onRequest(context,));
+    ..all('/approval-list', (context) => api_v1_master_approval_list.onRequest(context,))..all('/departments', (context) => api_v1_master_departments.onRequest(context,));
   return pipeline.addHandler(router);
 }
 

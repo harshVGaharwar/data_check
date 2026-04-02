@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
 import '../models/template_request.dart';
+import '../providers/auth_provider.dart';
 import '../providers/template_provider.dart';
 import '../services/master_data_service.dart';
 
@@ -32,11 +33,12 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
 
   List<String> _departments = [];
   bool _deptLoading = true;
+  List<String> _approvalOptions = [];
+  bool _approvalLoading = true;
   static const _frequencies = ['Daily', 'Weekly', 'Bi-Weekly', 'Monthly', 'Quarterly', 'Yearly', 'On-Demand'];
   static const _benefitTypes = ['Cost Saving', 'Revenue Generation', 'Efficiency Improvement', 'Risk Reduction', 'Compliance', 'Other'];
   static const _priorities = ['Low', 'Medium', 'High', 'Critical'];
   static const _outputFormats = ['Unimailing', 'User Defined'];
-  static const _approvalOptions = ['Unit Head', 'UAT Sign Off', 'Marketing', 'BCU Head', 'CCU Head Approval', 'Functional Head Approval', 'SMS Whitelisting'];
   static const _sourceCountOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
   static const _numOutputOptions = ['1 - Static', '2 - Dynamic'];
 
@@ -49,9 +51,39 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
     _shakeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _shakeAnim = Tween<double>(begin: 0, end: 12).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeCtrl);
     _loadDepartments();
+    _loadApprovalList();
+  }
+
+  void _loadApprovalList() async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.initialized) {
+      await Future.doWhile(() async {
+        await Future.delayed(const Duration(milliseconds: 50));
+        return mounted && !context.read<AuthProvider>().initialized;
+      });
+    }
+    if (!mounted) return;
+    final service = context.read<MasterDataService>();
+    final approvals = await service.getApprovalList();
+    if (mounted) {
+      setState(() {
+        _approvalOptions = approvals;
+        _approvalLoading = false;
+      });
+    }
   }
 
   void _loadDepartments() async {
+    // Wait for auth to finish restoring the session so the token is set before
+    // the API call goes out (matters on page reload).
+    final auth = context.read<AuthProvider>();
+    if (!auth.initialized) {
+      await Future.doWhile(() async {
+        await Future.delayed(const Duration(milliseconds: 50));
+        return mounted && !context.read<AuthProvider>().initialized;
+      });
+    }
+    if (!mounted) return;
     final service = context.read<MasterDataService>();
     final depts = await service.getDepartments();
     if (mounted) {
@@ -199,23 +231,30 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
               _sectionCard(title: 'Approval List', icon: Icons.approval_outlined, hasError: _submitted && !_model.isApprovalValid, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Select required approvals', style: TextStyle(fontSize: 12, color: AppColors.textDim)),
                 const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: _approvalOptions.map((a) {
-                  final sel = _model.approvals.contains(a);
-                  return InkWell(
-                    onTap: () => setState(() { sel ? _model.approvals.remove(a) : _model.approvals.add(a); }),
-                    borderRadius: BorderRadius.circular(8),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: sel ? AppColors.green.withOpacity(0.08) : AppColors.surface2, border: Border.all(color: sel ? AppColors.green : AppColors.border, width: sel ? 1.5 : 1)),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(sel ? Icons.check_box : Icons.check_box_outline_blank, size: 16, color: sel ? AppColors.green : AppColors.textDim),
-                        const SizedBox(width: 6),
-                        Text(a, style: TextStyle(fontSize: 12, fontWeight: sel ? FontWeight.w600 : FontWeight.w500, color: sel ? AppColors.green : AppColors.text)),
-                      ]),
-                    ),
-                  );
-                }).toList()),
+                if (_approvalLoading)
+                  const Row(children: [
+                    SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textDim)),
+                    SizedBox(width: 8),
+                    Text('Loading approvals...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  ])
+                else
+                  Wrap(spacing: 8, runSpacing: 8, children: _approvalOptions.map((a) {
+                    final sel = _model.approvals.contains(a);
+                    return InkWell(
+                      onTap: () => setState(() { sel ? _model.approvals.remove(a) : _model.approvals.add(a); }),
+                      borderRadius: BorderRadius.circular(8),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: sel ? AppColors.green.withOpacity(0.08) : AppColors.surface2, border: Border.all(color: sel ? AppColors.green : AppColors.border, width: sel ? 1.5 : 1)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(sel ? Icons.check_box : Icons.check_box_outline_blank, size: 16, color: sel ? AppColors.green : AppColors.textDim),
+                          const SizedBox(width: 6),
+                          Text(a, style: TextStyle(fontSize: 12, fontWeight: sel ? FontWeight.w600 : FontWeight.w500, color: sel ? AppColors.green : AppColors.text)),
+                        ]),
+                      ),
+                    );
+                  }).toList()),
                 if (_submitted && !_model.isApprovalValid) _err('Please select at least one approval'),
               ])),
               const SizedBox(height: 14),

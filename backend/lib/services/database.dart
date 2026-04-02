@@ -17,7 +17,23 @@ class Database {
   };
 
   // ── Active tokens ──
-  final Map<String, String> tokens = {}; // token → userId
+  // Dev tokens pre-registered so backend restarts don't invalidate sessions
+  final Map<String, String> tokens = {
+    'dev-token-admin': 'USR-001',
+    'dev-token-harsh': 'USR-002',
+    'dev-token-demo': 'USR-003',
+  };
+
+  // ── Approval List ──
+  final List<String> approvalList = [
+    'Unit Head',
+    'UAT Sign Off',
+    'Marketing',
+    'BCU Head',
+    'CCU Head Approval',
+    'Functional Head Approval',
+    'SMS Whitelisting',
+  ];
 
   // ── Departments ──
   final List<Department> departments = [

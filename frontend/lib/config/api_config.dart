@@ -13,7 +13,8 @@ class ApiConfig {
   static const String templateDetailEndpoint = '/templates'; // + /{id}
 
   // Template Configuration (Pipeline)
-  static const String pipelineSubmitMappingEndpoint = '/pipeline/submit-mapping';
+  static const String pipelineSubmitMappingEndpoint =
+      '/pipeline/submit-mapping';
   static const String pipelineSubmitFormatEndpoint = '/pipeline/submit-format';
 
   // Configuration Upload
@@ -21,6 +22,7 @@ class ApiConfig {
 
   // Master Data
   static const String departmentsEndpoint = '/master/departments';
+  static const String approvalListEndpoint = '/master/approval-list';
 
   // Source Configuration
   static const String saveSourceConfigEndpoint = '/pipeline/save-sources';

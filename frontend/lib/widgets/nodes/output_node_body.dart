@@ -246,8 +246,9 @@ class OutputNodeBody extends StatelessWidget {
                       Expanded(
                         child: SizedBox(
                           height: 26,
-                          child: TextField(
-                            controller: TextEditingController(text: node.columnAliases[col] ?? ''),
+                          child: TextFormField(
+                            key: ValueKey('alias_${node.id}_$col'),
+                            initialValue: node.columnAliases[col] ?? '',
                             onChanged: (v) => ctrl.setColumnAlias(node.id, col, v),
                             style: const TextStyle(color: AppColors.text, fontSize: 10, fontFamily: 'monospace'),
                             decoration: InputDecoration(
@@ -298,8 +299,9 @@ class OutputNodeBody extends StatelessWidget {
                       Expanded(
                         child: SizedBox(
                           height: 26,
-                          child: TextField(
-                            controller: TextEditingController(text: f.value),
+                          child: TextFormField(
+                            key: ValueKey('filter_${node.id}_${idx}_${f.column}'),
+                            initialValue: f.value,
                             onChanged: (v) => ctrl.updateOutputFilter(node.id, idx, value: v),
                             style: const TextStyle(color: AppColors.text, fontSize: 10),
                             decoration: InputDecoration(

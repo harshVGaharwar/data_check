@@ -10,6 +10,7 @@ dependencies:
   dart_frog: ^1.1.0
   uuid: ^4.2.1
   crypto: ^3.0.3
+  http: ^1.2.0
 
 dev_dependencies:
   test: ^1.24.0

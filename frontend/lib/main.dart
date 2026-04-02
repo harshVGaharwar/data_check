@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
+import 'services/storage_service.dart';
 import 'services/template_service.dart';
 import 'services/pipeline_service.dart';
 import 'services/master_data_service.dart';
@@ -10,27 +11,28 @@ import 'providers/template_provider.dart';
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
 
-// changes
 void main() {
-  // Create shared API service instance
+  WidgetsFlutterBinding.ensureInitialized();
+
   final apiService = ApiService();
+  final storageService = StorageService();
 
   runApp(
     MultiProvider(
       providers: [
-        // Services (singleton, not ChangeNotifier — use Provider.value or ProxyProvider)
         Provider<ApiService>.value(value: apiService),
+        Provider<StorageService>.value(value: storageService),
         Provider<AuthService>(create: (_) => AuthService(apiService)),
         Provider<TemplateService>(create: (_) => TemplateService(apiService)),
         Provider<PipelineService>(create: (_) => PipelineService(apiService)),
         Provider<MasterDataService>(
           create: (_) => MasterDataService(apiService),
         ),
-
-        // Providers (ChangeNotifier)
-        ChangeNotifierProxyProvider<AuthService, AuthProvider>(
-          create: (ctx) => AuthProvider(ctx.read<AuthService>()),
-          update: (_, authService, prev) => prev ?? AuthProvider(authService),
+        ChangeNotifierProxyProvider2<AuthService, StorageService, AuthProvider>(
+          create: (ctx) =>
+              AuthProvider(ctx.read<AuthService>(), ctx.read<StorageService>()),
+          update: (_, authService, storage, prev) =>
+              prev ?? AuthProvider(authService, storage),
         ),
         ChangeNotifierProxyProvider<TemplateService, TemplateProvider>(
           create: (ctx) => TemplateProvider(ctx.read<TemplateService>()),
@@ -56,7 +58,19 @@ class PipelineApp extends StatelessWidget {
         fontFamily: 'DM Sans',
         scaffoldBackgroundColor: const Color(0xFFF1F5F9),
       ),
-      initialRoute: '/login',
+      home: Consumer<AuthProvider>(
+        builder: (context, auth, _) {
+          if (!auth.initialized) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (auth.isLoggedIn) {
+            return const DashboardPage();
+          }
+          return const LoginPage();
+        },
+      ),
       routes: {
         '/login': (context) => const LoginPage(),
         '/dashboard': (context) => const DashboardPage(),

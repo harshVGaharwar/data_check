@@ -5,35 +5,36 @@
 /// Content-Type: multipart/form-data (due to file upload)
 ///
 /// Example JSON (form fields):
-/// {
-///   "templateName": "Monthly GL Reconciliation",
-///   "department": "Finance",
-///   "frequency": "Monthly",
-///   "normalVolume": 5000,
-///   "peakVolume": 12000,
-///   "sourceCount": 3,
-///   "numberOfOutputs": 2,
-///   "benefitType": "Cost Saving",
-///   "benefitAmount": 150000.00,
-///   "benefitInTAT": "2 hours",
-///   "goLiveDate": "2024-04-01",
-///   "deactivateDate": "2025-03-31",
-///   "spocPerson": "Amit Sharma",
-///   "spocManager": "Rahul Verma",
-///   "unitHead": "Priya Singh",
-///   "priority": "High",
-///   "outputFormats": ["Unimailing", "User Defined"],
-///   "approvals": ["Unit Head", "UAT Sign Off", "Marketing"],
-///   "approvalFile": <binary file>
-/// }
-///
-/// Response:
-/// {
-///   "status": "success",
-///   "templateId": "TPL-2024-001",
-///   "message": "Template created successfully"
-/// }
-
+// {
+//   "template": {
+//     "templateName": "Sample Template",
+//     "department": "Finance",
+//     "frequency": "Monthly",
+//     "normalVolume": 100,
+//     "peakVolume": 200,
+//     "sourceCount": 2,
+//     "numberOfOutputs": 3,
+//     "benefitType": "CostSaving",
+//     "benefitAmount": 5000,
+//     "benefitInTat": "2 days",
+//     "goLiveDate": "2025-01-01",
+//     "deactivateDate": null,
+//     "spocPerson": "John",
+//     "spocManager": "Manager A",
+//     "unitHead": "Head A",
+//     "priority": "High"
+//   },
+//   "outputFormats": [
+//     { "formatName": "CSV" },
+//     { "formatName": "Excel" }
+//   ],
+//   "approvals": [
+//     {
+//       "approval_Type": "Manager",
+//       "approvalFile": "file1.pdf"
+//     }
+//   ]
+// }
 class TemplateRequest {
   String templateName;
   String department;
@@ -53,6 +54,7 @@ class TemplateRequest {
   String priority;
   List<String> outputFormats;
   List<String> approvals;
+
   /// Per-approval file uploads: {"Unit Head": "approval_uh.pdf", "UAT Sign Off": "uat.pdf"}
   Map<String, String> approvalFiles;
   // Actual file bytes handled separately in multipart upload
@@ -77,30 +79,35 @@ class TemplateRequest {
     List<String>? outputFormats,
     List<String>? approvals,
     Map<String, String>? approvalFiles,
-  })  : outputFormats = outputFormats ?? [],
-        approvals = approvals ?? [],
-        approvalFiles = approvalFiles ?? {};
+  }) : outputFormats = outputFormats ?? [],
+       approvals = approvals ?? [],
+       approvalFiles = approvalFiles ?? {};
 
   Map<String, dynamic> toJson() => {
-    'templateName': templateName,
-    'department': department,
-    'frequency': frequency,
-    'normalVolume': normalVolume,
-    'peakVolume': peakVolume,
-    'sourceCount': sourceCount,
-    'numberOfOutputs': numberOfOutputs,
-    'benefitType': benefitType,
-    'benefitAmount': benefitAmount,
-    'benefitInTAT': benefitInTAT,
-    'goLiveDate': goLiveDate,
-    'deactivateDate': deactivateDate,
-    'spocPerson': spocPerson,
-    'spocManager': spocManager,
-    'unitHead': unitHead,
-    'priority': priority,
-    'outputFormats': outputFormats,
-    'approvals': approvals,
-    'approvalFiles': approvalFiles,
+    'template': {
+      'templateName': templateName,
+      'department': department,
+      'frequency': frequency,
+      'normalVolume': normalVolume,
+      'peakVolume': peakVolume,
+      'sourceCount': sourceCount,
+      'numberOfOutputs': numberOfOutputs,
+      'benefitType': benefitType,
+      'benefitAmount': benefitAmount,
+      'benefitInTat': benefitInTAT,
+      'goLiveDate': goLiveDate.isEmpty ? null : goLiveDate,
+      'deactivateDate': deactivateDate.isEmpty ? null : deactivateDate,
+      'spocPerson': spocPerson,
+      'spocManager': spocManager,
+      'unitHead': unitHead,
+      'priority': priority,
+    },
+    'outputFormats': outputFormats.map((f) => {'formatName': f}).toList(),
+    'approvals': approvals
+        .map(
+          (a) => {'approval_Type': a, 'approvalFile': approvalFiles[a] ?? ''},
+        )
+        .toList(),
   };
 
   bool get isGeneralInfoValid =>
@@ -115,7 +122,11 @@ class TemplateRequest {
 
   bool get isFileUploaded => approvalFiles.isNotEmpty;
 
-  bool get isComplete => isGeneralInfoValid && isOutputFormatValid && isApprovalValid && isFileUploaded;
+  bool get isComplete =>
+      isGeneralInfoValid &&
+      isOutputFormatValid &&
+      isApprovalValid &&
+      isFileUploaded;
 
   void reset() {
     templateName = '';

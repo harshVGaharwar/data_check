@@ -1,6 +1,7 @@
 import '../config/api_config.dart';
 import '../models/api_response.dart';
 import '../models/login_request.dart';
+import '../models/login_response.dart';
 import 'api_service.dart';
 
 class AuthService {
@@ -29,5 +30,6 @@ class AuthService {
     return response;
   }
 
+  void setToken(String token) => _api.setToken(token);
   bool get isLoggedIn => _api.isAuthenticated;
 }

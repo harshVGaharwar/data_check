@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:dart_frog/dart_frog.dart';
-import '../../../../lib/services/database.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
+import '../../../../lib/config/api_config.dart';
 import '../../../../lib/models/models.dart';
+import '../../../../lib/services/database.dart';
 
-Response onRequest(RequestContext context) {
+Future<Response> onRequest(RequestContext context) async {
   if (context.request.method != HttpMethod.get) {
     return Response.json(
       statusCode: HttpStatus.methodNotAllowed,
@@ -11,10 +15,55 @@ Response onRequest(RequestContext context) {
     );
   }
 
-  final db = Database();
-  return Response.json(
-    body: ApiResponse.success(
-      data: db.departments.map((d) => d.toJson()).toList(),
-    ).toJson(),
-  );
+  // Dev mode: return from local in-memory DB
+  if (kDevMode) {
+    final db = Database();
+    return Response.json(
+      body: ApiResponse.success(
+        data: db.departments.map((d) => d.toJson()).toList(),
+      ).toJson(),
+    );
+  }
+
+  try {
+    final httpClient = HttpClient()
+      ..badCertificateCallback = (cert, host, port) => true;
+    final client = IOClient(httpClient);
+
+    final authHeader = context.request.headers['Authorization'] ??
+        context.request.headers['authorization'] ??
+        '';
+
+    final externalResponse = await client
+        .get(
+          Uri.parse('$kBaseUrl${ExternalApi.departments}'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            if (authHeader.isNotEmpty) 'Authorization': authHeader,
+          },
+        )
+        .timeout(const Duration(seconds: 30));
+
+    print('[DEPARTMENTS] External API status: ${externalResponse.statusCode}');
+
+    if (externalResponse.statusCode >= 200 &&
+        externalResponse.statusCode < 300) {
+      final data = jsonDecode(externalResponse.body);
+      return Response.json(
+        body: ApiResponse.success(data: data).toJson(),
+      );
+    }
+
+    return Response.json(
+      statusCode: externalResponse.statusCode,
+      body: ApiResponse.error(message: 'Failed to fetch departments').toJson(),
+    );
+  } catch (e) {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: ApiResponse.error(message: 'Departments service unavailable: $e')
+          .toJson(),
+    );
+  }
 }

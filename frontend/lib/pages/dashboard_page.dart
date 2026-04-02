@@ -70,15 +70,41 @@ class _DashboardPageState extends State<DashboardPage> {
         actions: [
           IconButton(icon: const Icon(Icons.notifications_outlined, size: 20), onPressed: () {}),
           const SizedBox(width: 4),
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF004C8F).withOpacity(0.1),
-              border: Border.all(color: const Color(0xFF004C8F).withOpacity(0.2)),
-            ),
-            child: const Center(child: Icon(Icons.person, size: 16, color: Color(0xFF004C8F))),
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              final user = auth.user?.user;
+              final name = user?.name ?? '';
+              final empCode = user?.employeeCode ?? '';
+              final initial = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
+                        Text(empCode, style: const TextStyle(fontSize: 10, color: AppColors.textDim)),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF004C8F).withOpacity(0.1),
+                        border: Border.all(color: const Color(0xFF004C8F).withOpacity(0.2)),
+                      ),
+                      child: Center(
+                        child: Text(initial, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF004C8F))),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),

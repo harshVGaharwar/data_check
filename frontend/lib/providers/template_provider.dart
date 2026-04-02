@@ -39,16 +39,9 @@ class TemplateProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } else {
-      // Dev mode fallback — treat as success if API not available
-      debugPrint('[TEMPLATE SAVE] API returned: ${response.message} — treating as success (dev mode)');
-      _successMessage = 'Data saved successfully';
+      _error = response.message.isNotEmpty ? response.message : 'Failed to save template';
       notifyListeners();
-      return true;
-
-      // Uncomment when backend is ready:
-      // _error = response.message.isNotEmpty ? response.message : 'Failed to save template';
-      // notifyListeners();
-      // return false;
+      return false;
     }
   }
 }

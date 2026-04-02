@@ -26,25 +26,6 @@ class ApiResponse<T> {
   }
 }
 
-/// Login response
-class LoginResponse {
-  final String token;
-  final String userId;
-  final String username;
-  final String role;
-
-  LoginResponse({required this.token, required this.userId, required this.username, this.role = ''});
-
-  factory LoginResponse.fromJson(Map<String, dynamic> json) {
-    return LoginResponse(
-      token: json['token'] ?? '',
-      userId: json['userId'] ?? '',
-      username: json['username'] ?? '',
-      role: json['role'] ?? '',
-    );
-  }
-}
-
 /// Template list item
 class TemplateListItem {
   final String id;
