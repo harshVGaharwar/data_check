@@ -71,11 +71,9 @@ class Database {
   // ── Source Types ──
   final List<Map<String, dynamic>> sourceTypes = [
     {'id': 1, 'sourceName': 'Database',      'sourceValue': 'DB'},
-    {'id': 2, 'sourceName': 'File System',   'sourceValue': 'FS'},
-    {'id': 3, 'sourceName': 'API',           'sourceValue': 'API'},
-    {'id': 4, 'sourceName': 'Manual Upload', 'sourceValue': 'MANUAL'},
-    {'id': 5, 'sourceName': 'Finacle Core',  'sourceValue': 'FC'},
-    {'id': 6, 'sourceName': 'Laser Banking', 'sourceValue': 'LASER'},
+    {'id': 2, 'sourceName': 'Manual Upload', 'sourceValue': 'MANUAL'},
+    {'id': 3, 'sourceName': 'Finacle Core',  'sourceValue': 'FC'},
+    {'id': 4, 'sourceName': 'Laser Banking', 'sourceValue': 'LASER'},
   ];
 
   // ── Operations ──

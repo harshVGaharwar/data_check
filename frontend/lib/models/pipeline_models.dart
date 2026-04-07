@@ -5,13 +5,13 @@ import '../theme/app_theme.dart';
 // ENUMS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-enum NodeType { fc, laser, manual, api, join, output }
+enum NodeType { db, manual, fc, laser, join, output }
 
 /// Drag payload — carries both node type and optional API sourceValue
 class DragNodeData {
   final NodeType type;
   final String sourceValue; // empty for non-source nodes (join etc.)
-  final String sourceName;  // display name from API (e.g. "Finacle Core")
+  final String sourceName;  // display name from API (e.g. "Database")
   const DragNodeData(this.type, {this.sourceValue = '', this.sourceName = ''});
 }
 
@@ -20,10 +20,10 @@ extension NodeTypeExt on NodeType {
 
   String get label {
     switch (this) {
-      case NodeType.fc:     return 'FC Source';
-      case NodeType.laser:  return 'Laser Source';
+      case NodeType.db:     return 'Database';
       case NodeType.manual: return 'Manual Upload';
-      case NodeType.api:    return 'App-App API';
+      case NodeType.fc:     return 'Finacle Core';
+      case NodeType.laser:  return 'Laser Banking';
       case NodeType.join:   return 'Join Operation';
       case NodeType.output: return 'Output';
     }
@@ -31,10 +31,10 @@ extension NodeTypeExt on NodeType {
 
   String get subtitle {
     switch (this) {
-      case NodeType.fc:     return 'Finacle Core';
-      case NodeType.laser:  return 'Laser Banking';
+      case NodeType.db:     return 'DB';
       case NodeType.manual: return 'CSV / Excel';
-      case NodeType.api:    return 'REST Endpoint';
+      case NodeType.fc:     return 'FC';
+      case NodeType.laser:  return 'LASER';
       case NodeType.join:   return 'LEFT / INNER / RIGHT';
       case NodeType.output: return 'CSV / Excel / JSON';
     }
@@ -42,10 +42,10 @@ extension NodeTypeExt on NodeType {
 
   IconData get icon {
     switch (this) {
+      case NodeType.db:     return Icons.storage_rounded;
+      case NodeType.manual: return Icons.upload_file_rounded;
       case NodeType.fc:     return Icons.bar_chart_rounded;
       case NodeType.laser:  return Icons.flash_on_rounded;
-      case NodeType.manual: return Icons.upload_file_rounded;
-      case NodeType.api:    return Icons.power_rounded;
       case NodeType.join:   return Icons.link_rounded;
       case NodeType.output: return Icons.output_rounded;
     }
@@ -53,10 +53,10 @@ extension NodeTypeExt on NodeType {
 
   Color get color {
     switch (this) {
+      case NodeType.db:     return AppColors.blue;
+      case NodeType.manual: return AppColors.amber;
       case NodeType.fc:     return AppColors.blue;
       case NodeType.laser:  return AppColors.green;
-      case NodeType.manual: return AppColors.amber;
-      case NodeType.api:    return AppColors.violet;
       case NodeType.join:   return AppColors.violet;
       case NodeType.output: return AppColors.green;
     }
@@ -65,13 +65,13 @@ extension NodeTypeExt on NodeType {
   /// Parse from string (Flutter savedRow 'type' field)
   static NodeType fromString(String s) {
     switch (s.toLowerCase()) {
+      case 'db':     return NodeType.db;
+      case 'manual': return NodeType.manual;
       case 'fc':     return NodeType.fc;
       case 'laser':  return NodeType.laser;
-      case 'manual': return NodeType.manual;
-      case 'api':    return NodeType.api;
       case 'join':   return NodeType.join;
       case 'output': return NodeType.output;
-      default:       return NodeType.fc;
+      default:       return NodeType.db;
     }
   }
 }

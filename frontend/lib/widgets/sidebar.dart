@@ -469,20 +469,16 @@ class PaletteItem extends StatelessWidget {
 
 NodeType _sourceValueToNodeType(String sourceValue) {
   switch (sourceValue.toUpperCase()) {
+    case 'DB':
+      return NodeType.db;
+    case 'MANUAL':
+      return NodeType.manual;
     case 'FC':
       return NodeType.fc;
     case 'LASER':
       return NodeType.laser;
-    case 'MANUAL':
-      return NodeType.manual;
-    case 'API':
-      return NodeType.api;
-    case 'DB':
-      return NodeType.fc;
-    case 'FS':
-      return NodeType.manual;
     default:
-      return NodeType.api;
+      return NodeType.db;
   }
 }
 

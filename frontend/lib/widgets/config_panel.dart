@@ -164,7 +164,7 @@ class ConfigPanel extends StatelessWidget {
                 ctrl.setQueryFile(node.id, fileName);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Query file loaded: $fileName'), backgroundColor: AppColors.greenDim),
+                    SnackBar(content: Text('Query file loaded: $fileName'), backgroundColor: AppColors.green),
                   );
                 }
               }
@@ -237,7 +237,7 @@ class ConfigPanel extends StatelessWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('${cols.length} columns, ${rows.length} rows extracted from $fileName'),
-                  backgroundColor: AppColors.greenDim,
+                  backgroundColor: AppColors.green,
                 ),
               );
             }

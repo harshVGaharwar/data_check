@@ -496,7 +496,7 @@ class PipelineController extends ChangeNotifier {
   void updateSingleSource(Map<String, dynamic> srcJson) {
     final node = nodes.firstWhere(
           (n) => n.sourceId == srcJson['id'] && n.type.isSource,
-      orElse: () => PipelineNode(id: '', type: NodeType.fc, name: '', position: Offset.zero),
+      orElse: () => PipelineNode(id: '', type: NodeType.db, name: '', position: Offset.zero),
     );
     if (node.id.isEmpty) return;
 

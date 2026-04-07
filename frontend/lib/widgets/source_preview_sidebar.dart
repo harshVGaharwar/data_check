@@ -74,29 +74,6 @@ class SourcePreviewSidebar extends StatelessWidget {
                 ),
               ),
 
-              // Save button
-              if (sources.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 40,
-                    child: ElevatedButton.icon(
-                      onPressed: allValid ? () => _saveSourceConfig(context, ctrl, sources) : null,
-                      icon: const Icon(Icons.save_rounded, size: 16),
-                      label: const Text('Save Sources Configuration', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: allValid ? const Color(0xFF004C8F) : AppColors.border,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.border,
-                        disabledForegroundColor: AppColors.textMuted,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         );
@@ -228,7 +205,7 @@ class _SourceCard extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Fields
-          _fieldRow('Source Type', node.type.label, true),
+          _fieldRow('Source Type', node.sourceTypeName.isNotEmpty ? node.sourceTypeName : node.type.label, true),
           _fieldRow('Separator', _separatorLabel(node.separator), node.separator.isNotEmpty),
           _fieldRow('Column File', node.fileName ?? '—', node.fileName != null),
           _fieldRow('Query File', node.queryFileName ?? '(optional)', node.queryFileName != null),

@@ -69,6 +69,8 @@ class JoinNodeBody extends StatelessWidget {
             children: [
               // ── Connected source badges ──
               if (connectedSources.isNotEmpty) ...[
+                const Text('CONNECTED SOURCES', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.5)),
+                const SizedBox(height: 5),
                 Wrap(
                   spacing: 6, runSpacing: 4,
                   children: connectedSources.map((s) {
@@ -385,6 +387,9 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
       ),
       child: Column(
         children: [
+          const Text('COLUMN MAPPING', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.5)),
+          const SizedBox(height: 8),
+
           // ── Row 1: Source + Column (LEFT) ──
           Row(children: [
             const Text('SOURCE', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Color(0xFFA78BFA), letterSpacing: 0.3)),

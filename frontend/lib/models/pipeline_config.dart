@@ -74,6 +74,21 @@ class DemoDataSet {
 
 /// Demo data by NodeType — for manually dragged nodes from sidebar
 final Map<NodeType, DemoDataSet> demoDataByType = {
+  NodeType.db: DemoDataSet(
+    cols: ['TxnID', 'GL_Code', 'Debit', 'Credit', 'Period'],
+    rows: [
+      {'TxnID': 'T001', 'GL_Code': '4001', 'Debit': '50000', 'Credit': '0', 'Period': 'Q1'},
+      {'TxnID': 'T002', 'GL_Code': '4002', 'Debit': '0', 'Credit': '30000', 'Period': 'Q1'},
+      {'TxnID': 'T003', 'GL_Code': '4003', 'Debit': '75000', 'Credit': '0', 'Period': 'Q2'},
+    ],
+  ),
+  NodeType.manual: DemoDataSet(
+    cols: ['GL_Code', 'BudgetAmt', 'ActualAmt', 'Variance'],
+    rows: [
+      {'GL_Code': '4001', 'BudgetAmt': '60000', 'ActualAmt': '70000', 'Variance': '-10000'},
+      {'GL_Code': '4002', 'BudgetAmt': '25000', 'ActualAmt': '30000', 'Variance': '5000'},
+    ],
+  ),
   NodeType.fc: DemoDataSet(
     cols: ['TxnID', 'GL_Code', 'Debit', 'Credit', 'Period'],
     rows: [
@@ -88,20 +103,6 @@ final Map<NodeType, DemoDataSet> demoDataByType = {
       {'GL_Code': '4001', 'AccountName': 'Salary Expense', 'Category': 'OpEx', 'Status': 'Active'},
       {'GL_Code': '4002', 'AccountName': 'Rent Income', 'Category': 'Revenue', 'Status': 'Active'},
       {'GL_Code': '4003', 'AccountName': 'Utility Expense', 'Category': 'OpEx', 'Status': 'Active'},
-    ],
-  ),
-  NodeType.manual: DemoDataSet(
-    cols: ['GL_Code', 'BudgetAmt', 'ActualAmt', 'Variance'],
-    rows: [
-      {'GL_Code': '4001', 'BudgetAmt': '60000', 'ActualAmt': '70000', 'Variance': '-10000'},
-      {'GL_Code': '4002', 'BudgetAmt': '25000', 'ActualAmt': '30000', 'Variance': '5000'},
-    ],
-  ),
-  NodeType.api: DemoDataSet(
-    cols: ['EventID', 'Amount', 'EventTime', 'ResponseCode'],
-    rows: [
-      {'EventID': 'E001', 'Amount': '15000', 'EventTime': '2024-01-15', 'ResponseCode': '200'},
-      {'EventID': 'E002', 'Amount': '22000', 'EventTime': '2024-01-16', 'ResponseCode': '200'},
     ],
   ),
 };
