@@ -6,7 +6,6 @@ class StorageService {
   static const _tokenKey = 'auth_token';
   static const _refreshTokenKey = 'auth_refresh_token';
   static const _userKey = 'auth_user';
-  static const _applistKey = 'auth_applist';
   static const _pageIndexKey = 'nav_page_index';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
@@ -35,21 +34,6 @@ class StorageService {
           'profileId': session.user.profileId,
         }),
       ),
-      _storage.write(
-        key: _applistKey,
-        value: jsonEncode(
-          session.applist
-              .map(
-                (a) => {
-                  'appname': a.appname,
-                  'dbVault': a.dbVault,
-                  'sValues': a.sValues,
-                  'itgrcCode': a.itgrcCode,
-                },
-              )
-              .toList(),
-        ),
-      ),
     ]);
   }
 
@@ -59,7 +43,6 @@ class StorageService {
 
     final refreshToken = await _storage.read(key: _refreshTokenKey) ?? '';
     final userJson = await _storage.read(key: _userKey);
-    final applistJson = await _storage.read(key: _applistKey);
 
     if (userJson == null) return null;
 
@@ -67,9 +50,6 @@ class StorageService {
       'token': token,
       'refreshToken': refreshToken,
       'user': jsonDecode(userJson) as Map<String, dynamic>,
-      'applist': applistJson != null
-          ? jsonDecode(applistJson) as List<dynamic>
-          : [],
     });
   }
 
@@ -78,7 +58,6 @@ class StorageService {
       _storage.delete(key: _tokenKey),
       _storage.delete(key: _refreshTokenKey),
       _storage.delete(key: _userKey),
-      _storage.delete(key: _applistKey),
       _storage.delete(key: _pageIndexKey),
     ]);
   }

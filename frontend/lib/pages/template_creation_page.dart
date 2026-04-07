@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../models/template_request.dart';
 import '../providers/auth_provider.dart';
 import '../providers/template_provider.dart';
+import '../models/master_models.dart';
 import '../services/master_data_service.dart';
 
 class TemplateCreationPage extends StatefulWidget {
@@ -31,9 +32,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
 
-  List<String> _departments = [];
+  List<DepartmentItem> _departments = [];
   bool _deptLoading = true;
-  List<String> _approvalOptions = [];
+  List<ApprovalItem> _approvalOptions = [];
   bool _approvalLoading = true;
   static const _frequencies = ['Daily', 'Weekly', 'Bi-Weekly', 'Monthly', 'Quarterly', 'Yearly', 'On-Demand'];
   static const _benefitTypes = ['Cost Saving', 'Revenue Generation', 'Efficiency Improvement', 'Risk Reduction', 'Compliance', 'Other'];
@@ -188,7 +189,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
 
               // A) General Information
               _sectionCard(title: 'General Information', icon: Icons.info_outline, hasError: _submitted && !_model.isGeneralInfoValid, child: Column(children: [
-                _row([_tf('Template Name *', _nameCtrl, 'Enter template name'), _deptLoading ? _loadingField('Department *') : _dd('Department *', _departments, _model.department, (v) => setState(() => _model.department = v ?? '')), _dd('Frequency *', _frequencies, _model.frequency, (v) => setState(() => _model.frequency = v ?? ''))]),
+                _row([_tf('Template Name *', _nameCtrl, 'Enter template name'), _deptLoading ? _loadingField('Department *') : _dd('Department *', _departments.map((d) => d.name).toList(), _model.department, (v) => setState(() => _model.department = v ?? '')), _dd('Frequency *', _frequencies, _model.frequency, (v) => setState(() => _model.frequency = v ?? ''))]),
                 const SizedBox(height: 10),
                 _row([_dd('Priority', _priorities, _model.priority, (v) => setState(() => _model.priority = v ?? 'Medium')), _tf('Normal Volume', _normalVolCtrl, '0', num: true), _tf('Peak Volume', _peakVolCtrl, '0', num: true)]),
                 const SizedBox(height: 10),
@@ -239,9 +240,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
                   ])
                 else
                   Wrap(spacing: 8, runSpacing: 8, children: _approvalOptions.map((a) {
-                    final sel = _model.approvals.contains(a);
+                    final sel = _model.approvals.contains(a.name);
                     return InkWell(
-                      onTap: () => setState(() { sel ? _model.approvals.remove(a) : _model.approvals.add(a); }),
+                      onTap: () => setState(() { sel ? _model.approvals.remove(a.name) : _model.approvals.add(a.name); }),
                       borderRadius: BorderRadius.circular(8),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -250,7 +251,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           Icon(sel ? Icons.check_box : Icons.check_box_outline_blank, size: 16, color: sel ? AppColors.green : AppColors.textDim),
                           const SizedBox(width: 6),
-                          Text(a, style: TextStyle(fontSize: 12, fontWeight: sel ? FontWeight.w600 : FontWeight.w500, color: sel ? AppColors.green : AppColors.text)),
+                          Text(a.name, style: TextStyle(fontSize: 12, fontWeight: sel ? FontWeight.w600 : FontWeight.w500, color: sel ? AppColors.green : AppColors.text)),
                         ]),
                       ),
                     );

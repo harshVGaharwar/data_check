@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
 
   void _submit() async {
+    if (_loading) return;
     if (_usernameCtrl.text.trim().isEmpty ||
         _passwordCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

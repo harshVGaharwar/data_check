@@ -12,19 +12,39 @@ class ApiResponse<T> {
     this.statusCode = 200,
   });
 
-  factory ApiResponse.fromJson(Map<String, dynamic> json, {T Function(Map<String, dynamic>)? fromData}) {
+  factory ApiResponse.fromJson(
+    Map<String, dynamic> json, {
+    T Function(Map<String, dynamic>)? fromData,
+  }) {
+    final bool success;
+    if (json.containsKey('status')) {
+      success = json['status']?.toString().toLowerCase() == 'success';
+    } else if (json.containsKey('success')) {
+      success = json['success'] == true;
+    } else {
+      // No explicit status field — HTTP layer already confirmed 2xx, treat as success
+      success = true;
+    }
     return ApiResponse(
-      success: json['status']?.toString().toLowerCase() == 'success' || json['success'] == true,
+      success: success,
       message: json['message'] ?? '',
       data: fromData != null
-          ? fromData(json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : json)
+          ? fromData(
+              json['data'] is Map<String, dynamic>
+                  ? json['data'] as Map<String, dynamic>
+                  : json,
+            )
           : null,
       statusCode: json['statusCode'] ?? 200,
     );
   }
 
   factory ApiResponse.error(String message, {int statusCode = 500}) {
-    return ApiResponse(success: false, message: message, statusCode: statusCode);
+    return ApiResponse(
+      success: false,
+      message: message,
+      statusCode: statusCode,
+    );
   }
 }
 
@@ -51,7 +71,13 @@ class TemplateListItem {
   final String status;
   final String createdAt;
 
-  TemplateListItem({required this.id, required this.name, required this.department, this.status = '', this.createdAt = ''});
+  TemplateListItem({
+    required this.id,
+    required this.name,
+    required this.department,
+    this.status = '',
+    this.createdAt = '',
+  });
 
   factory TemplateListItem.fromJson(Map<String, dynamic> json) {
     return TemplateListItem(

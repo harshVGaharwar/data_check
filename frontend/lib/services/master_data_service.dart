@@ -10,17 +10,14 @@ class MasterDataService {
 
   MasterDataService(this._api);
 
-  /// Fetch departments list from API (names only)
-  Future<List<String>> getDepartments() async {
+  /// Fetch departments list from API
+  Future<List<DepartmentItem>> getDepartments() async {
     try {
       final data = await _api.getRawData(ApiConfig.departmentsEndpoint);
       if (data is List) {
         return data
-            .map(
-              (e) => e is String
-                  ? e
-                  : (e['name'] ?? e['departmentName'] ?? '$e').toString(),
-            )
+            .whereType<Map<String, dynamic>>()
+            .map(DepartmentItem.fromJson)
             .toList();
       }
     } catch (e) {
@@ -31,25 +28,8 @@ class MasterDataService {
 
   /// Fetch departments as {name: id} map
   Future<Map<String, int>> getDepartmentMap() async {
-    try {
-      final data = await _api.getRawData(ApiConfig.departmentsEndpoint);
-      if (data is List) {
-        final map = <String, int>{};
-        for (final e in data) {
-          if (e is Map) {
-            final name = (e['name'] ?? e['departmentName'] ?? '').toString();
-            final id = e['id'] is int
-                ? e['id'] as int
-                : int.tryParse('${e['id']}') ?? 0;
-            if (name.isNotEmpty && id > 0) map[name] = id;
-          }
-        }
-        return map;
-      }
-    } catch (e) {
-      debugPrint('[MasterData] getDepartmentMap error: $e');
-    }
-    return {};
+    final departments = await getDepartments();
+    return {for (final d in departments) if (d.name.isNotEmpty) d.name: d.id};
   }
 
   /// Fetch templates for a given department ID
@@ -107,17 +87,11 @@ class MasterDataService {
   }
 
   /// Fetch approval list from API
-  Future<List<String>> getApprovalList() async {
+  Future<List<ApprovalItem>> getApprovalList() async {
     try {
       final data = await _api.getRawData(ApiConfig.approvalListEndpoint);
       if (data is List) {
-        return data
-            .map(
-              (e) => e is String
-                  ? e
-                  : (e['name'] ?? e['approvalName'] ?? '$e').toString(),
-            )
-            .toList();
+        return data.map(ApprovalItem.fromJson).toList();
       }
     } catch (e) {
       debugPrint('[MasterData] getApprovalList error: $e');

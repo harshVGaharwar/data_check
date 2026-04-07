@@ -1,3 +1,33 @@
+class DepartmentItem {
+  final int id;
+  final String name;
+
+  const DepartmentItem({required this.id, required this.name});
+
+  factory DepartmentItem.fromJson(Map<String, dynamic> json) {
+    return DepartmentItem(
+      id: json['id'] as int? ?? int.tryParse('${json['id']}') ?? 0,
+      name: (json['name'] ?? json['departmentName'] ?? '').toString(),
+    );
+  }
+}
+
+class ApprovalItem {
+  final String name;
+
+  const ApprovalItem({required this.name});
+
+  factory ApprovalItem.fromJson(dynamic json) {
+    if (json is String) return ApprovalItem(name: json);
+    if (json is Map<String, dynamic>) {
+      return ApprovalItem(
+        name: (json['name'] ?? json['approvalName'] ?? '').toString(),
+      );
+    }
+    return ApprovalItem(name: json.toString());
+  }
+}
+
 class SourceTypeItem {
   final int id;
   final String sourceName;

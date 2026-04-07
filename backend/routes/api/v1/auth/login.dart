@@ -69,15 +69,11 @@ Future<Response> onRequest(RequestContext context) async {
     if (dbUser != null) db.tokens[token] = dbUser.id;
 
     return Response.json(
-      body: ApiResponse.success(
-        message: 'Login successful',
-        data: {
-          'token': token,
-          'refreshToken': devUser['refreshToken'],
-          'user': devUser['user'],
-          'applist': devUser['applist'],
-        },
-      ).toJson(),
+      body: {
+        'token': token,
+        'refreshToken': devUser['refreshToken'],
+        'user': devUser['user'],
+      },
     );
   }
 
@@ -100,15 +96,6 @@ Future<Response> onRequest(RequestContext context) async {
     if (hdfcResponse.statusCode == 200) {
       final data = jsonDecode(hdfcResponse.body) as Map<String, dynamic>;
       print('[LOGIN] HDFC response keys: ${data.keys.toList()}');
-      print(
-          '[LOGIN] applist raw: ${data['applist'] ?? data['AppList'] ?? data['appList'] ?? 'NOT FOUND'}');
-
-      // Handle case variations for applist key (.NET APIs may use different casing)
-      final applist = data['applist'] ??
-          data['AppList'] ??
-          data['appList'] ??
-          data['APPLIST'] ??
-          [];
 
       final hdfcToken = data['token'] ?? data['Token'] ?? '';
       final userMap = (data['user'] ?? data['User'] ?? {}) as Map<String, dynamic>;
@@ -128,15 +115,11 @@ Future<Response> onRequest(RequestContext context) async {
       }
 
       return Response.json(
-        body: ApiResponse.success(
-          message: 'Login successful',
-          data: {
-            'token': hdfcToken,
-            'refreshToken': data['refreshToken'] ?? data['RefreshToken'] ?? '',
-            'user': userMap,
-            'applist': applist,
-          },
-        ).toJson(),
+        body: {
+          'token': hdfcToken,
+          'refreshToken': data['refreshToken'] ?? data['RefreshToken'] ?? '',
+          'user': userMap,
+        },
       );
     }
 
