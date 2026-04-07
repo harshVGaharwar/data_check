@@ -66,39 +66,14 @@ class _LoginPageState extends State<LoginPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // ── Logo ──
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF004C8F), Color(0xFF0066CC)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF004C8F).withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    'H',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'DM Sans',
-                    ),
-                  ),
-                ),
+              Image.asset(
+                'assets/images/HDFC_Bank_Logo.svg.png',
+                height: 36,
+                fit: BoxFit.contain,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               const Text(
-                'HDFC Pipeline Builder',
+                'Data Orchestration',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -107,11 +82,8 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Data Configuration Platform',
-                style: TextStyle(fontSize: 13, color: AppColors.textDim),
-              ),
-              const SizedBox(height: 36),
+
+              const SizedBox(height: 12),
 
               // ── Login card ──
               Container(
@@ -148,10 +120,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 24),
 
                     // Username
-                    const Text(
-                      'Username',
-                      style: AppTextStyles.fieldLabel,
-                    ),
+                    const Text('Username', style: AppTextStyles.fieldLabel),
                     const SizedBox(height: 6),
                     TextField(
                       controller: _usernameCtrl,
