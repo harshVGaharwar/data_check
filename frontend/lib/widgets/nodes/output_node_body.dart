@@ -3,16 +3,21 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/pipeline_models.dart';
 import '../../controllers/pipeline_controller.dart';
+import '../../providers/pipeline_master_provider.dart';
 
 class OutputNodeBody extends StatelessWidget {
   final PipelineNode node;
   const OutputNodeBody({super.key, required this.node});
 
-  static const _operators = ['=', '!=', '>', '<', '>=', '<=', 'contains', 'starts with'];
+  static const _fallbackOperators = ['=', '!=', '>', '<', '>=', '<=', 'contains', 'starts with'];
 
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<PipelineController>();
+    final master = context.watch<PipelineMasterProvider>();
+    final operators = master.operatorValues.isNotEmpty
+        ? master.operatorValues
+        : _fallbackOperators;
     final result = ctrl.getOutputResult(node.id);
     final diagnosis = result == null ? ctrl.diagnoseOutputIssue(node.id) : null;
 
@@ -293,7 +298,7 @@ class OutputNodeBody extends StatelessWidget {
                       Expanded(child: _miniFilterDrop(allCols, f.column.isEmpty ? null : f.column, (v) => ctrl.updateOutputFilter(node.id, idx, column: v))),
                       const SizedBox(width: 4),
                       // Operator
-                      SizedBox(width: 70, child: _miniFilterDrop(_operators, f.operator, (v) => ctrl.updateOutputFilter(node.id, idx, operator: v))),
+                      SizedBox(width: 90, child: _operatorDrop(operators, master, f.operator, (v) => ctrl.updateOutputFilter(node.id, idx, operator: v))),
                       const SizedBox(width: 4),
                       // Value
                       Expanded(
@@ -409,6 +414,34 @@ class OutputNodeBody extends StatelessWidget {
       const SizedBox(width: 4),
       Text(title, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textDim, letterSpacing: 0.5)),
     ]);
+  }
+
+  Widget _operatorDrop(List<String> values, PipelineMasterProvider master, String? current, ValueChanged<String?> onChanged) {
+    final validValue = values.contains(current) ? current : null;
+    return Container(
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: AppColors.border2),
+        color: AppColors.border,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true, isDense: true,
+          value: validValue,
+          hint: const Text('--', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+          dropdownColor: AppColors.surface2,
+          style: const TextStyle(fontSize: 9.5, color: AppColors.text, fontWeight: FontWeight.w600),
+          icon: const Icon(Icons.keyboard_arrow_down, size: 14, color: AppColors.textDim),
+          items: values.map((v) => DropdownMenuItem(
+            value: v,
+            child: Text(master.operatorLabel(v), overflow: TextOverflow.ellipsis),
+          )).toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
   }
 
   Widget _miniFilterDrop(List<String> items, String? value, ValueChanged<String?> onChanged) {

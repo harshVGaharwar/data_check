@@ -7,6 +7,14 @@ import '../theme/app_theme.dart';
 
 enum NodeType { fc, laser, manual, api, join, output }
 
+/// Drag payload — carries both node type and optional API sourceValue
+class DragNodeData {
+  final NodeType type;
+  final String sourceValue; // empty for non-source nodes (join etc.)
+  final String sourceName;  // display name from API (e.g. "Finacle Core")
+  const DragNodeData(this.type, {this.sourceValue = '', this.sourceName = ''});
+}
+
 extension NodeTypeExt on NodeType {
   bool get isSource => this != NodeType.join && this != NodeType.output;
 
@@ -76,6 +84,7 @@ class ColumnMapping {
   String leftSourceId;   // Source node ID
   String leftCol;        // Column from that source
   String joinType;       // Relation type
+  String operationValue; // Operation (=, !=, >, <, etc.)
   String rightSourceId;  // Dependent source node ID
   String rightCol;       // Column from dependent source
 
@@ -83,6 +92,7 @@ class ColumnMapping {
     this.leftSourceId = '',
     this.leftCol = '',
     this.joinType = 'LEFT JOIN',
+    this.operationValue = '=',
     this.rightSourceId = '',
     this.rightCol = '',
   });
@@ -93,6 +103,7 @@ class ColumnMapping {
     'leftSourceId': leftSourceId,
     'leftCol': leftCol,
     'joinType': joinType,
+    'operationValue': operationValue,
     'rightSourceId': rightSourceId,
     'rightCol': rightCol,
   };
@@ -177,6 +188,12 @@ class PipelineNode {
   /// Sort config [{column, direction}]
   List<OutputSort> sortRules;
 
+  /// Source type selected from API (sourceValue, e.g. 'DB', 'API')
+  String sourceTypeValue;
+
+  /// Display name of the dragged source type (e.g. 'Finacle Core', 'Database')
+  String sourceTypeName;
+
   /// File info
   String? fileName;
   String? queryFileName;
@@ -204,6 +221,8 @@ class PipelineNode {
     Map<String, String>? columnAliases,
     List<OutputFilter>? filters,
     List<OutputSort>? sortRules,
+    this.sourceTypeValue = '',
+    this.sourceTypeName = '',
     this.fileName,
     this.queryFileName,
     this.separator = ',',

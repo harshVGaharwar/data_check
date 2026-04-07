@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../services/storage_service.dart';
 import 'template_creation_page.dart';
 import 'template_configuration_page.dart';
 import 'configuration_upload_page.dart';
@@ -33,6 +34,20 @@ class _DashboardPageState extends State<DashboardPage> {
     Icons.settings_applications_outlined,
     Icons.cloud_upload_outlined,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _restorePageIndex();
+  }
+
+  Future<void> _restorePageIndex() async {
+    final storage = context.read<StorageService>();
+    final index = await storage.loadPageIndex();
+    if (mounted && index != _selectedIndex) {
+      setState(() => _selectedIndex = index);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +133,6 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: AppColors.surface,
       child: Column(
         children: [
-          // Drawer header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
@@ -146,16 +160,9 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
-
           const SizedBox(height: 8),
-
-          // Menu items
-          for (int i = 0; i < _titles.length; i++)
-            _drawerItem(i),
-
+          for (int i = 0; i < _titles.length; i++) _drawerItem(i),
           const Spacer(),
-
-          // Logout
           const Divider(color: AppColors.border, height: 1),
           ListTile(
             leading: const Icon(Icons.logout, size: 20, color: Colors.red),
@@ -198,6 +205,7 @@ class _DashboardPageState extends State<DashboardPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         onTap: () {
           setState(() => _selectedIndex = index);
+          context.read<StorageService>().savePageIndex(index);
           Navigator.of(context).pop();
         },
       ),

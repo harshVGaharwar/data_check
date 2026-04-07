@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
 import '../models/pipeline_models.dart';
+import '../models/master_models.dart';
 import '../controllers/pipeline_controller.dart';
+import '../providers/pipeline_master_provider.dart';
 
 class ConfigPanel extends StatelessWidget {
   const ConfigPanel();
@@ -94,23 +96,10 @@ class ConfigPanel extends StatelessWidget {
         ),
         const SizedBox(height: 14),
 
-        // ── Source Type (read-only) ──
+        // ── Source Type (API-driven dropdown) ──
         const Text('Source Type', style: AppTextStyles.fieldLabel),
         const SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: AppColors.border2),
-            color: AppColors.surface2,
-          ),
-          child: Row(children: [
-            Icon(node.type.icon, color: node.type.color, size: 14),
-            const SizedBox(width: 8),
-            Text(node.type.label, style: const TextStyle(color: AppColors.text, fontSize: 12)),
-          ]),
-        ),
+        _SourceTypeDropdown(node: node, ctrl: ctrl),
         const SizedBox(height: 14),
 
         // ── Separator (Manual type only) ──
@@ -358,6 +347,128 @@ class ConfigPanel extends StatelessWidget {
           if (badge != null)
             Text(badge, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
         ],
+      ),
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SOURCE TYPE DROPDOWN
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _SourceTypeDropdown extends StatelessWidget {
+  final PipelineNode node;
+  final PipelineController ctrl;
+  const _SourceTypeDropdown({required this.node, required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final master = context.watch<PipelineMasterProvider>();
+
+    if (master.loading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: AppColors.border2),
+          color: AppColors.surface2,
+        ),
+        child: const Row(children: [
+          SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.textDim)),
+          SizedBox(width: 8),
+          Text('Loading...', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+        ]),
+      );
+    }
+
+    if (master.sourceTypes.isEmpty) {
+      // Fallback: show node type label read-only
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: AppColors.border2),
+          color: AppColors.surface2,
+        ),
+        child: Row(children: [
+          Icon(node.type.icon, color: node.type.color, size: 14),
+          const SizedBox(width: 8),
+          Text(node.type.label, style: const TextStyle(color: AppColors.text, fontSize: 12)),
+        ]),
+      );
+    }
+
+    final items = master.sourceTypes;
+    final currentValue = node.sourceTypeValue.isNotEmpty ? node.sourceTypeValue : null;
+    final matchedItem = currentValue != null
+        ? items.where((i) => i.sourceValue == currentValue).firstOrNull
+        : null;
+
+    // If sourceTypeValue was set from drag, show read-only badge — no re-selection needed
+    if (matchedItem != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: AppColors.blue.withOpacity(0.3)),
+          color: AppColors.blue.withOpacity(0.05),
+        ),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: AppColors.blue.withOpacity(0.12),
+              border: Border.all(color: AppColors.blue.withOpacity(0.25)),
+            ),
+            child: Text(matchedItem.sourceValue, style: const TextStyle(color: AppColors.blue, fontSize: 9, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(matchedItem.sourceName, style: const TextStyle(color: AppColors.text, fontSize: 12, fontWeight: FontWeight.w500))),
+          const Icon(Icons.lock_outline, size: 12, color: AppColors.textDim),
+        ]),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: AppColors.border2),
+        color: AppColors.surface2,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          isDense: true,
+          value: null,
+          hint: const Text('Select source type', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          dropdownColor: AppColors.surface2,
+          style: const TextStyle(color: AppColors.text, fontSize: 12),
+          icon: const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textDim),
+          items: items.map((item) => DropdownMenuItem<String>(
+            value: item.sourceValue,
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  color: AppColors.blue.withOpacity(0.1),
+                  border: Border.all(color: AppColors.blue.withOpacity(0.2)),
+                ),
+                child: Text(item.sourceValue, style: const TextStyle(color: AppColors.blue, fontSize: 9, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+              ),
+              const SizedBox(width: 8),
+              Text(item.sourceName, style: const TextStyle(fontSize: 12)),
+            ]),
+          )).toList(),
+          onChanged: (value) {
+            if (value != null) ctrl.updateNodeSourceType(node.id, value);
+          },
+        ),
       ),
     );
   }

@@ -8,8 +8,8 @@ class PipelineService {
   PipelineService(this._api);
 
   /// Submit join mapping configuration
-  Future<ApiResponse> submitMapping(Map<String, dynamic> payload) async {
-    return _api.post(ApiConfig.pipelineSubmitMappingEndpoint, payload);
+  Future<ApiResponse<SubmitMappingResponse>> submitMapping(Map<String, dynamic> payload) async {
+    return _api.post(ApiConfig.pipelineSubmitMappingEndpoint, payload, fromData: SubmitMappingResponse.fromJson);
   }
 
   /// Submit output data format

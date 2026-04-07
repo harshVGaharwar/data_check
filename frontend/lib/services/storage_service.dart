@@ -7,6 +7,7 @@ class StorageService {
   static const _refreshTokenKey = 'auth_refresh_token';
   static const _userKey = 'auth_user';
   static const _applistKey = 'auth_applist';
+  static const _pageIndexKey = 'nav_page_index';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     webOptions: WebOptions(dbName: 'hdfc_pipeline', publicKey: 'hdfc_key'),
@@ -78,6 +79,16 @@ class StorageService {
       _storage.delete(key: _refreshTokenKey),
       _storage.delete(key: _userKey),
       _storage.delete(key: _applistKey),
+      _storage.delete(key: _pageIndexKey),
     ]);
+  }
+
+  Future<void> savePageIndex(int index) async {
+    await _storage.write(key: _pageIndexKey, value: '$index');
+  }
+
+  Future<int> loadPageIndex() async {
+    final value = await _storage.read(key: _pageIndexKey);
+    return int.tryParse(value ?? '') ?? 0;
   }
 }

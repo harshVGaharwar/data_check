@@ -11,6 +11,9 @@ import '../routes/api/v1/templates/index.dart' as api_v1_templates_index;
 import '../routes/api/v1/templates/[id].dart' as api_v1_templates_$id;
 import '../routes/api/v1/pipeline/submit-mapping.dart' as api_v1_pipeline_submit_mapping;
 import '../routes/api/v1/pipeline/save-sources.dart' as api_v1_pipeline_save_sources;
+import '../routes/api/v1/master/templates.dart' as api_v1_master_templates;
+import '../routes/api/v1/master/source-type.dart' as api_v1_master_source_type;
+import '../routes/api/v1/master/operations.dart' as api_v1_master_operations;
 import '../routes/api/v1/master/departments.dart' as api_v1_master_departments;
 import '../routes/api/v1/master/approval-list.dart' as api_v1_master_approval_list;
 import '../routes/api/v1/auth/logout.dart' as api_v1_auth_logout;
@@ -64,7 +67,7 @@ Handler buildApiV1PipelineHandler() {
 Handler buildApiV1MasterHandler() {
   final pipeline = const Pipeline();
   final router = Router()
-    ..all('/approval-list', (context) => api_v1_master_approval_list.onRequest(context,))..all('/departments', (context) => api_v1_master_departments.onRequest(context,));
+    ..all('/approval-list', (context) => api_v1_master_approval_list.onRequest(context,))..all('/departments', (context) => api_v1_master_departments.onRequest(context,))..all('/operations', (context) => api_v1_master_operations.onRequest(context,))..all('/source-type', (context) => api_v1_master_source_type.onRequest(context,))..all('/templates', (context) => api_v1_master_templates.onRequest(context,));
   return pipeline.addHandler(router);
 }
 

@@ -35,13 +35,12 @@ class SourceNodeBody extends StatelessWidget {
                 child: Icon(node.type.icon, color: color, size: 14),
               ),
               const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(node.name, style: AppTextStyles.nodeName, overflow: TextOverflow.ellipsis),
-                    Text('${node.type.name.toUpperCase()} · ${node.department}', style: AppTextStyles.nodeSubtitle),
-                  ],
+                child: Text(
+                  node.sourceTypeName.isNotEmpty ? node.sourceTypeName : node.type.label,
+                  style: AppTextStyles.nodeName,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               InkWell(
@@ -57,8 +56,10 @@ class SourceNodeBody extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           child: Column(
             children: [
-              _statRow('Template', node.template.isNotEmpty ? node.template : '—'),
-              _statRow('Department', node.department),
+              _statRow('Source Type', node.sourceTypeValue.isNotEmpty ? node.sourceTypeValue : '—'),
+              _sourceNameRow(),
+              // _statRow('Department', node.department),
+              // _statRow('Template', node.template.isNotEmpty ? node.template : '—'),
               _statBadgeRow('Columns', hasCols ? '${node.cols.length} cols' : 'No file',
                   hasCols ? AppColors.blue : AppColors.amber),
               if (node.rows.isNotEmpty) _statRow('Rows', '${node.rows.length}'),
@@ -93,6 +94,34 @@ class SourceNodeBody extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _sourceNameRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('Source Name', style: AppTextStyles.statLabel),
+          if (node.name.isEmpty)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.error_outline, color: Colors.red, size: 10),
+                SizedBox(width: 3),
+                Text(
+                  'Define Source Name',
+                  style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.w500),
+                ),
+              ],
+            )
+          else
+            Flexible(
+              child: Text(node.name, style: AppTextStyles.statValue, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+      ),
     );
   }
 

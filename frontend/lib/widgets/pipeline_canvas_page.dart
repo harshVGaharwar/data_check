@@ -5,6 +5,7 @@ import '../models/pipeline_models.dart';
 import '../controllers/pipeline_controller.dart';
 import 'edge_painter.dart';
 import 'nodes/source_node_body.dart';
+import 'nodes/output_node_body.dart';
 import 'nodes/join_node_body.dart';
 import 'top_bar.dart';
 import 'sidebar.dart';
@@ -44,7 +45,11 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
             children: [
               const Sidebar(),
               Expanded(child: _buildCanvas()),
-              const ConfigPanel(),
+              Consumer<PipelineController>(
+                builder: (_, ctrl, __) => ctrl.selectedNodeId != null
+                    ? const ConfigPanel()
+                    : const SizedBox.shrink(),
+              ),
               const SourcePreviewSidebar(),
             ],
           ),
@@ -67,14 +72,17 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
               return Stack(
                 children: [
                   // ── 1. Canvas ──
-                  DragTarget<NodeType>(
+                  DragTarget<DragNodeData>(
                     onAcceptWithDetails: (details) {
                       final box = context.findRenderObject() as RenderBox;
                       final localPos = box.globalToLocal(details.offset);
                       final inv = Matrix4.inverted(_transformCtrl.value);
                       ctrl.addNode(
-                        details.data,
+                        details.data.type,
                         MatrixUtils.transformPoint(inv, localPos),
+                        sourceTypeValue: details.data.sourceValue,
+                        sourceTypeName: details.data.sourceName,
+                        name: '',
                       );
                     },
                     builder: (ctx2, _, __) {
@@ -407,6 +415,8 @@ class _CanvasNode extends StatelessWidget {
     switch (node.type) {
       case NodeType.join:
         return JoinNodeBody(node: node);
+      case NodeType.output:
+        return OutputNodeBody(node: node);
       default:
         return SourceNodeBody(node: node);
     }

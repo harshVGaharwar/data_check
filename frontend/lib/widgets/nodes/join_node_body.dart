@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../models/pipeline_models.dart';
 import '../../models/pipeline_config.dart';
 import '../../controllers/pipeline_controller.dart';
+import '../../providers/pipeline_master_provider.dart';
 import '../../services/pipeline_service.dart';
 
 class JoinNodeBody extends StatelessWidget {
@@ -121,12 +122,24 @@ class JoinNodeBody extends StatelessWidget {
                           Text(m.leftCol, style: const TextStyle(color: Color(0xFFA78BFA), fontSize: 10, fontWeight: FontWeight.w600, fontFamily: 'monospace')),
                         ],
                       )),
-                      // Relation
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: AppColors.violet.withOpacity(0.15), border: Border.all(color: AppColors.violet.withOpacity(0.3))),
-                        child: Text(m.joinType, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700)),
+                      // Relation + Operation
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: AppColors.violet.withOpacity(0.15), border: Border.all(color: AppColors.violet.withOpacity(0.3))),
+                            child: Text(m.joinType, style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.w700)),
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: AppColors.amber.withOpacity(0.12), border: Border.all(color: AppColors.amber.withOpacity(0.3))),
+                            child: Text(m.operationValue, style: const TextStyle(color: AppColors.amber, fontSize: 9, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+                          ),
+                        ],
                       ),
                       // Right: dep_source.column
                       Expanded(child: Column(
@@ -225,6 +238,7 @@ class JoinNodeBody extends StatelessWidget {
             'leftSourceName': lSrc?.name,
             'leftColumn': m.leftCol,
             'joinType': m.joinType,
+            'operationValue': m.operationValue,
             'rightSourceId': m.rightSourceId,
             'rightSourceName': rSrc?.name,
             'rightColumn': m.rightCol,
@@ -265,7 +279,8 @@ class JoinNodeBody extends StatelessWidget {
     // Call API
     try {
       final service = context.read<PipelineService>();
-      await service.submitMapping(payload);
+      final response = await service.submitMapping(payload);
+      debugPrint('[SUBMIT MAPPING] Response: status=${response.success}, templateId=${response.data?.templateId}, configId=${response.data?.configId}');
     } catch (_) {
       debugPrint('[SUBMIT MAPPING] API not available — dev mode');
     }
@@ -277,6 +292,7 @@ class JoinNodeBody extends StatelessWidget {
     if (context.mounted) {
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -289,34 +305,7 @@ class JoinNodeBody extends StatelessWidget {
                 child: const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 40),
               ),
               const SizedBox(height: 16),
-              const Text('Configuration Submitted!', style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Text(
-                '${sources.length} sources, ${validMappings.length} mappings submitted.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textDim, fontSize: 12),
-              ),
-              const SizedBox(height: 6),
-              // Summary
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: AppColors.surface2),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Sources: ${sources.length}', style: const TextStyle(fontSize: 10, color: AppColors.textDim)),
-                  Text('Join Mappings: ${validMappings.length}', style: const TextStyle(fontSize: 10, color: AppColors.textDim)),
-                  Text('Edges: ${edges.length}', style: const TextStyle(fontSize: 10, color: AppColors.textDim)),
-                  const SizedBox(height: 4),
-                  ...validMappings.map((m) {
-                    final lSrc = ctrl.findNode(m.leftSourceId);
-                    final rSrc = ctrl.findNode(m.rightSourceId);
-                    return Text(
-                      '${lSrc?.name ?? '?'}.${m.leftCol}  ${m.joinType}  ${rSrc?.name ?? '?'}.${m.rightCol}',
-                      style: const TextStyle(color: AppColors.violet, fontSize: 9, fontFamily: 'monospace', fontWeight: FontWeight.w600),
-                    );
-                  }),
-                ]),
-              ),
+              const Text('Success', style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               InkWell(
                 onTap: () => Navigator.of(ctx).pop(),
@@ -355,6 +344,7 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
   String? leftSourceId;
   String? leftCol;
   late String joinType;
+  String operationValue = '=';
   String? rightSourceId;
   String? rightCol;
 
@@ -410,16 +400,30 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
 
           const SizedBox(height: 6),
 
-          // ── Row 2: Relation (center) ──
-          Row(children: [
-            const Spacer(),
-            const Text('↕', style: TextStyle(color: AppColors.violet, fontSize: 16)),
-            const SizedBox(width: 6),
-            SizedBox(width: 140, child: _dd(PipelineConfig.joinTypes, joinType, (v) => setState(() => joinType = v ?? joinType), isRelation: true)),
-            const SizedBox(width: 6),
-            const Text('↕', style: TextStyle(color: AppColors.violet, fontSize: 16)),
-            const Spacer(),
-          ]),
+          // ── Row 2: Join type + Operation ──
+          Consumer<PipelineMasterProvider>(
+            builder: (_, master, __) {
+              final ops = master.operations;
+              // Ensure default "=" is valid once operations load
+              if (ops.isNotEmpty && !ops.any((o) => o.operationValue == operationValue)) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() => operationValue = ops.first.operationValue);
+                });
+              }
+              final opItems = ops.isNotEmpty
+                  ? ops.map((o) => o.operationValue).toList()
+                  : ['=', '!=', '>', '<', '>=', '<='];
+              return Row(children: [
+                const Text('↕', style: TextStyle(color: AppColors.violet, fontSize: 16)),
+                const SizedBox(width: 6),
+                Expanded(child: _dd(PipelineConfig.joinTypes, joinType, (v) => setState(() => joinType = v ?? joinType), isRelation: true)),
+                const SizedBox(width: 6),
+                Expanded(child: _operationDd(opItems, operationValue, master)),
+                const SizedBox(width: 6),
+                const Text('↕', style: TextStyle(color: AppColors.violet, fontSize: 16)),
+              ]);
+            },
+          ),
 
           const SizedBox(height: 6),
 
@@ -444,7 +448,7 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
               if (leftSourceId == null || leftCol == null || rightSourceId == null || rightCol == null) return;
               context.read<PipelineController>().addMappingToJoin(
                 widget.nodeId,
-                ColumnMapping(leftSourceId: leftSourceId!, leftCol: leftCol!, joinType: joinType, rightSourceId: rightSourceId!, rightCol: rightCol!),
+                ColumnMapping(leftSourceId: leftSourceId!, leftCol: leftCol!, joinType: joinType, operationValue: operationValue, rightSourceId: rightSourceId!, rightCol: rightCol!),
               );
               setState(() { leftCol = null; rightCol = null; });
             },
@@ -492,6 +496,41 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
             child: Text(s.name, overflow: TextOverflow.ellipsis),  // name as display
           )).toList(),
           onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  Widget _operationDd(List<String> items, String value, PipelineMasterProvider master) {
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.amber.withOpacity(0.4)),
+        color: AppColors.amber.withOpacity(0.08),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true, isDense: true,
+          value: items.contains(value) ? value : items.first,
+          dropdownColor: AppColors.surface2,
+          style: const TextStyle(fontSize: 11, color: AppColors.amber, fontWeight: FontWeight.w700, fontFamily: 'monospace'),
+          icon: const Icon(Icons.keyboard_arrow_down, size: 14, color: AppColors.amber),
+          items: items.map((op) {
+            final name = master.operatorLabel(op);
+            return DropdownMenuItem<String>(
+              value: op,
+              child: Row(children: [
+                Text(op, style: const TextStyle(fontSize: 11, color: AppColors.amber, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+                if (name != op) ...[
+                  const SizedBox(width: 4),
+                  Expanded(child: Text(name, style: const TextStyle(fontSize: 9, color: AppColors.textDim), overflow: TextOverflow.ellipsis)),
+                ],
+              ]),
+            );
+          }).toList(),
+          onChanged: (v) { if (v != null) setState(() => operationValue = v); },
         ),
       ),
     );
