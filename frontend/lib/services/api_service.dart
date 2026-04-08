@@ -288,12 +288,8 @@ class ApiService {
   Future<dynamic> getRawData(String endpoint) async {
     try {
       debugPrint('[API GET RAW] ${ApiConfig.baseUrl}$endpoint');
-      final res = await _dio.get(endpoint,);
-      final data = res.data;
-      if (data is Map<String, dynamic> && data['status'] == 'success') {
-        return data['data'];
-      }
-      return data;
+      final res = await _dio.get(endpoint);
+      return res.data;
     } on DioException catch (e) {
       debugPrint('[API ERROR] getRawData $endpoint: $e');
     }
@@ -307,11 +303,7 @@ class ApiService {
     try {
       debugPrint('[API POST RAW] ${ApiConfig.baseUrl}$endpoint');
       final res = await _dio.post(endpoint, data: jsonEncode(body ?? {}));
-      final data = res.data;
-      if (data is Map<String, dynamic> && data['status'] == 'success') {
-        return data['data'];
-      }
-      return data;
+      return res.data;
     } on DioException catch (e) {
       debugPrint('[API ERROR] postRawData $endpoint: $e');
     }

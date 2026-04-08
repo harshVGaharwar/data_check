@@ -1,5 +1,5 @@
 name: pipeline_backend
-description: HDFC Pipeline Builder Backend API — Dart Frog
+description: HDFC Data Orchestration
 version: 1.0.0
 publish_to: none
 

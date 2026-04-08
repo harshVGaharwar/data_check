@@ -29,9 +29,7 @@ Future<Response> onRequest(RequestContext context) async {
   if (kDevMode) {
     final db = Database();
     final templates = db.templatesByDept[deptId] ?? [];
-    return Response.json(
-      body: ApiResponse.success(data: templates).toJson(),
-    );
+    return Response.json(body: templates);
   }
 
   try {
@@ -61,10 +59,12 @@ Future<Response> onRequest(RequestContext context) async {
 
     if (externalResponse.statusCode >= 200 &&
         externalResponse.statusCode < 300) {
-      final data = jsonDecode(externalResponse.body);
-      return Response.json(
-        body: ApiResponse.success(data: data).toJson(),
-      );
+      final decoded = jsonDecode(externalResponse.body);
+      // Unwrap external API envelope (key/status/message/data) if present
+      final data = (decoded is Map<String, dynamic> && decoded.containsKey('data'))
+          ? decoded['data']
+          : decoded;
+      return Response.json(body: data);
     }
 
     return Response.json(

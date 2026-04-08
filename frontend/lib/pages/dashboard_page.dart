@@ -60,22 +60,30 @@ class _DashboardPageState extends State<DashboardPage> {
         iconTheme: const IconThemeData(color: AppColors.text),
         title: Row(
           children: [
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: const LinearGradient(colors: [Color(0xFF004C8F), Color(0xFF0066CC)]),
-              ),
-              child: const Center(child: Text('H', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800))),
+            Image.asset(
+              'assets/images/HDFC_Bank_Logo.svg.png',
+              height: 36,
+              fit: BoxFit.contain,
             ),
+            const SizedBox(height: 12),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_titles[_selectedIndex], style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.text)),
-                const Text('HDFC Pipeline Builder', style: TextStyle(fontSize: 10, color: AppColors.textDim)),
-              ],
-            ),
+            // Column(
+            //   crossAxisAlignment: CrossAxisAlignment.start,
+            //   children: [
+            //     Text(
+            //       _titles[_selectedIndex],
+            //       style: const TextStyle(
+            //         fontSize: 15,
+            //         fontWeight: FontWeight.w700,
+            //         color: AppColors.text,
+            //       ),
+            //     ),
+            //     const Text(
+            //       'HDFC Data Orchestration',
+            //       style: TextStyle(fontSize: 10, color: AppColors.textDim),
+            //     ),
+            //   ],
+            // ),
           ],
         ),
         bottom: PreferredSize(
@@ -83,7 +91,10 @@ class _DashboardPageState extends State<DashboardPage> {
           child: Container(height: 1, color: AppColors.border),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.notifications_outlined, size: 20), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, size: 20),
+            onPressed: () {},
+          ),
           const SizedBox(width: 4),
           Consumer<AuthProvider>(
             builder: (context, auth, _) {
@@ -100,20 +111,43 @@ class _DashboardPageState extends State<DashboardPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
-                        Text(empCode, style: const TextStyle(fontSize: 10, color: AppColors.textDim)),
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.text,
+                          ),
+                        ),
+                        Text(
+                          empCode,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textDim,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      width: 32, height: 32,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: const Color(0xFF004C8F).withOpacity(0.1),
-                        border: Border.all(color: const Color(0xFF004C8F).withOpacity(0.2)),
+                        border: Border.all(
+                          color: const Color(0xFF004C8F).withOpacity(0.2),
+                        ),
                       ),
                       child: Center(
-                        child: Text(initial, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF004C8F))),
+                        child: Text(
+                          initial,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF004C8F),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -138,7 +172,8 @@ class _DashboardPageState extends State<DashboardPage> {
             padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: [Color(0xFF004C8F), Color(0xFF0066CC)],
               ),
             ),
@@ -146,17 +181,40 @@ class _DashboardPageState extends State<DashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 48, height: 48,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     color: Colors.white.withOpacity(0.2),
                   ),
-                  child: const Center(child: Text('H', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800))),
+                  child: const Center(
+                    child: Text(
+                      'H',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                const Text('HDFC Pipeline Builder', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                const Text(
+                  'HDFC Pipeline Builder',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text('Data Configuration Platform', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+                Text(
+                  'Data Configuration Platform',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -166,11 +224,19 @@ class _DashboardPageState extends State<DashboardPage> {
           const Divider(color: AppColors.border, height: 1),
           ListTile(
             leading: const Icon(Icons.logout, size: 20, color: Colors.red),
-            title: const Text('Logout', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.red)),
+            title: const Text(
+              'Logout',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.red,
+              ),
+            ),
             onTap: () async {
               Navigator.of(context).pop();
               await context.read<AuthProvider>().logout();
-              if (context.mounted) Navigator.of(context).pushReplacementNamed('/login');
+              if (context.mounted)
+                Navigator.of(context).pushReplacementNamed('/login');
             },
           ),
           const SizedBox(height: 8),
@@ -185,22 +251,33 @@ class _DashboardPageState extends State<DashboardPage> {
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: selected ? const Color(0xFF004C8F).withOpacity(0.08) : Colors.transparent,
+        color: selected
+            ? const Color(0xFF004C8F).withOpacity(0.08)
+            : Colors.transparent,
       ),
       child: ListTile(
         leading: Icon(
-          _icons[index], size: 20,
+          _icons[index],
+          size: 20,
           color: selected ? const Color(0xFF004C8F) : AppColors.textDim,
         ),
         title: Text(
           _titles[index],
           style: TextStyle(
-            fontSize: 13, fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             color: selected ? const Color(0xFF004C8F) : AppColors.text,
           ),
         ),
         trailing: selected
-            ? Container(width: 4, height: 20, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: const Color(0xFF004C8F)))
+            ? Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  color: const Color(0xFF004C8F),
+                ),
+              )
             : null,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         onTap: () {

@@ -172,28 +172,7 @@ class _SidebarState extends State<Sidebar> {
                       style: AppTextStyles.fieldLabel,
                     ),
                     const SizedBox(height: 4),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(7),
-                        border: Border.all(color: AppColors.border2),
-                        color: AppColors.surface2,
-                      ),
-                      child: Text(
-                        ctrl.requiredSourceCount > 0
-                            ? '${ctrl.requiredSourceCount}'
-                            : 'Select template first',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: ctrl.requiredSourceCount > 0
-                              ? AppColors.amber
-                              : AppColors.textMuted,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
+                    _buildRequiredSourcesBox(ctrl),
 
                     // Source counter badge
                     if (ctrl.requiredSourceCount > 0) ...[
@@ -304,6 +283,62 @@ class _SidebarState extends State<Sidebar> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildRequiredSourcesBox(PipelineController ctrl) {
+    // Template selected but sourceCount is 0 — not configured
+    if (ctrl.sidebarTemplate.isNotEmpty && ctrl.requiredSourceCount == 0) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: const Color(0xFFE53935).withOpacity(0.4)),
+          color: const Color(0xFFE53935).withOpacity(0.05),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFE53935), size: 14),
+            const SizedBox(width: 6),
+            const Expanded(
+              child: Text(
+                'Source count not configured for this template',
+                style: TextStyle(
+                  color: Color(0xFFE53935),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: AppColors.border2),
+        color: AppColors.surface2,
+      ),
+      child: Text(
+        ctrl.requiredSourceCount > 0
+            ? '${ctrl.requiredSourceCount}'
+            : 'Select template first',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: ctrl.requiredSourceCount > 0
+              ? AppColors.amber
+              : AppColors.textMuted,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
       ),
     );
   }

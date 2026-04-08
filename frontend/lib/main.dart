@@ -51,7 +51,7 @@ class PipelineApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'HDFC Pipeline Builder',
+      title: 'HDFC Data Orchestration',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,

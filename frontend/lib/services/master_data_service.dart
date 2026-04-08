@@ -54,7 +54,7 @@ class MasterDataService {
   Future<List<SourceTypeItem>> getSourceTypes() async {
     debugPrint('[MasterData] getSourceTypes called');
     try {
-      final data = await _api.postRawData(ApiConfig.sourceTypeEndpoint);
+      final data = await _api.getRawData(ApiConfig.sourceTypeEndpoint);
       debugPrint('[MasterData] getSourceTypes raw response: $data');
       if (data is List) {
         return data
@@ -72,7 +72,7 @@ class MasterDataService {
   Future<List<OperationItem>> getOperations() async {
     debugPrint('[MasterData] getOperations called');
     try {
-      final data = await _api.postRawData(ApiConfig.operationsEndpoint);
+      final data = await _api.getRawData(ApiConfig.operationsEndpoint);
       debugPrint('[MasterData] getOperations raw response: $data');
       if (data is List) {
         return data

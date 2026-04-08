@@ -8,18 +8,16 @@ import '../../../../lib/models/models.dart';
 import '../../../../lib/services/database.dart';
 
 Future<Response> onRequest(RequestContext context) async {
-  if (context.request.method != HttpMethod.post) {
+  if (context.request.method != HttpMethod.get) {
     return Response.json(
       statusCode: HttpStatus.methodNotAllowed,
-      body: ApiResponse.error(message: 'Only POST allowed').toJson(),
+      body: ApiResponse.error(message: 'Only GET allowed').toJson(),
     );
   }
 
   if (kDevMode) {
     final db = Database();
-    return Response.json(
-      body: ApiResponse.success(data: db.operations).toJson(),
-    );
+    return Response.json(body: db.operations);
   }
 
   try {
@@ -32,7 +30,7 @@ Future<Response> onRequest(RequestContext context) async {
         '';
 
     final externalResponse = await client
-        .post(
+        .get(
           Uri.parse('$kBaseUrl${ExternalApi.getOperations}'),
           headers: {
             'Content-Type': 'application/json',
@@ -46,10 +44,12 @@ Future<Response> onRequest(RequestContext context) async {
 
     if (externalResponse.statusCode >= 200 &&
         externalResponse.statusCode < 300) {
-      final data = jsonDecode(externalResponse.body);
-      return Response.json(
-        body: ApiResponse.success(data: data).toJson(),
-      );
+      final decoded = jsonDecode(externalResponse.body);
+      // Unwrap external API envelope (key/status/message/data) if present
+      final data = (decoded is Map<String, dynamic> && decoded.containsKey('data'))
+          ? decoded['data']
+          : decoded;
+      return Response.json(body: data);
     }
 
     return Response.json(

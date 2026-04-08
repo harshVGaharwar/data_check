@@ -409,21 +409,34 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
           Consumer<PipelineMasterProvider>(
             builder: (_, master, __) {
               final ops = master.operations;
-              // Ensure default "=" is valid once operations load
-              if (ops.isNotEmpty && !ops.any((o) => o.operationValue == operationValue)) {
+              // API operationName drives join type options; fallback to static list
+              final joinTypeItems = ops.isNotEmpty
+                  ? ops.map((o) => o.operationName).toList()
+                  : PipelineConfig.joinTypes;
+              // Keep joinType in sync when items load
+              if (joinTypeItems.isNotEmpty && !joinTypeItems.contains(joinType)) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) setState(() => operationValue = ops.first.operationValue);
+                  if (mounted) setState(() => joinType = joinTypeItems.first);
                 });
               }
-              final opItems = ops.isNotEmpty
-                  ? ops.map((o) => o.operationValue).toList()
-                  : ['=', '!=', '>', '<', '>=', '<='];
               return Row(children: [
                 const Text('↕', style: TextStyle(color: AppColors.violet, fontSize: 16)),
                 const SizedBox(width: 6),
-                Expanded(child: _dd(PipelineConfig.joinTypes, joinType, (v) => setState(() => joinType = v ?? joinType), isRelation: true)),
+                Expanded(child: _dd(joinTypeItems, joinType, (v) => setState(() => joinType = v ?? joinType), isRelation: true)),
                 const SizedBox(width: 6),
-                Expanded(child: _operationDd(opItems, operationValue, master)),
+                // operationValue is always '=' per API — show as fixed badge
+                Container(
+                  height: 30,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.amber.withOpacity(0.4)),
+                    color: AppColors.amber.withOpacity(0.08),
+                  ),
+                  child: const Center(
+                    child: Text('=', style: TextStyle(fontSize: 12, color: AppColors.amber, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
+                  ),
+                ),
                 const SizedBox(width: 6),
                 const Text('↕', style: TextStyle(color: AppColors.violet, fontSize: 16)),
               ]);
@@ -506,40 +519,6 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
     );
   }
 
-  Widget _operationDd(List<String> items, String value, PipelineMasterProvider master) {
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.amber.withOpacity(0.4)),
-        color: AppColors.amber.withOpacity(0.08),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true, isDense: true,
-          value: items.contains(value) ? value : items.first,
-          dropdownColor: AppColors.surface2,
-          style: const TextStyle(fontSize: 11, color: AppColors.amber, fontWeight: FontWeight.w700, fontFamily: 'monospace'),
-          icon: const Icon(Icons.keyboard_arrow_down, size: 14, color: AppColors.amber),
-          items: items.map((op) {
-            final name = master.operatorLabel(op);
-            return DropdownMenuItem<String>(
-              value: op,
-              child: Row(children: [
-                Text(op, style: const TextStyle(fontSize: 11, color: AppColors.amber, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
-                if (name != op) ...[
-                  const SizedBox(width: 4),
-                  Expanded(child: Text(name, style: const TextStyle(fontSize: 9, color: AppColors.textDim), overflow: TextOverflow.ellipsis)),
-                ],
-              ]),
-            );
-          }).toList(),
-          onChanged: (v) { if (v != null) setState(() => operationValue = v); },
-        ),
-      ),
-    );
-  }
 
   Widget _dd(List<String> items, String? value, ValueChanged<String?> onChanged, {bool isRelation = false, bool isMono = false}) {
     return Container(

@@ -1,10 +1,24 @@
-2026/04/07-17:57:00.182 5ae1 Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.j8k4B6/flutter_tools_chrome_device.hmtVXL/Default/Local Storage/leveldb/MANIFEST-000001
-2026/04/07-17:57:00.184 5ae1 Recovering log #9
-2026/04/07-17:57:00.184 5ae1 Level-0 table #12: started
-2026/04/07-17:57:00.191 5ae1 Level-0 table #12: 81980 bytes OK
-2026/04/07-17:57:00.197 5ae1 Delete type=0 #6
-2026/04/07-17:57:00.197 5ae1 Delete type=0 #3
-2026/04/07-17:57:00.197 5ae1 Delete type=0 #9
-2026/04/07-18:17:39.944 5ae4 Level-0 table #15: started
-2026/04/07-18:17:39.949 5ae4 Level-0 table #15: 83837 bytes OK
-2026/04/07-18:17:39.952 5ae4 Delete type=0 #13
+2026/04/08-17:30:50.623 6166a Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.CjUNSn/flutter_tools_chrome_device.t1H10T/Default/Local Storage/leveldb/MANIFEST-000001
+2026/04/08-17:30:50.625 6166a Recovering log #14
+2026/04/08-17:30:50.625 6166a Level-0 table #17: started
+2026/04/08-17:30:50.631 6166a Level-0 table #17: 5586 bytes OK
+2026/04/08-17:30:50.632 6166a Recovering log #20
+2026/04/08-17:30:50.632 6166a Reusing old log /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.CjUNSn/flutter_tools_chrome_device.t1H10T/Default/Local Storage/leveldb/000020.log 
+2026/04/08-17:30:50.638 6166a Delete type=0 #6
+2026/04/08-17:30:50.638 6166a Delete type=0 #14
+2026/04/08-17:30:50.638 6166a Delete type=0 #3
+2026/04/08-17:30:50.638 6166a Delete type=2 #21
+2026/04/08-17:30:50.640 6166a Delete type=2 #19
+2026/04/08-17:30:50.640 6166a Delete type=0 #9
+2026/04/08-17:30:50.641 6166d Compacting 4@0 + 1@1 files
+2026/04/08-17:30:50.644 6166d Generated table #21@0: 272 keys, 119358 bytes
+2026/04/08-17:30:50.645 6166d Compacted 4@0 + 1@1 files => 119358 bytes
+2026/04/08-17:30:50.646 6166d compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/04/08-17:30:50.647 6166d Delete type=2 #15
+2026/04/08-17:30:50.648 6166d Delete type=2 #17
+2026/04/08-17:30:50.648 6166d Delete type=2 #7
+2026/04/08-17:30:50.648 6166d Delete type=2 #12
+2026/04/08-17:30:50.648 6166d Delete type=2 #10
+2026/04/08-18:16:15.408 6166d Level-0 table #23: started
+2026/04/08-18:16:15.412 6166d Level-0 table #23: 147895 bytes OK
+2026/04/08-18:16:15.413 6166d Delete type=0 #20

@@ -78,14 +78,9 @@ class Database {
 
   // ── Operations ──
   final List<Map<String, dynamic>> operations = [
-    {'id': 1, 'operationName': 'Equals',                 'operationValue': '='},
-    {'id': 2, 'operationName': 'Not Equals',             'operationValue': '!='},
-    {'id': 3, 'operationName': 'Greater Than',           'operationValue': '>'},
-    {'id': 4, 'operationName': 'Less Than',              'operationValue': '<'},
-    {'id': 5, 'operationName': 'Greater Than or Equal',  'operationValue': '>='},
-    {'id': 6, 'operationName': 'Less Than or Equal',     'operationValue': '<='},
-    {'id': 7, 'operationName': 'Contains',               'operationValue': 'contains'},
-    {'id': 8, 'operationName': 'Starts With',            'operationValue': 'starts with'},
+    {'id': 1, 'operationName': '1 - left_join',  'operationValue': '='},
+    {'id': 2, 'operationName': '2 - inner_join', 'operationValue': '='},
+    {'id': 3, 'operationName': '3 - right_join', 'operationValue': '='},
   ];
 
   // ── Approval List ──
