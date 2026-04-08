@@ -17,15 +17,10 @@ class ApprovalItem {
 
   const ApprovalItem({required this.name});
 
-  factory ApprovalItem.fromJson(dynamic json) {
-    if (json is String) return ApprovalItem(name: json);
-    if (json is Map<String, dynamic>) {
-      return ApprovalItem(
-        name: (json['name'] ?? json['approvalName'] ?? '').toString(),
-      );
-    }
-    return ApprovalItem(name: json.toString());
-  }
+  factory ApprovalItem.fromJson(String json) => ApprovalItem(name: json);
+
+  static List<ApprovalItem> listFromJson(List<dynamic> json) =>
+      json.whereType<String>().map(ApprovalItem.fromJson).toList();
 }
 
 class SourceTypeItem {

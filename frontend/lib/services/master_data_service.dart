@@ -91,7 +91,7 @@ class MasterDataService {
     try {
       final data = await _api.getRawData(ApiConfig.approvalListEndpoint);
       if (data is List) {
-        return data.map(ApprovalItem.fromJson).toList();
+        return ApprovalItem.listFromJson(data);
       }
     } catch (e) {
       debugPrint('[MasterData] getApprovalList error: $e');

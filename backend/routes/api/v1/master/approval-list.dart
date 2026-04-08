@@ -17,11 +17,7 @@ Future<Response> onRequest(RequestContext context) async {
   // Dev mode: return from local in-memory DB
   if (kDevMode) {
     final db = Database();
-    return Response.json(
-      body: ApiResponse.success(
-        data: db.approvalList,
-      ).toJson(),
-    );
+    return Response.json(body: db.approvalList);
   }
 
   try {
@@ -49,9 +45,7 @@ Future<Response> onRequest(RequestContext context) async {
     if (externalResponse.statusCode >= 200 &&
         externalResponse.statusCode < 300) {
       final data = jsonDecode(externalResponse.body);
-      return Response.json(
-        body: ApiResponse.success(data: data).toJson(),
-      );
+      return Response.json(body: data);
     }
 
     return Response.json(
