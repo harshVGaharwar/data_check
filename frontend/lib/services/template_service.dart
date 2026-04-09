@@ -21,7 +21,11 @@ class TemplateService {
     if (approvalFileBytes != null) {
       for (final entry in approvalFileBytes.entries) {
         final filename = approvalFileNames?[entry.key] ?? entry.key;
-        fileEntries.add((key: 'Files', bytes: entry.value, filename: filename));
+        fileEntries.add((
+          key: 'TemplateRuequest',
+          bytes: entry.value,
+          filename: filename,
+        ));
       }
     }
 
