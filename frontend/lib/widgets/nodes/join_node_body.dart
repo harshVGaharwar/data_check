@@ -471,7 +471,11 @@ class JoinNodeBody extends StatelessWidget {
 
     // ── 1. Sources (only those connected to a join node via edges) ──
     final connectedSourceIds = ctrl.edges
-        .where((e) => ctrl.nodes.any((n) => n.id == e.toNodeId && n.type == NodeType.join))
+        .where(
+          (e) => ctrl.nodes.any(
+            (n) => n.id == e.toNodeId && n.type == NodeType.join,
+          ),
+        )
         .map((e) => e.fromNodeId)
         .toSet();
     final sourceNodes = ctrl.nodes
@@ -516,18 +520,23 @@ class JoinNodeBody extends StatelessWidget {
           'RightSourceId': m.rightSourceId,
           'RightSourceName': rSrc?.name ?? '',
           'RightColumn': m.rightCol,
-          'CreatedOn': '${DateTime.now().toIso8601String().split('T').first}T00:00:00',
+          'CreatedOn':
+              '${DateTime.now().toIso8601String().split('T').first}T00:00:00',
         });
       }
     }
 
     // ── 3. Edges ──
-    final edgeList = ctrl.edges.map((e) => {
-      'template_id': templateId,
-      'department': deptId,
-      'From': e.fromNodeId,
-      'To': e.toNodeId,
-    }).toList();
+    final edgeList = ctrl.edges
+        .map(
+          (e) => {
+            'template_id': templateId,
+            'department': deptId,
+            'From': e.fromNodeId,
+            'To': e.toNodeId,
+          },
+        )
+        .toList();
 
     // ── 4. Connected Sources (join node ↔ source node pairs) ──
     final connectedSourcesData = <Map<String, dynamic>>[];
@@ -555,10 +564,18 @@ class JoinNodeBody extends StatelessWidget {
     final fileEntries = <({String key, List<int> bytes, String filename})>[];
     for (final s in sourceNodes) {
       if (s.columnFileBytes != null && s.fileName != null) {
-        fileEntries.add((key: 'Files', bytes: s.columnFileBytes!, filename: s.fileName!));
+        fileEntries.add((
+          key: 'Files',
+          bytes: s.columnFileBytes!,
+          filename: s.fileName!,
+        ));
       }
       if (s.queryFileBytes != null && s.queryFileName != null) {
-        fileEntries.add((key: 'Files', bytes: s.queryFileBytes!, filename: s.queryFileName!));
+        fileEntries.add((
+          key: 'Files',
+          bytes: s.queryFileBytes!,
+          filename: s.queryFileName!,
+        ));
       }
     }
 
@@ -585,7 +602,10 @@ class JoinNodeBody extends StatelessWidget {
     String submitMessage = '';
     try {
       final service = context.read<PipelineService>();
-      final response = await service.submitMapping(payload, fileEntries: fileEntries);
+      final response = await service.submitMapping(
+        payload,
+        fileEntries: fileEntries,
+      );
       submitSuccess = response.success;
       submitMessage = response.message;
       debugPrint(

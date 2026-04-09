@@ -249,7 +249,15 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
                   Wrap(spacing: 8, runSpacing: 8, children: _approvalOptions.map((a) {
                     final sel = _model.approvals.contains(a.name);
                     return InkWell(
-                      onTap: () => setState(() { sel ? _model.approvals.remove(a.name) : _model.approvals.add(a.name); }),
+                      onTap: () => setState(() {
+                        if (sel) {
+                          _model.approvals.remove(a.name);
+                          _approvalFiles.remove(a.name);
+                          _approvalFileBytes.remove(a.name);
+                        } else {
+                          _model.approvals.add(a.name);
+                        }
+                      }),
                       borderRadius: BorderRadius.circular(8),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),

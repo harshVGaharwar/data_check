@@ -114,7 +114,9 @@ class TemplateRequest {
       templateName.isNotEmpty &&
       department.isNotEmpty &&
       frequency.isNotEmpty &&
-      spocPerson.isNotEmpty;
+      spocPerson.isNotEmpty &&
+      sourceCount > 0 &&
+      numberOfOutputs > 0;
 
   bool get isOutputFormatValid => outputFormats.isNotEmpty;
 
