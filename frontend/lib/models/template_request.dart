@@ -84,29 +84,35 @@ class TemplateRequest {
        approvalFiles = approvalFiles ?? {};
 
   Map<String, dynamic> toJson() => {
-    'template': {
-      'templateName': templateName,
-      'department': department,
-      'frequency': frequency,
-      'normalVolume': normalVolume,
-      'peakVolume': peakVolume,
-      'sourceCount': sourceCount,
-      'numberOfOutputs': numberOfOutputs,
-      'benefitType': benefitType,
-      'benefitAmount': benefitAmount,
-      'benefitInTat': benefitInTAT,
-      'goLiveDate': goLiveDate.isEmpty ? null : goLiveDate,
-      'deactivateDate': deactivateDate.isEmpty ? null : deactivateDate,
-      'spocPerson': spocPerson,
-      'spocManager': spocManager,
-      'unitHead': unitHead,
-      'priority': priority,
-    },
-    'outputFormats': outputFormats.map((f) => {'formatName': f}).toList(),
-    'approvals': approvals
-        .map(
-          (a) => {'approval_Type': a, 'approvalFile': approvalFiles[a] ?? ''},
-        )
+    'Template': [
+      {
+        'TemplateName': templateName,
+        'Department': department,
+        'Frequency': frequency,
+        'NormalVolume': normalVolume,
+        'PeakVolume': peakVolume,
+        'SourceCount': sourceCount,
+        'NumberOfOutputs': numberOfOutputs,
+        'BenefitType': benefitType,
+        'BenefitAmount': benefitAmount,
+        'BenefitInTat': benefitInTAT,
+        'GoLiveDate': goLiveDate.isEmpty ? null : goLiveDate,
+        'DeactivateDate': deactivateDate.isEmpty ? null : deactivateDate,
+        'SpocPerson': spocPerson,
+        'SpocManager': spocManager,
+        'UnitHead': unitHead,
+        'Priority': priority,
+      }
+    ],
+    'OutputFormats': outputFormats
+        .map((f) => {'TemplateTempId': null, 'FormatName': f})
+        .toList(),
+    'Approvals': approvals
+        .map((a) => {
+              'TemplateTempId': null,
+              'Approval_Type': a,
+              'ApprovalFile': approvalFiles[a] ?? '',
+            })
         .toList(),
   };
 
