@@ -34,8 +34,12 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
 
   List<DepartmentItem> _departments = [];
   bool _deptLoading = true;
-  List<ApprovalItem> _approvalOptions = [];
-  bool _approvalLoading = true;
+  final List<ApprovalItem> _approvalOptions = const [
+    ApprovalItem(name: 'Unit Head'),
+    ApprovalItem(name: 'Manager'),
+    ApprovalItem(name: 'UAT Sign Off'),
+  ];
+  bool _approvalLoading = false;
   static const _frequencies = ['Daily', 'Weekly', 'Bi-Weekly', 'Monthly', 'Quarterly', 'Yearly', 'On-Demand'];
   static const _benefitTypes = ['Cost Saving', 'Revenue Generation', 'Efficiency Improvement', 'Risk Reduction', 'Compliance', 'Other'];
   static const _priorities = ['Low', 'Medium', 'High', 'Critical'];
@@ -54,26 +58,6 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
     _shakeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _shakeAnim = Tween<double>(begin: 0, end: 12).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeCtrl);
     _loadDepartments();
-    _loadApprovalList();
-  }
-
-  void _loadApprovalList() async {
-    final auth = context.read<AuthProvider>();
-    if (!auth.initialized) {
-      await Future.doWhile(() async {
-        await Future.delayed(const Duration(milliseconds: 50));
-        return mounted && !context.read<AuthProvider>().initialized;
-      });
-    }
-    if (!mounted) return;
-    final service = context.read<MasterDataService>();
-    final approvals = await service.getApprovalList();
-    if (mounted) {
-      setState(() {
-        _approvalOptions = approvals;
-        _approvalLoading = false;
-      });
-    }
   }
 
   void _loadDepartments() async {
@@ -140,7 +124,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
     final success = await provider.saveTemplate(
       _model,
       fileBytes: _approvalFileBytes,
-      fileNames: Map.fromEntries(_approvalFiles.entries.map((e) => MapEntry(e.key, e.value))),
+      fileNames: _approvalFiles,
     );
 
     if (mounted && success) {
