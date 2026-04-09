@@ -575,21 +575,29 @@ class JoinNodeBody extends StatelessWidget {
     );
 
     // Call API
+    bool submitSuccess = false;
+    String submitMessage = '';
     try {
       final service = context.read<PipelineService>();
       final response = await service.submitMapping(payload, fileEntries: fileEntries);
+      submitSuccess = response.success;
+      submitMessage = response.message;
       debugPrint(
         '[SUBMIT MAPPING] Response: status=${response.success}, templateId=${response.data?.templateId}, configId=${response.data?.configId}',
       );
-    } catch (_) {
-      debugPrint('[SUBMIT MAPPING] API not available — dev mode');
+    } catch (e) {
+      submitSuccess = false;
+      submitMessage = 'Network error. Please try again.';
+      debugPrint('[SUBMIT MAPPING] Exception: $e');
     }
 
     await Future.delayed(const Duration(milliseconds: 800));
     if (context.mounted) Navigator.of(context).pop();
 
-    // Success dialog
-    if (context.mounted) {
+    if (!context.mounted) return;
+
+    if (submitSuccess) {
+      // Success dialog
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -636,6 +644,77 @@ class JoinNodeBody extends StatelessWidget {
                   child: const Center(
                     child: Text(
                       'Done',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // Error dialog
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.red.withOpacity(0.15),
+                ),
+                child: const Icon(
+                  Icons.error_rounded,
+                  color: AppColors.red,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Submission Failed',
+                style: TextStyle(
+                  color: AppColors.text,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (submitMessage.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  submitMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textDim,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () => Navigator.of(ctx).pop(),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.red,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'OK',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 13,
