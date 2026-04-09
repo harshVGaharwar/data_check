@@ -9,31 +9,26 @@ class TemplateService {
 
   TemplateService(this._api);
 
-  /// Create new template (with approval file uploads)
+  /// Create new template with approval file uploads as multipart form-data.
   Future<ApiResponse> createTemplate(
     TemplateRequest request, {
     Map<String, List<int>>? approvalFileBytes,
     Map<String, String>? approvalFileNames,
   }) async {
-    if (approvalFileBytes != null && approvalFileBytes.isNotEmpty) {
-      // Multipart upload — send each top-level key as a JSON string field
-      final payload = request.toJson();
-      final fields = <String, String>{
-        'template': jsonEncode(payload['template']),
-        'outputFormats': jsonEncode(payload['outputFormats']),
-        'approvals': jsonEncode(payload['approvals']),
-      };
-
-      return _api.uploadMultipart(
-        ApiConfig.templateCreateEndpoint,
-        fields: fields,
-        files: approvalFileBytes,
-        fileNames: approvalFileNames ?? {},
-      );
-    } else {
-      // JSON only
-      return _api.post(ApiConfig.templateCreateEndpoint, request.toJson());
+    // Build file entries: each approval file sent under key "Files"
+    final fileEntries = <({String key, List<int> bytes, String filename})>[];
+    if (approvalFileBytes != null) {
+      for (final entry in approvalFileBytes.entries) {
+        final filename = approvalFileNames?[entry.key] ?? entry.key;
+        fileEntries.add((key: 'Files', bytes: entry.value, filename: filename));
+      }
     }
+
+    return _api.postMultipart(
+      ApiConfig.templateCreateEndpoint,
+      fields: {'Config': jsonEncode(request.toJson())},
+      fileEntries: fileEntries,
+    );
   }
 
   /// Get all templates

@@ -14,4 +14,5 @@ class ExternalApi {
   static const String getTemplates = '/Template/GetTemplates';
   static const String getSourceType = '/api/template/GetSourceType';
   static const String getOperations = '/api/Template/GetOperations';
+  static const String addTemplateConfig = '/api/Template/AddTemplateConfig';
 }

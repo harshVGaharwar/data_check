@@ -51,7 +51,7 @@ class _SidebarState extends State<Sidebar> {
   }
 
   Future<void> _onDeptSelected(String deptName, PipelineController ctrl) async {
-    ctrl.setSidebarDept(deptName);
+    ctrl.setSidebarDept(deptName, deptId: _deptMap[deptName]?.toString() ?? '');
     setState(() {
       _templates = [];
       _templateLoading = true;
@@ -161,6 +161,7 @@ class _SidebarState extends State<Sidebar> {
                                 sourceCount: info.sourceCount > 0
                                     ? info.sourceCount
                                     : null,
+                                templateId: info.templateId,
                               );
                             },
                           ),

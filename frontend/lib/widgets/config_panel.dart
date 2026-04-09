@@ -15,7 +15,9 @@ class ConfigPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<PipelineController>(
       builder: (context, ctrl, _) {
-        final node = ctrl.selectedNodeId != null ? ctrl.findNode(ctrl.selectedNodeId!) : null;
+        final node = ctrl.selectedNodeId != null
+            ? ctrl.findNode(ctrl.selectedNodeId!)
+            : null;
 
         return Container(
           width: 260,
@@ -25,19 +27,34 @@ class ConfigPanel extends StatelessWidget {
               // Header
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-                decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border))),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
-                        node != null ? 'Configure: ${node.name}' : 'Configure Node',
-                        style: const TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.w700),
+                        node != null
+                            ? 'Configure: ${node.name}'
+                            : 'Configure Node',
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (node != null)
-                      InkWell(onTap: () => ctrl.selectNode(null), child: const Icon(Icons.close, color: AppColors.textDim, size: 16)),
+                      InkWell(
+                        onTap: () => ctrl.selectNode(null),
+                        child: const Icon(
+                          Icons.close,
+                          color: AppColors.textDim,
+                          size: 16,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -45,7 +62,15 @@ class ConfigPanel extends StatelessWidget {
               // Body
               Expanded(
                 child: node == null
-                    ? const Center(child: Text('Click a node to configure', style: TextStyle(color: AppColors.textDim, fontSize: 12)))
+                    ? const Center(
+                        child: Text(
+                          'Click a node to configure',
+                          style: TextStyle(
+                            color: AppColors.textDim,
+                            fontSize: 12,
+                          ),
+                        ),
+                      )
                     : _buildConfig(context, ctrl, node),
               ),
 
@@ -60,9 +85,20 @@ class ConfigPanel extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.red.withOpacity(0.3)),
+                        border: Border.all(
+                          color: AppColors.red.withOpacity(0.3),
+                        ),
                       ),
-                      child: const Center(child: Text('🗑 Delete Node', style: TextStyle(color: AppColors.red, fontSize: 12, fontWeight: FontWeight.w600))),
+                      child: const Center(
+                        child: Text(
+                          '🗑 Delete Node',
+                          style: TextStyle(
+                            color: AppColors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -73,13 +109,30 @@ class ConfigPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildConfig(BuildContext context, PipelineController ctrl, PipelineNode node) {
+  Widget _buildConfig(
+    BuildContext context,
+    PipelineController ctrl,
+    PipelineNode node,
+  ) {
     if (!node.type.isSource) {
-      return const Center(child: Text('Use node card controls', style: TextStyle(color: AppColors.textDim, fontSize: 11)));
+      return const Center(
+        child: Text(
+          'Use node card controls',
+          style: TextStyle(color: AppColors.textDim, fontSize: 11),
+        ),
+      );
     }
 
-    final isManual = node.type == NodeType.manual;
-    final separators = ['Comma (,)', 'Pipe (|)', 'Tab (\\t)', 'Semicolon (;)', 'Space ( )'];
+    final isManual =
+        node.type == NodeType.manual ||
+        node.sourceTypeValue.toUpperCase() == 'MANUAL';
+    final separators = [
+      'Comma (,)',
+      'Pipe (|)',
+      'Tab (\\t)',
+      'Semicolon (;)',
+      'Space ( )',
+    ];
 
     return ListView(
       padding: const EdgeInsets.all(14),
@@ -119,10 +172,20 @@ class ConfigPanel extends StatelessWidget {
                 value: _sepToLabel(node.separator, separators),
                 dropdownColor: AppColors.surface2,
                 style: const TextStyle(fontSize: 12, color: AppColors.text),
-                items: separators.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                items: separators
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
                 onChanged: (v) {
                   if (v != null) {
-                    final sep = v.contains(',') ? ',' : v.contains('|') ? '|' : v.contains('\\t') ? '\t' : v.contains(';') ? ';' : ' ';
+                    final sep = v.contains(',')
+                        ? ','
+                        : v.contains('|')
+                        ? '|'
+                        : v.contains('\\t')
+                        ? '\t'
+                        : v.contains(';')
+                        ? ';'
+                        : ' ';
                     node.separator = sep;
                     ctrl.notifyListeners();
                   }
@@ -142,13 +205,18 @@ class ConfigPanel extends StatelessWidget {
               color: AppColors.blue.withOpacity(0.07),
               border: Border.all(color: AppColors.blue.withOpacity(0.18)),
             ),
-            child: const Text('Separator auto-detected from uploaded column file',
-                style: TextStyle(color: Color(0xFF93C5FD), fontSize: 10.5)),
+            child: const Text(
+              'Separator auto-detected from uploaded column file',
+              style: TextStyle(color: Color(0xFF93C5FD), fontSize: 10.5),
+            ),
           ),
           const SizedBox(height: 14),
 
           // ── Query File Upload (non-manual only) ──
-          const Text('Upload Query File (.txt)', style: AppTextStyles.fieldLabel),
+          const Text(
+            'Upload Query File (.txt)',
+            style: AppTextStyles.fieldLabel,
+          ),
           const SizedBox(height: 4),
           _uploadButton(
             icon: Icons.description_outlined,
@@ -161,10 +229,13 @@ class ConfigPanel extends StatelessWidget {
               );
               if (result != null && result.files.single.bytes != null) {
                 final fileName = result.files.single.name;
-                ctrl.setQueryFile(node.id, fileName);
+                ctrl.setQueryFile(node.id, fileName, bytes: result.files.single.bytes!.toList());
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Query file loaded: $fileName'), backgroundColor: AppColors.green),
+                    SnackBar(
+                      content: Text('Query file loaded: $fileName'),
+                      backgroundColor: AppColors.green,
+                    ),
                   );
                 }
               }
@@ -178,7 +249,10 @@ class ConfigPanel extends StatelessWidget {
         ],
 
         // ── Column File Upload ──
-        const Text('Upload Column File (.csv / .txt)', style: AppTextStyles.fieldLabel),
+        const Text(
+          'Upload Column File (.csv / .txt)',
+          style: AppTextStyles.fieldLabel,
+        ),
         const SizedBox(height: 4),
         _uploadButton(
           icon: Icons.upload_file_rounded,
@@ -194,7 +268,10 @@ class ConfigPanel extends StatelessWidget {
             final bytes = result.files.single.bytes!;
             final fileName = result.files.single.name;
             final text = utf8.decode(bytes, allowMalformed: true);
-            final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+            final lines = text
+                .split('\n')
+                .where((l) => l.trim().isNotEmpty)
+                .toList();
             if (lines.isEmpty) return;
 
             // Auto-detect separator (same as HTML logic)
@@ -220,7 +297,10 @@ class ConfigPanel extends StatelessWidget {
             // Parse data rows
             final rows = <Map<String, dynamic>>[];
             for (int i = 1; i < lines.length; i++) {
-              final vals = lines[i].split(sep).map((v) => v.trim().replaceAll('"', '').trim()).toList();
+              final vals = lines[i]
+                  .split(sep)
+                  .map((v) => v.trim().replaceAll('"', '').trim())
+                  .toList();
               final row = <String, dynamic>{};
               for (int j = 0; j < cols.length; j++) {
                 row[cols[j]] = j < vals.length ? vals[j] : '';
@@ -228,7 +308,7 @@ class ConfigPanel extends StatelessWidget {
               rows.add(row);
             }
 
-            ctrl.setNodeColumns(node.id, cols, rows, fileName);
+            ctrl.setNodeColumns(node.id, cols, rows, fileName, bytes: bytes.toList());
             // Store auto-detected separator
             node.separator = sep;
             ctrl.notifyListeners();
@@ -236,7 +316,9 @@ class ConfigPanel extends StatelessWidget {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${cols.length} columns, ${rows.length} rows extracted from $fileName'),
+                  content: Text(
+                    '${cols.length} columns, ${rows.length} rows extracted from $fileName',
+                  ),
                   backgroundColor: AppColors.green,
                 ),
               );
@@ -245,31 +327,51 @@ class ConfigPanel extends StatelessWidget {
         ),
         if (node.fileName != null) ...[
           const SizedBox(height: 4),
-          _fileInfoBar(node.fileName!, '${node.cols.length} cols', AppColors.green),
+          _fileInfoBar(
+            node.fileName!,
+            '${node.cols.length} cols',
+            AppColors.green,
+          ),
         ],
         const SizedBox(height: 14),
 
         // ── Columns (pills — toggle on/off) ──
         if (node.cols.isNotEmpty) ...[
-          Text('Output Format Selection (${node.selectedCols.length}/${node.cols.length})', style: AppTextStyles.fieldLabel),
+          Text(
+            'Output Format Selection (${node.selectedCols.length}/${node.cols.length})',
+            style: AppTextStyles.fieldLabel,
+          ),
           const SizedBox(height: 6),
           Wrap(
-            spacing: 4, runSpacing: 4,
+            spacing: 4,
+            runSpacing: 4,
             children: node.cols.map((c) {
               final sel = node.selectedCols.contains(c);
               return InkWell(
                 onTap: () => ctrl.toggleColumn(node.id, c),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(5),
-                    color: sel ? AppColors.blue.withOpacity(0.15) : AppColors.surface2,
-                    border: Border.all(color: sel ? AppColors.blue : AppColors.border2),
+                    color: sel
+                        ? AppColors.blue.withOpacity(0.15)
+                        : AppColors.surface2,
+                    border: Border.all(
+                      color: sel ? AppColors.blue : AppColors.border2,
+                    ),
                   ),
-                  child: Text(c, style: TextStyle(
-                    color: sel ? AppColors.blue : AppColors.textDim,
-                    fontSize: 10, fontWeight: FontWeight.w600, fontFamily: 'monospace',
-                  )),
+                  child: Text(
+                    c,
+                    style: TextStyle(
+                      color: sel ? AppColors.blue : AppColors.textDim,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
                 ),
               );
             }).toList(),
@@ -281,13 +383,22 @@ class ConfigPanel extends StatelessWidget {
               borderRadius: BorderRadius.circular(7),
               color: AppColors.surface2,
             ),
-            child: const Center(child: Text('Upload a file to see columns', style: TextStyle(color: AppColors.textMuted, fontSize: 11))),
+            child: const Center(
+              child: Text(
+                'Upload a file to see columns',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
+            ),
           ),
 
         // ── Data rows count ──
         if (node.rows.isNotEmpty) ...[
           const SizedBox(height: 14),
-          _fileInfoBar('${node.rows.length} data rows loaded', null, AppColors.green),
+          _fileInfoBar(
+            '${node.rows.length} data rows loaded',
+            null,
+            AppColors.green,
+          ),
         ],
       ],
     );
@@ -295,7 +406,13 @@ class ConfigPanel extends StatelessWidget {
 
   /// Map separator char → display label for the dropdown value
   String _sepToLabel(String sep, List<String> separators) {
-    const map = {',': 'Comma (,)', '|': 'Pipe (|)', '\t': 'Tab (\\t)', ';': 'Semicolon (;)', ' ': 'Space ( )'};
+    const map = {
+      ',': 'Comma (,)',
+      '|': 'Pipe (|)',
+      '\t': 'Tab (\\t)',
+      ';': 'Semicolon (;)',
+      ' ': 'Space ( )',
+    };
     final label = map[sep] ?? separators[0];
     return separators.contains(label) ? label : separators[0];
   }
@@ -303,14 +420,28 @@ class ConfigPanel extends StatelessWidget {
   InputDecoration _inputDecor() {
     return InputDecoration(
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: AppColors.border2)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: AppColors.border2)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: AppColors.blue)),
-      filled: true, fillColor: AppColors.surface2,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: AppColors.border2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: AppColors.border2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: const BorderSide(color: AppColors.blue),
+      ),
+      filled: true,
+      fillColor: AppColors.surface2,
     );
   }
 
-  Widget _uploadButton({required IconData icon, required String label, required Function() onTap}) {
+  Widget _uploadButton({
+    required IconData icon,
+    required String label,
+    required Function() onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -318,13 +449,24 @@ class ConfigPanel extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border2, width: 1.5, style: BorderStyle.solid),
+          border: Border.all(
+            color: AppColors.border2,
+            width: 1.5,
+            style: BorderStyle.solid,
+          ),
         ),
         child: Row(
           children: [
             Icon(icon, color: AppColors.textDim, size: 16),
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(color: AppColors.textDim, fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textDim,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -343,9 +485,18 @@ class ConfigPanel extends StatelessWidget {
         children: [
           Icon(Icons.check_circle_outline, color: color, size: 14),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: TextStyle(color: color, fontSize: 11))),
+          Expanded(
+            child: Text(text, style: TextStyle(color: color, fontSize: 11)),
+          ),
           if (badge != null)
-            Text(badge, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+            Text(
+              badge,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
         ],
       ),
     );
@@ -374,11 +525,23 @@ class _SourceTypeDropdown extends StatelessWidget {
           border: Border.all(color: AppColors.border2),
           color: AppColors.surface2,
         ),
-        child: const Row(children: [
-          SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.textDim)),
-          SizedBox(width: 8),
-          Text('Loading...', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-        ]),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: AppColors.textDim,
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Loading...',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          ],
+        ),
       );
     }
 
@@ -392,18 +555,30 @@ class _SourceTypeDropdown extends StatelessWidget {
           border: Border.all(color: AppColors.border2),
           color: AppColors.surface2,
         ),
-        child: Row(children: [
-          Icon(node.type.icon, color: node.type.color, size: 14),
-          const SizedBox(width: 8),
-          Text(node.type.label, style: const TextStyle(color: AppColors.text, fontSize: 12)),
-        ]),
+        child: Row(
+          children: [
+            Icon(node.type.icon, color: node.type.color, size: 14),
+            const SizedBox(width: 8),
+            Text(
+              node.type.label,
+              style: const TextStyle(color: AppColors.text, fontSize: 12),
+            ),
+          ],
+        ),
       );
     }
 
     final items = master.sourceTypes;
-    final currentValue = node.sourceTypeValue.isNotEmpty ? node.sourceTypeValue : null;
+    final currentValue = node.sourceTypeValue.isNotEmpty
+        ? node.sourceTypeValue
+        : null;
     final matchedItem = currentValue != null
-        ? items.where((i) => i.sourceValue == currentValue).firstOrNull
+        ? items
+              .where(
+                (i) =>
+                    i.sourceValue.toUpperCase() == currentValue.toUpperCase(),
+              )
+              .firstOrNull
         : null;
 
     // If sourceTypeValue was set from drag, show read-only badge — no re-selection needed
@@ -416,20 +591,39 @@ class _SourceTypeDropdown extends StatelessWidget {
           border: Border.all(color: AppColors.blue.withOpacity(0.3)),
           color: AppColors.blue.withOpacity(0.05),
         ),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: AppColors.blue.withOpacity(0.12),
-              border: Border.all(color: AppColors.blue.withOpacity(0.25)),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: AppColors.blue.withOpacity(0.12),
+                border: Border.all(color: AppColors.blue.withOpacity(0.25)),
+              ),
+              child: Text(
+                matchedItem.sourceValue,
+                style: const TextStyle(
+                  color: AppColors.blue,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'monospace',
+                ),
+              ),
             ),
-            child: Text(matchedItem.sourceValue, style: const TextStyle(color: AppColors.blue, fontSize: 9, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(matchedItem.sourceName, style: const TextStyle(color: AppColors.text, fontSize: 12, fontWeight: FontWeight.w500))),
-          const Icon(Icons.lock_outline, size: 12, color: AppColors.textDim),
-        ]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                matchedItem.sourceName,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const Icon(Icons.lock_outline, size: 12, color: AppColors.textDim),
+          ],
+        ),
       );
     }
 
@@ -445,26 +639,55 @@ class _SourceTypeDropdown extends StatelessWidget {
           isExpanded: true,
           isDense: true,
           value: null,
-          hint: const Text('Select source type', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          hint: const Text(
+            'Select source type',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
           dropdownColor: AppColors.surface2,
           style: const TextStyle(color: AppColors.text, fontSize: 12),
-          icon: const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textDim),
-          items: items.map((item) => DropdownMenuItem<String>(
-            value: item.sourceValue,
-            child: Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(3),
-                  color: AppColors.blue.withOpacity(0.1),
-                  border: Border.all(color: AppColors.blue.withOpacity(0.2)),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            size: 16,
+            color: AppColors.textDim,
+          ),
+          items: items
+              .map(
+                (item) => DropdownMenuItem<String>(
+                  value: item.sourceValue,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(3),
+                          color: AppColors.blue.withOpacity(0.1),
+                          border: Border.all(
+                            color: AppColors.blue.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Text(
+                          item.sourceValue,
+                          style: const TextStyle(
+                            color: AppColors.blue,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        item.sourceName,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Text(item.sourceValue, style: const TextStyle(color: AppColors.blue, fontSize: 9, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
-              ),
-              const SizedBox(width: 8),
-              Text(item.sourceName, style: const TextStyle(fontSize: 12)),
-            ]),
-          )).toList(),
+              )
+              .toList(),
           onChanged: (value) {
             if (value != null) ctrl.updateNodeSourceType(node.id, value);
           },

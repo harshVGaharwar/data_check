@@ -199,6 +199,10 @@ class PipelineNode {
   String? queryFileName;
   String separator;
 
+  /// Raw file bytes (for multipart upload at submit time)
+  List<int>? columnFileBytes;
+  List<int>? queryFileBytes;
+
   /// Original Flutter savedRow id (for updateSingleSource)
   int? sourceId;
 
@@ -226,6 +230,8 @@ class PipelineNode {
     this.fileName,
     this.queryFileName,
     this.separator = ',',
+    this.columnFileBytes,
+    this.queryFileBytes,
     this.sourceId,
   })  : cols = cols ?? [],
         selectedCols = selectedCols ?? [],

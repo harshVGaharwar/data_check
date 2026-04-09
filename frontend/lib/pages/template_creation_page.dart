@@ -45,6 +45,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
 
   // Per-approval file uploads: { "Unit Head": "approval_uh.pdf", ... }
   final Map<String, String> _approvalFiles = {};
+  // Raw bytes for each approval file
+  final Map<String, List<int>> _approvalFileBytes = {};
 
   @override
   void initState() {
@@ -135,7 +137,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
 
     // Use TemplateProvider to save
     final provider = context.read<TemplateProvider>();
-    final success = await provider.saveTemplate(_model);
+    final success = await provider.saveTemplate(
+      _model,
+      fileBytes: _approvalFileBytes,
+      fileNames: Map.fromEntries(_approvalFiles.entries.map((e) => MapEntry(e.key, e.value))),
+    );
 
     if (mounted && success) {
       showDialog(
@@ -154,6 +160,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
     _model.reset();
     for (final c in [_nameCtrl, _normalVolCtrl, _peakVolCtrl, _benefitAmtCtrl, _tatCtrl, _spocCtrl, _spocMgrCtrl, _unitHeadCtrl]) { c.clear(); }
     _approvalFiles.clear();
+    _approvalFileBytes.clear();
     setState(() => _submitted = false);
   }
 
@@ -292,7 +299,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
                           ),
                           const SizedBox(width: 6),
                           InkWell(
-                            onTap: () => setState(() => _approvalFiles.remove(approval)),
+                            onTap: () => setState(() { _approvalFiles.remove(approval); _approvalFileBytes.remove(approval); }),
                             child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.red.withOpacity(0.3))),
                               child: const Icon(Icons.close, size: 14, color: AppColors.red)),
                           ),
@@ -407,7 +414,12 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
 
   void _pickForApproval(String approval) async {
     final r = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'], withData: true);
-    if (r != null) setState(() => _approvalFiles[approval] = r.files.single.name);
+    if (r != null && r.files.single.bytes != null) {
+      setState(() {
+        _approvalFiles[approval] = r.files.single.name;
+        _approvalFileBytes[approval] = r.files.single.bytes!.toList();
+      });
+    }
   }
 
   IconData _fIcon(String n) { final e = n.split('.').last.toLowerCase(); return e == 'pdf' ? Icons.picture_as_pdf : (e == 'doc' || e == 'docx') ? Icons.description : (e == 'png' || e == 'jpg' || e == 'jpeg') ? Icons.image : Icons.insert_drive_file; }

@@ -16,6 +16,8 @@ class PipelineController extends ChangeNotifier {
   // ── Sidebar state (same as HTML sidebar dept/template/count) ──
   String sidebarDept = '';
   String sidebarTemplate = '';
+  int sidebarTemplateId = 0;
+  String sidebarDeptId = '';
   int requiredSourceCount = 0;
 
   // ── Port drag state (same as HTML portDrag) ──
@@ -48,15 +50,18 @@ class PipelineController extends ChangeNotifier {
   }
 
   // ── Sidebar actions (same as HTML onSidebarDeptChange / onSidebarTemplateChange) ──
-  void setSidebarDept(String dept) {
+  void setSidebarDept(String dept, {String deptId = ''}) {
     sidebarDept = dept;
+    sidebarDeptId = deptId;
     sidebarTemplate = '';
+    sidebarTemplateId = 0;
     requiredSourceCount = 0;
     notifyListeners();
   }
 
-  void setSidebarTemplate(String template, {int? sourceCount}) {
+  void setSidebarTemplate(String template, {int? sourceCount, int templateId = 0}) {
     sidebarTemplate = template;
+    sidebarTemplateId = templateId;
     requiredSourceCount =
         sourceCount ?? PipelineConfig.templateSourceCount[template] ?? 0;
     notifyListeners();
@@ -544,21 +549,23 @@ class PipelineController extends ChangeNotifier {
   }
 
   // ── Set columns from file (same as HTML handleColFile) ──
-  void setNodeColumns(String nodeId, List<String> cols, List<Map<String, dynamic>> rows, String fileName) {
+  void setNodeColumns(String nodeId, List<String> cols, List<Map<String, dynamic>> rows, String fileName, {List<int>? bytes}) {
     final node = findNode(nodeId);
     if (node == null) return;
     node.cols = cols;
     node.selectedCols = List<String>.from(cols);
     node.rows = rows;
     node.fileName = fileName;
+    node.columnFileBytes = bytes;
     notifyListeners();
   }
 
   // ── Set query file name ──
-  void setQueryFile(String nodeId, String fileName) {
+  void setQueryFile(String nodeId, String fileName, {List<int>? bytes}) {
     final node = findNode(nodeId);
     if (node == null) return;
     node.queryFileName = fileName;
+    node.queryFileBytes = bytes;
     notifyListeners();
   }
 

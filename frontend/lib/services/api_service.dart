@@ -249,6 +249,38 @@ class ApiService {
     }
   }
 
+  /// Upload multipart form-data where multiple files may share the same key.
+  /// [fileEntries] is a list of (fieldKey, bytes, filename) records.
+  Future<ApiResponse<T>> postMultipart<T>(
+    String endpoint, {
+    required Map<String, String> fields,
+    required List<({String key, List<int> bytes, String filename})> fileEntries,
+    T Function(Map<String, dynamic>)? fromData,
+  }) async {
+    try {
+      debugPrint('[API MULTIPART] ${ApiConfig.baseUrl}$endpoint');
+      final formData = FormData();
+      formData.fields.addAll(fields.entries.map((e) => MapEntry(e.key, e.value)));
+      for (final f in fileEntries) {
+        formData.files.add(
+          MapEntry(
+            f.key,
+            MultipartFile.fromBytes(f.bytes, filename: f.filename),
+          ),
+        );
+      }
+      final res = await _dio.post(
+        endpoint,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return _handleResponse<T>(res, fromData: fromData);
+    } on DioException catch (e) {
+      debugPrint('[API ERROR] MULTIPART $endpoint: $e');
+      return ApiResponse.error(_errorMessage(e));
+    }
+  }
+
   Future<ApiResponse<T>> uploadMultipart<T>(
     String endpoint, {
     required Map<String, String> fields,
@@ -358,6 +390,7 @@ class ApiService {
       );
     }
   }
+
 
   String _errorMessage(DioException e) {
     switch (e.type) {

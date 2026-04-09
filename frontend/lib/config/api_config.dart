@@ -41,3 +41,47 @@ class ApiConfig {
     if (token != null) 'Authorization': 'Bearer $token',
   };
 }
+
+/// API Configuration
+/// Change baseUrl to your actual backend server
+// class ApiConfig {
+//   static const String baseUrl =
+//       'https://hbenetppuatdb01.hdfcbankuat.com/DataORCAPI/api/';
+
+//   // Auth
+//   static const String loginEndpoint = 'account/login';
+//   static const String logoutEndpoint = 'auth/logout';
+
+//   // Template Creation
+//   static const String templateCreateEndpoint = '/Template/AddTemplate';
+//   static const String templateListEndpoint = '/templates';
+//   static const String templateDetailEndpoint = '/templates'; // + /{id}
+
+//   // Template Configuration (Pipeline)
+//   static const String pipelineSubmitMappingEndpoint = '/AddTemplateConfig';
+//   static const String pipelineSubmitFormatEndpoint = '/pipeline/submit-format';
+
+//   // Configuration Upload
+//   static const String configUploadEndpoint = '/config/upload';
+
+//   // Master Data
+//   static const String departmentsEndpoint = 'Template/GetDepartment';
+//   static const String approvalListEndpoint = 'master/approval-list';
+//   static const String templatesEndpoint = 'Template/GetTemplates';
+//   static const String sourceTypeEndpoint = 'Template/GetSourceType';
+//   static const String operationsEndpoint = 'Template/GetOperations';
+
+//   // Source Configuration
+//   static const String saveSourceConfigEndpoint = '/pipeline/save-sources';
+
+//   // Timeouts
+//   static const Duration connectTimeout = Duration(seconds: 30);
+//   static const Duration receiveTimeout = Duration(seconds: 30);
+
+//   // Headers
+//   static Map<String, String> headers(String? token) => {
+//     'Content-Type': 'application/json',
+//     'Accept': 'application/json',
+//     if (token != null) 'Authorization': 'Bearer $token',
+//   };
+// }
