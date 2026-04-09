@@ -469,8 +469,14 @@ class JoinNodeBody extends StatelessWidget {
     final deptId = ctrl.sidebarDeptId;
     final templateName = ctrl.sidebarTemplate;
 
-    // ── 1. Sources ──
-    final sourceNodes = ctrl.nodes.where((n) => n.type.isSource).toList();
+    // ── 1. Sources (only those connected to a join node via edges) ──
+    final connectedSourceIds = ctrl.edges
+        .where((e) => ctrl.nodes.any((n) => n.id == e.toNodeId && n.type == NodeType.join))
+        .map((e) => e.fromNodeId)
+        .toSet();
+    final sourceNodes = ctrl.nodes
+        .where((n) => n.type.isSource && connectedSourceIds.contains(n.id))
+        .toList();
     final sources = sourceNodes.asMap().entries.map((entry) {
       final s = entry.value;
       return {
@@ -763,6 +769,20 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
     if (widget.connectedSources.length >= 2) {
       leftSourceId = widget.connectedSources[0].id;
       rightSourceId = widget.connectedSources[1].id;
+    }
+  }
+
+  @override
+  void didUpdateWidget(_JoinMappingInputRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final ids = widget.connectedSources.map((s) => s.id).toSet();
+    if (leftSourceId != null && !ids.contains(leftSourceId)) {
+      leftSourceId = null;
+      leftCol = null;
+    }
+    if (rightSourceId != null && !ids.contains(rightSourceId)) {
+      rightSourceId = null;
+      rightCol = null;
     }
   }
 
