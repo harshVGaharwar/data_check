@@ -430,7 +430,6 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
     }
   }
 
-  IconData _fIcon(String n) { final e = n.split('.').last.toLowerCase(); return e == 'pdf' ? Icons.picture_as_pdf : (e == 'doc' || e == 'docx') ? Icons.description : (e == 'png' || e == 'jpg' || e == 'jpeg') ? Icons.image : Icons.insert_drive_file; }
 }
 
 class _SuccessDialog extends StatefulWidget {
