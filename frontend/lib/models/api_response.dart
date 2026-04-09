@@ -63,6 +63,20 @@ class SubmitMappingResponse {
   }
 }
 
+/// Response model for create template API
+/// {"status":"Success","reqID":"7"}
+class CreateTemplateResponse {
+  final String reqId;
+
+  CreateTemplateResponse({required this.reqId});
+
+  factory CreateTemplateResponse.fromJson(Map<String, dynamic> json) {
+    return CreateTemplateResponse(
+      reqId: json['reqID']?.toString() ?? '',
+    );
+  }
+}
+
 /// Template list item
 class TemplateListItem {
   final String id;

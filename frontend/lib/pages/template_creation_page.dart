@@ -144,10 +144,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
     );
 
     if (mounted && success) {
+      final reqId = context.read<TemplateProvider>().reqId;
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => _SuccessDialog(onDone: () { Navigator.of(ctx).pop(); _resetForm(); }),
+        builder: (ctx) => _SuccessDialog(reqId: reqId, onDone: () { Navigator.of(ctx).pop(); _resetForm(); }),
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -434,7 +435,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage> with Ticker
 
 class _SuccessDialog extends StatefulWidget {
   final VoidCallback onDone;
-  const _SuccessDialog({required this.onDone});
+  final String? reqId;
+  const _SuccessDialog({required this.onDone, this.reqId});
   @override State<_SuccessDialog> createState() => _SuccessDialogState();
 }
 
@@ -465,6 +467,25 @@ class _SuccessDialogState extends State<_SuccessDialog> with SingleTickerProvide
           const Text('Data Saved Successfully!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
           const SizedBox(height: 8),
           const Text('Template has been saved successfully.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textDim)),
+          if (widget.reqId != null && widget.reqId!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.green.withOpacity(0.08),
+                border: Border.all(color: AppColors.green.withOpacity(0.2)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Request ID:', style: TextStyle(fontSize: 12, color: AppColors.textDim)),
+                  const SizedBox(width: 6),
+                  Text('#${widget.reqId}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.green, fontFamily: 'monospace')),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           SizedBox(width: double.infinity, height: 44, child: ElevatedButton(onPressed: widget.onDone,
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF004C8F), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),

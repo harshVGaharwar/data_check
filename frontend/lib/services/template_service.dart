@@ -10,7 +10,8 @@ class TemplateService {
   TemplateService(this._api);
 
   /// Create new template with approval file uploads as multipart form-data.
-  Future<ApiResponse> createTemplate(
+  /// Response: {"status":"Success","reqID":"7"}
+  Future<ApiResponse<CreateTemplateResponse>> createTemplate(
     TemplateRequest request, {
     Map<String, List<int>>? approvalFileBytes,
     Map<String, String>? approvalFileNames,
@@ -28,6 +29,7 @@ class TemplateService {
       ApiConfig.templateCreateEndpoint,
       fields: {'Config': jsonEncode(request.toJson())},
       fileEntries: fileEntries,
+      fromData: CreateTemplateResponse.fromJson,
     );
   }
 

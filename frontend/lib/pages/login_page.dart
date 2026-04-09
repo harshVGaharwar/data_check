@@ -32,9 +32,9 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     final success = await context.read<AuthProvider>().login(
       _usernameCtrl.text.trim(),
-      _passwordCtrl.text.trim(),
+      _passwordCtrl.text,
     );
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
 
     if (mounted && success) {
       Navigator.of(context).pushReplacementNamed('/dashboard');
@@ -82,8 +82,6 @@ class _LoginPageState extends State<LoginPage> {
                   fontFamily: 'DM Sans',
                 ),
               ),
-              const SizedBox(height: 4),
-
               const SizedBox(height: 12),
 
               // ── Login card ──
@@ -129,6 +127,7 @@ class _LoginPageState extends State<LoginPage> {
                         color: AppColors.text,
                         fontSize: 13,
                       ),
+                      onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                       decoration: _inputDecor(
                         Icons.person_outline,
                         'Enter username',
