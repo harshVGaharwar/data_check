@@ -54,7 +54,7 @@ Future<Response> onRequest(RequestContext context) async {
         filename: filenameMatch.group(1)!,
         bytes: partBytes,
       ));
-    } else if (fieldName == 'Config') {
+    } else if (fieldName == 'TemplateConfig') {
       configJson = utf8.decode(partBytes);
     }
   }
@@ -101,7 +101,7 @@ Future<Response> onRequest(RequestContext context) async {
     if (authHeader.isNotEmpty) {
       request.headers['Authorization'] = authHeader;
     }
-    request.fields['Config'] = configJson;
+    request.fields['TemplateConfig'] = configJson;
 
     for (final file in uploadedFiles) {
       request.files.add(

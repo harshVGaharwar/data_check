@@ -27,7 +27,8 @@ class SourceNodeBody extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 30, height: 30,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: color.withOpacity(0.12),
@@ -38,15 +39,22 @@ class SourceNodeBody extends StatelessWidget {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  node.sourceTypeName.isNotEmpty ? node.sourceTypeName : node.type.label,
+                  node.sourceTypeName.isNotEmpty
+                      ? node.sourceTypeName
+                      : node.type.label,
                   style: AppTextStyles.nodeName,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              InkWell(
-                onTap: () => context.read<PipelineController>().selectNode(node.id),
-                child: const Icon(Icons.settings, color: AppColors.textDim, size: 16),
-              ),
+              // InkWell(
+              //   onTap: () =>
+              //       context.read<PipelineController>().selectNode(node.id),
+              //   child: const Icon(
+              //     Icons.settings,
+              //     color: AppColors.textDim,
+              //     size: 16,
+              //   ),
+              // ),
             ],
           ),
         ),
@@ -56,12 +64,14 @@ class SourceNodeBody extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           child: Column(
             children: [
-              _statRow('Source Type', node.sourceTypeValue.isNotEmpty ? node.sourceTypeValue : '—'),
               _sourceNameRow(),
               // _statRow('Department', node.department),
               // _statRow('Template', node.template.isNotEmpty ? node.template : '—'),
-              _statBadgeRow('Columns', hasCols ? '${node.cols.length} cols' : 'No file',
-                  hasCols ? AppColors.blue : AppColors.amber),
+              _statBadgeRow(
+                'Columns',
+                hasCols ? '${node.cols.length} cols' : 'No file',
+                hasCols ? AppColors.blue : AppColors.amber,
+              ),
               if (node.rows.isNotEmpty) _statRow('Rows', '${node.rows.length}'),
             ],
           ),
@@ -70,24 +80,38 @@ class SourceNodeBody extends StatelessWidget {
         // Footer
         Container(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               InkWell(
-                onTap: () => context.read<PipelineController>().selectNode(node.id),
+                onTap: () =>
+                    context.read<PipelineController>().selectNode(node.id),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(5),
                     color: AppColors.blue.withOpacity(0.1),
                     border: Border.all(color: AppColors.blue.withOpacity(0.2)),
                   ),
-                  child: const Text('Configure →', style: TextStyle(color: AppColors.blue, fontSize: 10.5, fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Configure →',
+                    style: TextStyle(
+                      color: AppColors.blue,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
               InkWell(
-                onTap: () => context.read<PipelineController>().deleteNode(node.id),
+                onTap: () =>
+                    context.read<PipelineController>().deleteNode(node.id),
                 child: const Text('🗑', style: TextStyle(fontSize: 12)),
               ),
             ],
@@ -112,13 +136,21 @@ class SourceNodeBody extends StatelessWidget {
                 SizedBox(width: 3),
                 Text(
                   'Define Source Name',
-                  style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             )
           else
             Flexible(
-              child: Text(node.name, style: AppTextStyles.statValue, overflow: TextOverflow.ellipsis),
+              child: Text(
+                node.name,
+                style: AppTextStyles.statValue,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
         ],
       ),
@@ -132,7 +164,13 @@ class SourceNodeBody extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: AppTextStyles.statLabel),
-          Flexible(child: Text(value, style: AppTextStyles.statValue, overflow: TextOverflow.ellipsis)),
+          Flexible(
+            child: Text(
+              value,
+              style: AppTextStyles.statValue,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -152,7 +190,14 @@ class SourceNodeBody extends StatelessWidget {
               color: color.withOpacity(0.12),
               border: Border.all(color: color.withOpacity(0.2)),
             ),
-            child: Text(badge, style: TextStyle(color: color, fontSize: 9.5, fontWeight: FontWeight.w700)),
+            child: Text(
+              badge,
+              style: TextStyle(
+                color: color,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),

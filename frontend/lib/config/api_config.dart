@@ -42,8 +42,6 @@ class ApiConfig {
   };
 }
 
-/// API Configuration
-/// Change baseUrl to your actual backend server
 // class ApiConfig {
 //   static const String baseUrl =
 //       'https://hbenetppuatdb01.hdfcbankuat.com/DataORCAPI/api/';
@@ -58,7 +56,8 @@ class ApiConfig {
 //   static const String templateDetailEndpoint = '/templates'; // + /{id}
 
 //   // Template Configuration (Pipeline)
-//   static const String pipelineSubmitMappingEndpoint = '/AddTemplateConfig';
+//   static const String pipelineSubmitMappingEndpoint =
+//       'Template/AddTemplateConfig';
 //   static const String pipelineSubmitFormatEndpoint = '/pipeline/submit-format';
 
 //   // Configuration Upload
@@ -80,8 +79,8 @@ class ApiConfig {
 
 //   // Headers
 //   static Map<String, String> headers(String? token) => {
-//     'Content-Type': 'application/json',
-//     'Accept': 'application/json',
-//     if (token != null) 'Authorization': 'Bearer $token',
-//   };
+//         'Content-Type': 'application/json',
+//         'Accept': 'application/json',
+//         if (token != null) 'Authorization': 'Bearer $token',
+//       };
 // }

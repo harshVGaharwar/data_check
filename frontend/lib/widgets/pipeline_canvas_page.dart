@@ -81,6 +81,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
                         details.data.type,
                         MatrixUtils.transformPoint(inv, localPos),
                         sourceTypeValue: details.data.sourceValue,
+                        sourceTypeId: details.data.sourceTypeId,
                         sourceTypeName: details.data.sourceName,
                         name: '',
                       );
@@ -367,20 +368,36 @@ class _CanvasNode extends StatelessWidget {
     final isSelected = ctrl.selectedNodeId == node.id;
     final color = node.type.color;
 
+    bool _nodeDragged = false;
+
     return Positioned(
       left: node.position.dx,
       top: node.position.dy,
       child: GestureDetector(
         // Disable node drag when in connection mode
+        onPanStart: ctrl.portDragFromNodeId == null
+            ? (_) => _nodeDragged = false
+            : null,
         onPanUpdate: ctrl.portDragFromNodeId == null
-            ? (d) => ctrl.moveNode(node.id, d.delta)
+            ? (d) {
+                _nodeDragged = true;
+                ctrl.moveNode(node.id, d.delta);
+              }
+            : null,
+        onPanEnd: ctrl.portDragFromNodeId == null
+            ? (_) => Future.delayed(
+                const Duration(milliseconds: 100),
+                () => _nodeDragged = false,
+              )
             : null,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             // Main card body — tapping THIS selects the node
             GestureDetector(
-              onTap: () => ctrl.selectNode(node.id),
+              onTap: () {
+                if (!_nodeDragged) ctrl.selectNode(node.id);
+              },
               child: Container(
                 width: node.nodeWidth,
                 decoration: BoxDecoration(

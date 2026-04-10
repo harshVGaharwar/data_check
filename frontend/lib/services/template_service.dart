@@ -21,17 +21,13 @@ class TemplateService {
     if (approvalFileBytes != null) {
       for (final entry in approvalFileBytes.entries) {
         final filename = approvalFileNames?[entry.key] ?? entry.key;
-        fileEntries.add((
-          key: 'TemplateRuequest',
-          bytes: entry.value,
-          filename: filename,
-        ));
+        fileEntries.add((key: 'Files', bytes: entry.value, filename: filename));
       }
     }
 
     return _api.postMultipart(
       ApiConfig.templateCreateEndpoint,
-      fields: {'Config': jsonEncode(request.toJson())},
+      fields: {'TemplateRuequest': jsonEncode(request.toJson())},
       fileEntries: fileEntries,
       fromData: CreateTemplateResponse.fromJson,
     );

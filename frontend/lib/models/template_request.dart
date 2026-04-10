@@ -102,17 +102,19 @@ class TemplateRequest {
         'SpocManager': spocManager,
         'UnitHead': unitHead,
         'Priority': priority,
-      }
+      },
     ],
     'OutputFormats': outputFormats
         .map((f) => {'TemplateTempId': null, 'FormatName': f})
         .toList(),
     'Approvals': approvals
-        .map((a) => {
-              'TemplateTempId': null,
-              'Approval_Type': a,
-              'ApprovalFile': approvalFiles[a] ?? '',
-            })
+        .map(
+          (a) => {
+            'TemplateTempId': null,
+            'Approval_Type': a,
+            'ApprovalFile': approvalFiles[a] ?? '',
+          },
+        )
         .toList(),
   };
 

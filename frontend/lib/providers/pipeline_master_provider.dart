@@ -16,14 +16,18 @@ class PipelineMasterProvider extends ChangeNotifier {
 
   Future<void> _load() async {
     try {
-      debugPrint('[PipelineMasterProvider] calling getSourceTypes + getOperations');
+      debugPrint(
+        '[PipelineMasterProvider] calling getSourceTypes + getOperations',
+      );
       final results = await Future.wait([
         _service.getSourceTypes(),
         _service.getOperations(),
       ]);
       sourceTypes = results[0] as List<SourceTypeItem>;
       operations = results[1] as List<OperationItem>;
-      debugPrint('[PipelineMasterProvider] loaded — sourceTypes: ${sourceTypes.length}, operations: ${operations.length}');
+      debugPrint(
+        '[PipelineMasterProvider] loaded — sourceTypes: ${sourceTypes.length}, operations: ${operations.length}',
+      );
     } catch (e, st) {
       debugPrint('[PipelineMasterProvider] ERROR: $e\n$st');
     }

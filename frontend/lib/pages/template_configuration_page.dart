@@ -15,7 +15,8 @@ class TemplateConfigurationPage extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PipelineController()),
         ChangeNotifierProvider(
           lazy: false,
-          create: (ctx) => PipelineMasterProvider(ctx.read<MasterDataService>()),
+          create: (ctx) =>
+              PipelineMasterProvider(ctx.read<MasterDataService>()),
         ),
       ],
       child: const PipelineCanvasPage(),

@@ -12,7 +12,8 @@ class DragNodeData {
   final NodeType type;
   final String sourceValue; // empty for non-source nodes (join etc.)
   final String sourceName;  // display name from API (e.g. "Database")
-  const DragNodeData(this.type, {this.sourceValue = '', this.sourceName = ''});
+  final int sourceTypeId;   // id from API source type list
+  const DragNodeData(this.type, {this.sourceValue = '', this.sourceName = '', this.sourceTypeId = 0});
 }
 
 extension NodeTypeExt on NodeType {
@@ -191,6 +192,9 @@ class PipelineNode {
   /// Source type selected from API (sourceValue, e.g. 'DB', 'API')
   String sourceTypeValue;
 
+  /// Source type id from API
+  int sourceTypeId;
+
   /// Display name of the dragged source type (e.g. 'Finacle Core', 'Database')
   String sourceTypeName;
 
@@ -226,6 +230,7 @@ class PipelineNode {
     List<OutputFilter>? filters,
     List<OutputSort>? sortRules,
     this.sourceTypeValue = '',
+    this.sourceTypeId = 0,
     this.sourceTypeName = '',
     this.fileName,
     this.queryFileName,

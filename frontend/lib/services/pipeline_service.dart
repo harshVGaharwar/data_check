@@ -18,7 +18,7 @@ class PipelineService {
   }) async {
     return _api.postMultipart(
       ApiConfig.pipelineSubmitMappingEndpoint,
-      fields: {'Config': jsonEncode(payload)},
+      fields: {'TemplateConfig': jsonEncode(payload)},
       fileEntries: fileEntries,
       fromData: SubmitMappingResponse.fromJson,
     );

@@ -387,6 +387,7 @@ class JoinNodeBody extends StatelessWidget {
     PipelineController ctrl,
     PipelineNode node,
   ) async {
+    final master = Provider.of<PipelineMasterProvider>(context, listen: false);
     final validMappings = node.mappings.where((m) => m.isValid).toList();
 
     // ── Validate: all required source nodes must be connected ──
@@ -486,7 +487,7 @@ class JoinNodeBody extends StatelessWidget {
       return {
         'TemplateId': templateId,
         'SourceId': s.sourceId ?? 0,
-        'SourceName': s.name,
+        'SourceName': s.sourceTypeValue.isNotEmpty ? s.sourceTypeValue : s.name,
         'SourceType': s.sourceTypeValue.toLowerCase().isNotEmpty
             ? s.sourceTypeValue.toLowerCase()
             : s.type.name,
@@ -516,7 +517,10 @@ class JoinNodeBody extends StatelessWidget {
           'LeftSourceId': m.leftSourceId,
           'LeftSourceName': lSrc?.name ?? '',
           'LeftColumn': m.leftCol,
-          'JoinType': m.joinType,
+          'JoinType': master.operations
+              .where((o) => o.operationName == m.joinType)
+              .map((o) => o.operationValue)
+              .firstOrNull,
           'RightSourceId': m.rightSourceId,
           'RightSourceName': rSrc?.name ?? '',
           'RightColumn': m.rightCol,
@@ -833,7 +837,7 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
       child: Column(
         children: [
           const Text(
-            'COLUMN MAPPING',
+            'COLUMN MAPPING CONFIGURATION',
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w700,

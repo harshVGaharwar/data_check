@@ -72,7 +72,7 @@ class PipelineController extends ChangeNotifier {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /// Same as HTML addNode(type, name, x, y)
-  PipelineNode addNode(NodeType type, Offset position, {String? name, String sourceTypeValue = '', String sourceTypeName = ''}) {
+  PipelineNode addNode(NodeType type, Offset position, {String? name, String sourceTypeValue = '', int sourceTypeId = 0, String sourceTypeName = ''}) {
     // If name is explicitly provided (even empty string), use it; otherwise fall back to type.label
     final resolvedName = name != null ? name : type.label;
     final node = PipelineNode(
@@ -84,6 +84,7 @@ class PipelineController extends ChangeNotifier {
       template: sidebarTemplate,
     );
     if (sourceTypeValue.isNotEmpty) node.sourceTypeValue = sourceTypeValue;
+    if (sourceTypeId > 0) node.sourceTypeId = sourceTypeId;
     if (sourceTypeName.isNotEmpty) node.sourceTypeName = sourceTypeName;
     // No demo data — columns load only when user uploads file
     nodes.add(node);
@@ -540,10 +541,11 @@ class PipelineController extends ChangeNotifier {
     }
   }
 
-  void updateNodeSourceType(String nodeId, String sourceTypeValue) {
+  void updateNodeSourceType(String nodeId, String sourceTypeValue, {int sourceTypeId = 0}) {
     final node = findNode(nodeId);
     if (node != null) {
       node.sourceTypeValue = sourceTypeValue;
+      if (sourceTypeId > 0) node.sourceTypeId = sourceTypeId;
       notifyListeners();
     }
   }

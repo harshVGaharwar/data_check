@@ -123,9 +123,8 @@ class ConfigPanel extends StatelessWidget {
       );
     }
 
-    final isManual =
-        node.type == NodeType.manual ||
-        node.sourceTypeValue.toUpperCase() == 'MANUAL';
+    final master = context.watch<PipelineMasterProvider>();
+    final isManual = node.type == NodeType.manual;
     final separators = [
       'Comma (,)',
       'Pipe (|)',
@@ -137,6 +136,12 @@ class ConfigPanel extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
+        // ── Source Type (API-driven dropdown) ──
+        const Text('Source Type *', style: AppTextStyles.fieldLabel),
+        const SizedBox(height: 4),
+        _SourceTypeDropdown(node: node, ctrl: ctrl),
+        const SizedBox(height: 14),
+
         // ── Source Name ──
         const Text('Source Name *', style: AppTextStyles.fieldLabel),
         const SizedBox(height: 4),
@@ -147,12 +152,6 @@ class ConfigPanel extends StatelessWidget {
           style: const TextStyle(color: AppColors.text, fontSize: 12.5),
           decoration: _inputDecor(),
         ),
-        const SizedBox(height: 14),
-
-        // ── Source Type (API-driven dropdown) ──
-        const Text('Source Type', style: AppTextStyles.fieldLabel),
-        const SizedBox(height: 4),
-        _SourceTypeDropdown(node: node, ctrl: ctrl),
         const SizedBox(height: 14),
 
         // ── Separator (Manual type only) ──
@@ -214,7 +213,7 @@ class ConfigPanel extends StatelessWidget {
 
           // ── Query File Upload (non-manual only) ──
           const Text(
-            'Upload Query File (.txt)',
+            'Upload Query File (.txt) *',
             style: AppTextStyles.fieldLabel,
           ),
           const SizedBox(height: 4),
@@ -229,7 +228,11 @@ class ConfigPanel extends StatelessWidget {
               );
               if (result != null && result.files.single.bytes != null) {
                 final fileName = result.files.single.name;
-                ctrl.setQueryFile(node.id, fileName, bytes: result.files.single.bytes!.toList());
+                ctrl.setQueryFile(
+                  node.id,
+                  fileName,
+                  bytes: result.files.single.bytes!.toList(),
+                );
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -250,7 +253,7 @@ class ConfigPanel extends StatelessWidget {
 
         // ── Column File Upload ──
         const Text(
-          'Upload Column File (.csv / .txt)',
+          'Upload Column File (.csv / .txt) *',
           style: AppTextStyles.fieldLabel,
         ),
         const SizedBox(height: 4),
@@ -308,7 +311,13 @@ class ConfigPanel extends StatelessWidget {
               rows.add(row);
             }
 
-            ctrl.setNodeColumns(node.id, cols, rows, fileName, bytes: bytes.toList());
+            ctrl.setNodeColumns(
+              node.id,
+              cols,
+              rows,
+              fileName,
+              bytes: bytes.toList(),
+            );
             // Store auto-detected separator
             node.separator = sep;
             ctrl.notifyListeners();
@@ -568,130 +577,50 @@ class _SourceTypeDropdown extends StatelessWidget {
       );
     }
 
-    final items = master.sourceTypes;
-    final currentValue = node.sourceTypeValue.isNotEmpty
-        ? node.sourceTypeValue
+    final matchedItem = node.sourceTypeId > 0
+        ? master.sourceTypes.where((i) => i.id == node.sourceTypeId).firstOrNull
         : null;
-    final matchedItem = currentValue != null
-        ? items
-              .where(
-                (i) =>
-                    i.sourceValue.toUpperCase() == currentValue.toUpperCase(),
-              )
-              .firstOrNull
-        : null;
-
-    // If sourceTypeValue was set from drag, show read-only badge — no re-selection needed
-    if (matchedItem != null) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: AppColors.blue.withOpacity(0.3)),
-          color: AppColors.blue.withOpacity(0.05),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: AppColors.blue.withOpacity(0.12),
-                border: Border.all(color: AppColors.blue.withOpacity(0.25)),
-              ),
-              child: Text(
-                matchedItem.sourceValue,
-                style: const TextStyle(
-                  color: AppColors.blue,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                matchedItem.sourceName,
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const Icon(Icons.lock_outline, size: 12, color: AppColors.textDim),
-          ],
-        ),
-      );
-    }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.border2),
-        color: AppColors.surface2,
+        border: Border.all(color: AppColors.blue.withOpacity(0.3)),
+        color: AppColors.blue.withOpacity(0.05),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          isDense: true,
-          value: null,
-          hint: const Text(
-            'Select source type',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: AppColors.blue.withOpacity(0.12),
+              border: Border.all(color: AppColors.blue.withOpacity(0.25)),
+            ),
+            child: Text(
+              matchedItem?.sourceValue ?? node.sourceTypeValue,
+              style: const TextStyle(
+                color: AppColors.blue,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'monospace',
+              ),
+            ),
           ),
-          dropdownColor: AppColors.surface2,
-          style: const TextStyle(color: AppColors.text, fontSize: 12),
-          icon: const Icon(
-            Icons.keyboard_arrow_down,
-            size: 16,
-            color: AppColors.textDim,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              matchedItem?.sourceName ?? node.sourceTypeName,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          items: items
-              .map(
-                (item) => DropdownMenuItem<String>(
-                  value: item.sourceValue,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(3),
-                          color: AppColors.blue.withOpacity(0.1),
-                          border: Border.all(
-                            color: AppColors.blue.withOpacity(0.2),
-                          ),
-                        ),
-                        child: Text(
-                          item.sourceValue,
-                          style: const TextStyle(
-                            color: AppColors.blue,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        item.sourceName,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (value) {
-            if (value != null) ctrl.updateNodeSourceType(node.id, value);
-          },
-        ),
+          const Icon(Icons.lock_outline, size: 12, color: AppColors.textDim),
+        ],
       ),
     );
   }

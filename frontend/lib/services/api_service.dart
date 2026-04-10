@@ -71,7 +71,9 @@ class ApiService {
         onError: (DioException error, handler) async {
           final status = error.response?.statusCode;
           final path = error.requestOptions.path;
-          debugPrint('┌─ [API ERROR] ${error.requestOptions.method} ${error.requestOptions.uri} → $status');
+          debugPrint(
+            '┌─ [API ERROR] ${error.requestOptions.method} ${error.requestOptions.uri} → $status',
+          );
           debugPrint('│  ${error.response?.data ?? error.message}');
           debugPrint('└─────────────────────────────────');
 
@@ -133,7 +135,9 @@ class ApiService {
         },
 
         onResponse: (response, handler) {
-          debugPrint('┌─ [API RESPONSE] ${response.requestOptions.method} ${response.requestOptions.uri} → ${response.statusCode}');
+          debugPrint(
+            '┌─ [API RESPONSE] ${response.requestOptions.method} ${response.requestOptions.uri} → ${response.statusCode}',
+          );
           debugPrint('│  ${response.data}');
           debugPrint('└─────────────────────────────────');
           return handler.next(response);
@@ -260,7 +264,9 @@ class ApiService {
     try {
       debugPrint('[API MULTIPART] ${ApiConfig.baseUrl}$endpoint');
       final formData = FormData();
-      formData.fields.addAll(fields.entries.map((e) => MapEntry(e.key, e.value)));
+      formData.fields.addAll(
+        fields.entries.map((e) => MapEntry(e.key, e.value)),
+      );
       for (final f in fileEntries) {
         formData.files.add(
           MapEntry(
@@ -272,7 +278,9 @@ class ApiService {
       final res = await _dio.post(
         endpoint,
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
+        options: Options(
+          contentType: 'multipart/form-data; boundary=${formData.boundary}',
+        ),
       );
       return _handleResponse<T>(res, fromData: fromData);
     } on DioException catch (e) {
@@ -390,7 +398,6 @@ class ApiService {
       );
     }
   }
-
 
   String _errorMessage(DioException e) {
     switch (e.type) {

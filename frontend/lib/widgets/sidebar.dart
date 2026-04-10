@@ -506,6 +506,7 @@ class PaletteItem extends StatelessWidget {
 NodeType _sourceValueToNodeType(String sourceValue) {
   switch (sourceValue.toUpperCase()) {
     case 'DB':
+    case 'QRS':
       return NodeType.db;
     case 'MANUAL':
       return NodeType.manual;
@@ -586,6 +587,7 @@ class DynamicPaletteItem extends StatelessWidget {
         nodeType,
         sourceValue: sourceItem.sourceValue,
         sourceName: sourceItem.sourceName,
+        sourceTypeId: sourceItem.id,
       ),
       feedback: Material(
         color: Colors.transparent,
