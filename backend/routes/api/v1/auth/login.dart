@@ -97,7 +97,8 @@ Future<Response> onRequest(RequestContext context) async {
       print('[LOGIN] HDFC response keys: ${data.keys.toList()}');
 
       final hdfcToken = data['token'] ?? data['Token'] ?? '';
-      final userMap = (data['user'] ?? data['User'] ?? {}) as Map<String, dynamic>;
+      final userMap =
+          (data['user'] ?? data['User'] ?? {}) as Map<String, dynamic>;
 
       // Register HDFC token in local db so auth middleware can validate it
       if (hdfcToken.isNotEmpty) {
