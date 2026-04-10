@@ -134,9 +134,9 @@ class _DashboardPageState extends State<DashboardPage> {
                       height: 32,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF004C8F).withOpacity(0.1),
+                        color: const Color(0xFF004C8F).withValues(alpha: 0.1),
                         border: Border.all(
-                          color: const Color(0xFF004C8F).withOpacity(0.2),
+                          color: const Color(0xFF004C8F).withValues(alpha: 0.2),
                         ),
                       ),
                       child: Center(
@@ -185,7 +185,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   height: 48,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                   ),
                   child: const Center(
                     child: Text(
@@ -211,7 +211,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 Text(
                   'Data Configuration Platform',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 12,
                   ),
                 ),
@@ -235,8 +235,9 @@ class _DashboardPageState extends State<DashboardPage> {
             onTap: () async {
               Navigator.of(context).pop();
               await context.read<AuthProvider>().logout();
-              if (context.mounted)
+              if (context.mounted) {
                 Navigator.of(context).pushReplacementNamed('/login');
+              }
             },
           ),
           const SizedBox(height: 8),
@@ -252,7 +253,7 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         color: selected
-            ? const Color(0xFF004C8F).withOpacity(0.08)
+            ? const Color(0xFF004C8F).withValues(alpha: 0.08)
             : Colors.transparent,
       ),
       child: ListTile(

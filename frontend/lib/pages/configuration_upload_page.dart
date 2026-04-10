@@ -14,7 +14,7 @@ class ConfigurationUploadPage extends StatelessWidget {
             width: 72, height: 72,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
-              color: AppColors.green.withOpacity(0.1),
+              color: AppColors.green.withValues(alpha: 0.1),
             ),
             child: const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.green),
           ),

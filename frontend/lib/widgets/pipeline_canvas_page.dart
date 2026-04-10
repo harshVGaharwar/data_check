@@ -165,10 +165,10 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.amber.withOpacity(0.15),
+                            color: AppColors.amber.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: AppColors.amber.withOpacity(0.4),
+                              color: AppColors.amber.withValues(alpha: 0.4),
                             ),
                           ),
                           child: Row(
@@ -199,7 +199,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                      color: AppColors.amber.withOpacity(0.4),
+                                      color: AppColors.amber.withValues(alpha: 0.4),
                                     ),
                                   ),
                                   child: const Text(
@@ -266,7 +266,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
                       boxShadow: isActive
                           ? [
                               BoxShadow(
-                                color: AppColors.amber.withOpacity(0.7),
+                                color: AppColors.amber.withValues(alpha: 0.7),
                                 blurRadius: 12,
                                 spreadRadius: 3,
                               ),
@@ -314,7 +314,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
                       boxShadow: isTarget
                           ? [
                               BoxShadow(
-                                color: AppColors.green.withOpacity(0.7),
+                                color: AppColors.green.withValues(alpha: 0.7),
                                 blurRadius: 12,
                                 spreadRadius: 3,
                               ),
@@ -341,7 +341,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFCBD5E1).withOpacity(0.5)
+      ..color = const Color(0xFFCBD5E1).withValues(alpha: 0.5)
       ..style = PaintingStyle.fill;
     for (double x = 0; x < size.width; x += 24) {
       for (double y = 0; y < size.height; y += 24) {
@@ -412,7 +412,7 @@ class _CanvasNode extends StatelessWidget {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: color.withOpacity(0.2),
+                            color: color.withValues(alpha: 0.2),
                             blurRadius: 12,
                           ),
                         ]

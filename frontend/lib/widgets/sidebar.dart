@@ -189,14 +189,14 @@ class _SidebarState extends State<Sidebar> {
                             color:
                                 ctrl.sourceNodesOnCanvas >=
                                     ctrl.requiredSourceCount
-                                ? AppColors.green.withOpacity(0.3)
-                                : AppColors.amber.withOpacity(0.3),
+                                ? AppColors.green.withValues(alpha: 0.3)
+                                : AppColors.amber.withValues(alpha: 0.3),
                           ),
                           color:
                               ctrl.sourceNodesOnCanvas >=
                                   ctrl.requiredSourceCount
-                              ? AppColors.green.withOpacity(0.06)
-                              : AppColors.amber.withOpacity(0.06),
+                              ? AppColors.green.withValues(alpha: 0.06)
+                              : AppColors.amber.withValues(alpha: 0.06),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -296,8 +296,8 @@ class _SidebarState extends State<Sidebar> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: const Color(0xFFE53935).withOpacity(0.4)),
-          color: const Color(0xFFE53935).withOpacity(0.05),
+          border: Border.all(color: const Color(0xFFE53935).withValues(alpha: 0.4)),
+          color: const Color(0xFFE53935).withValues(alpha: 0.05),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +431,7 @@ class PaletteItem extends StatelessWidget {
             height: 28,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
             ),
             child: Icon(type.icon, color: color, size: 14),
           ),
@@ -477,7 +477,7 @@ class PaletteItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.blue),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 16),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16),
             ],
           ),
           child: Row(
@@ -549,7 +549,7 @@ class DynamicPaletteItem extends StatelessWidget {
             height: 28,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
             ),
             child: Icon(nodeType.icon, color: color, size: 14),
           ),
@@ -598,7 +598,7 @@ class DynamicPaletteItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.blue),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 16),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16),
             ],
           ),
           child: Row(

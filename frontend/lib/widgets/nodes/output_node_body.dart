@@ -63,14 +63,14 @@ class OutputNodeBody extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
           decoration: BoxDecoration(
-            color: AppColors.green.withOpacity(0.08),
+            color: AppColors.green.withValues(alpha: 0.08),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
             border: const Border(bottom: BorderSide(color: AppColors.border)),
           ),
           child: Row(children: [
             Container(
               width: 30, height: 30,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: AppColors.green.withOpacity(0.15)),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: AppColors.green.withValues(alpha: 0.15)),
               child: const Icon(Icons.output_rounded, color: AppColors.green, size: 14),
             ),
             const SizedBox(width: 8),
@@ -83,7 +83,7 @@ class OutputNodeBody extends StatelessWidget {
             )),
             InkWell(
               onTap: () => ctrl.deleteNode(node.id),
-              child: Icon(Icons.delete_outline, color: AppColors.textDim.withOpacity(0.6), size: 16),
+              child: Icon(Icons.delete_outline, color: AppColors.textDim.withValues(alpha: 0.6), size: 16),
             ),
           ]),
         ),
@@ -137,7 +137,7 @@ class OutputNodeBody extends StatelessWidget {
                           children: [
                             Container(
                               width: 60, height: 60,
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.green.withOpacity(0.15)),
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.green.withValues(alpha: 0.15)),
                               child: const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 40),
                             ),
                             const SizedBox(height: 16),
@@ -184,7 +184,7 @@ class OutputNodeBody extends StatelessWidget {
                         ? null
                         : AppColors.surface2,
                     gradient: (hasConnection && hasColumns)
-                        ? LinearGradient(colors: [AppColors.green, AppColors.green.withOpacity(0.8)])
+                        ? LinearGradient(colors: [AppColors.green, AppColors.green.withValues(alpha: 0.8)])
                         : null,
                     border: (hasConnection && hasColumns)
                         ? null
@@ -223,7 +223,7 @@ class OutputNodeBody extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(5),
-                          color: sel ? AppColors.green.withOpacity(0.15) : AppColors.surface2,
+                          color: sel ? AppColors.green.withValues(alpha: 0.15) : AppColors.surface2,
                           border: Border.all(color: sel ? AppColors.green : AppColors.border2),
                         ),
                         child: Text(c, style: TextStyle(
@@ -372,8 +372,8 @@ class OutputNodeBody extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(7),
-                      color: AppColors.green.withOpacity(0.06),
-                      border: Border.all(color: AppColors.green.withOpacity(0.2)),
+                      color: AppColors.green.withValues(alpha: 0.06),
+                      border: Border.all(color: AppColors.green.withValues(alpha: 0.2)),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(
@@ -390,8 +390,8 @@ class OutputNodeBody extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(7),
-                      color: AppColors.amber.withOpacity(0.06),
-                      border: Border.all(color: AppColors.amber.withOpacity(0.2)),
+                      color: AppColors.amber.withValues(alpha: 0.06),
+                      border: Border.all(color: AppColors.amber.withValues(alpha: 0.2)),
                     ),
                     child: Row(children: [
                       const Icon(Icons.info_outline, size: 14, color: AppColors.amber),
@@ -491,7 +491,7 @@ class _ResultTableWidget extends StatelessWidget {
           child: Table(
             defaultColumnWidth: const IntrinsicColumnWidth(),
             border: TableBorder(
-              horizontalInside: BorderSide(color: AppColors.border.withOpacity(0.5), width: 0.5),
+              horizontalInside: BorderSide(color: AppColors.border.withValues(alpha: 0.5), width: 0.5),
             ),
             children: [
               // Header row

@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import '../controllers/pipeline_controller.dart';
 
 class TopBar extends StatelessWidget {
-  const TopBar();
+  const TopBar({super.key});
 
   @override
   Widget build(BuildContext context) {

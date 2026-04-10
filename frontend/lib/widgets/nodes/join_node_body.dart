@@ -34,10 +34,10 @@ class JoinNodeBody extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: AppColors.violet.withOpacity(0.12),
+            color: AppColors.violet.withValues(alpha: 0.12),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
             border: Border(
-              bottom: BorderSide(color: AppColors.violet.withOpacity(0.2)),
+              bottom: BorderSide(color: AppColors.violet.withValues(alpha: 0.2)),
             ),
           ),
           child: Row(
@@ -47,7 +47,7 @@ class JoinNodeBody extends StatelessWidget {
                 height: 26,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(6),
-                  color: AppColors.violet.withOpacity(0.2),
+                  color: AppColors.violet.withValues(alpha: 0.2),
                 ),
                 child: const Icon(
                   Icons.link_rounded,
@@ -71,7 +71,7 @@ class JoinNodeBody extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                 ),
                 child: Text(
                   '${connectedSources.length} sources',
@@ -87,7 +87,7 @@ class JoinNodeBody extends StatelessWidget {
                 onTap: () => ctrl.deleteNode(node.id),
                 child: Icon(
                   Icons.delete_outline,
-                  color: AppColors.textDim.withOpacity(0.6),
+                  color: AppColors.textDim.withValues(alpha: 0.6),
                   size: 16,
                 ),
               ),
@@ -124,8 +124,8 @@ class JoinNodeBody extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(6),
-                        color: color.withOpacity(0.08),
-                        border: Border.all(color: color.withOpacity(0.2)),
+                        color: color.withValues(alpha: 0.08),
+                        border: Border.all(color: color.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -205,7 +205,7 @@ class JoinNodeBody extends StatelessWidget {
                                 lSrc?.name ?? '?',
                                 style: TextStyle(
                                   color: (lSrc?.type.color ?? AppColors.violet)
-                                      .withOpacity(0.7),
+                                      .withValues(alpha: 0.7),
                                   fontSize: 8,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -234,9 +234,9 @@ class JoinNodeBody extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(4),
-                                color: AppColors.violet.withOpacity(0.15),
+                                color: AppColors.violet.withValues(alpha: 0.15),
                                 border: Border.all(
-                                  color: AppColors.violet.withOpacity(0.3),
+                                  color: AppColors.violet.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Text(
@@ -257,9 +257,9 @@ class JoinNodeBody extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(4),
-                                color: AppColors.amber.withOpacity(0.12),
+                                color: AppColors.amber.withValues(alpha: 0.12),
                                 border: Border.all(
-                                  color: AppColors.amber.withOpacity(0.3),
+                                  color: AppColors.amber.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Text(
@@ -283,7 +283,7 @@ class JoinNodeBody extends StatelessWidget {
                                 rSrc?.name ?? '?',
                                 style: TextStyle(
                                   color: (rSrc?.type.color ?? AppColors.blue)
-                                      .withOpacity(0.7),
+                                      .withValues(alpha: 0.7),
                                   fontSize: 8,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -346,12 +346,12 @@ class JoinNodeBody extends StatelessWidget {
                       gradient: LinearGradient(
                         colors: [
                           AppColors.green,
-                          AppColors.green.withOpacity(0.8),
+                          AppColors.green.withValues(alpha: 0.8),
                         ],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.green.withOpacity(0.3),
+                          color: AppColors.green.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -414,7 +414,7 @@ class JoinNodeBody extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.amber.withOpacity(0.15),
+                  color: AppColors.amber.withValues(alpha: 0.15),
                 ),
                 child: const Icon(
                   Icons.warning_amber_rounded,
@@ -644,7 +644,7 @@ class JoinNodeBody extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.green.withOpacity(0.15),
+                  color: AppColors.green.withValues(alpha: 0.15),
                 ),
                 child: const Icon(
                   Icons.check_circle_rounded,
@@ -704,7 +704,7 @@ class JoinNodeBody extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.red.withOpacity(0.15),
+                  color: AppColors.red.withValues(alpha: 0.15),
                 ),
                 child: const Icon(
                   Icons.error_rounded,
@@ -831,8 +831,8 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.violet.withOpacity(0.2)),
-        color: AppColors.violet.withOpacity(0.04),
+        border: Border.all(color: AppColors.violet.withValues(alpha: 0.2)),
+        color: AppColors.violet.withValues(alpha: 0.04),
       ),
       child: Column(
         children: [
@@ -930,9 +930,9 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: AppColors.amber.withOpacity(0.4),
+                        color: AppColors.amber.withValues(alpha: 0.4),
                       ),
-                      color: AppColors.amber.withOpacity(0.08),
+                      color: AppColors.amber.withValues(alpha: 0.08),
                     ),
                     child: const Center(
                       child: Text(
@@ -1033,8 +1033,8 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
               padding: const EdgeInsets.symmetric(vertical: 7),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(7),
-                color: AppColors.violet.withOpacity(0.15),
-                border: Border.all(color: AppColors.violet.withOpacity(0.3)),
+                color: AppColors.violet.withValues(alpha: 0.15),
+                border: Border.all(color: AppColors.violet.withValues(alpha: 0.3)),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1123,11 +1123,11 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: isRelation
-              ? AppColors.violet.withOpacity(0.3)
+              ? AppColors.violet.withValues(alpha: 0.3)
               : AppColors.border2,
         ),
         color: isRelation
-            ? AppColors.violet.withOpacity(0.12)
+            ? AppColors.violet.withValues(alpha: 0.12)
             : AppColors.surface2,
       ),
       child: DropdownButtonHideUnderline(

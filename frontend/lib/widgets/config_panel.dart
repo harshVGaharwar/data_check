@@ -4,12 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
 import '../models/pipeline_models.dart';
-import '../models/master_models.dart';
 import '../controllers/pipeline_controller.dart';
 import '../providers/pipeline_master_provider.dart';
 
 class ConfigPanel extends StatelessWidget {
-  const ConfigPanel();
+  const ConfigPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +85,7 @@ class ConfigPanel extends StatelessWidget {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppColors.red.withOpacity(0.3),
+                          color: AppColors.red.withValues(alpha: 0.3),
                         ),
                       ),
                       child: const Center(
@@ -147,7 +146,9 @@ class ConfigPanel extends StatelessWidget {
         const SizedBox(height: 4),
         TextFormField(
           key: ValueKey('name_${node.id}'),
+          
           initialValue: node.name,
+          
           onChanged: (v) => ctrl.updateNodeName(node.id, v),
           style: const TextStyle(color: AppColors.text, fontSize: 12.5),
           decoration: _inputDecor(),
@@ -197,18 +198,18 @@ class ConfigPanel extends StatelessWidget {
 
         // ── Non-manual: info banner ──
         if (!isManual) ...[
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(7),
-              color: AppColors.blue.withOpacity(0.07),
-              border: Border.all(color: AppColors.blue.withOpacity(0.18)),
-            ),
-            child: const Text(
-              'Separator auto-detected from uploaded column file',
-              style: TextStyle(color: Color(0xFF93C5FD), fontSize: 10.5),
-            ),
-          ),
+          // Container(
+          //   padding: const EdgeInsets.all(10),
+          //   decoration: BoxDecoration(
+          //     borderRadius: BorderRadius.circular(7),
+          //     color: AppColors.blue.withValues(alpha: 0.07),
+          //     border: Border.all(color: AppColors.blue.withValues(alpha: 0.18)),
+          //   ),
+          //   child: const Text(
+          //     'Separator auto-detected from uploaded column file',
+          //     style: TextStyle(color: Color(0xFF93C5FD), fontSize: 10.5),
+          //   ),
+          // ),
           const SizedBox(height: 14),
 
           // ── Query File Upload (non-manual only) ──
@@ -366,7 +367,7 @@ class ConfigPanel extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(5),
                     color: sel
-                        ? AppColors.blue.withOpacity(0.15)
+                        ? AppColors.blue.withValues(alpha: 0.15)
                         : AppColors.surface2,
                     border: Border.all(
                       color: sel ? AppColors.blue : AppColors.border2,
@@ -487,8 +488,8 @@ class ConfigPanel extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6),
-        color: color.withOpacity(0.08),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -586,8 +587,8 @@ class _SourceTypeDropdown extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.blue.withOpacity(0.3)),
-        color: AppColors.blue.withOpacity(0.05),
+        border: Border.all(color: AppColors.blue.withValues(alpha: 0.3)),
+        color: AppColors.blue.withValues(alpha: 0.05),
       ),
       child: Row(
         children: [
@@ -595,8 +596,8 @@ class _SourceTypeDropdown extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(4),
-              color: AppColors.blue.withOpacity(0.12),
-              border: Border.all(color: AppColors.blue.withOpacity(0.25)),
+              color: AppColors.blue.withValues(alpha: 0.12),
+              border: Border.all(color: AppColors.blue.withValues(alpha: 0.25)),
             ),
             child: Text(
               matchedItem?.sourceValue ?? node.sourceTypeValue,

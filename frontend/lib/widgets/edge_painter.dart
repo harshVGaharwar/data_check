@@ -43,7 +43,7 @@ class EdgePainter extends CustomPainter {
       canvas.drawPath(
         path,
         Paint()
-          ..color = color.withOpacity(isSelected ? 0.2 : 0.08)
+          ..color = color.withValues(alpha: isSelected ? 0.2 : 0.08)
           ..style = PaintingStyle.stroke
           ..strokeWidth = isSelected ? 10 : 6,
       );
@@ -52,7 +52,7 @@ class EdgePainter extends CustomPainter {
       canvas.drawPath(
         path,
         Paint()
-          ..color = color.withOpacity(isSelected ? 1.0 : 0.7)
+          ..color = color.withValues(alpha: isSelected ? 1.0 : 0.7)
           ..style = PaintingStyle.stroke
           ..strokeWidth = isSelected ? 3 : 2,
       );

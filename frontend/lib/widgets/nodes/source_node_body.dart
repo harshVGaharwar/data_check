@@ -31,7 +31,7 @@ class SourceNodeBody extends StatelessWidget {
                 height: 30,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                 ),
                 child: Icon(node.type.icon, color: color, size: 14),
               ),
@@ -96,8 +96,8 @@ class SourceNodeBody extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(5),
-                    color: AppColors.blue.withOpacity(0.1),
-                    border: Border.all(color: AppColors.blue.withOpacity(0.2)),
+                    color: AppColors.blue.withValues(alpha: 0.1),
+                    border: Border.all(color: AppColors.blue.withValues(alpha: 0.2)),
                   ),
                   child: const Text(
                     'Configure →',
@@ -187,8 +187,8 @@ class SourceNodeBody extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: color.withOpacity(0.12),
-              border: Border.all(color: color.withOpacity(0.2)),
+              color: color.withValues(alpha: 0.12),
+              border: Border.all(color: color.withValues(alpha: 0.2)),
             ),
             child: Text(
               badge,

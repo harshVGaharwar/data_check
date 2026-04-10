@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dart_frog/dart_frog.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import '../../../../lib/config/api_config.dart';
 import '../../../../lib/models/models.dart';

@@ -33,7 +33,7 @@ class SourcePreviewSidebar extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: allValid ? AppColors.green.withOpacity(0.05) : AppColors.surface2,
+                  color: allValid ? AppColors.green.withValues(alpha: 0.05) : AppColors.surface2,
                   border: Border(bottom: BorderSide(color: AppColors.border)),
                 ),
                 child: Row(
@@ -51,7 +51,7 @@ class SourcePreviewSidebar extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        color: allValid ? AppColors.green.withOpacity(0.1) : AppColors.amber.withOpacity(0.1),
+                        color: allValid ? AppColors.green.withValues(alpha: 0.1) : AppColors.amber.withValues(alpha: 0.1),
                       ),
                       child: Text(
                         '${sources.length}/${sources.length}',
@@ -132,7 +132,7 @@ class SourcePreviewSidebar extends StatelessWidget {
             children: [
               Container(
                 width: 56, height: 56,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.green.withOpacity(0.1)),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.green.withValues(alpha: 0.1)),
                 child: const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 36),
               ),
               const SizedBox(height: 14),
@@ -177,8 +177,8 @@ class _SourceCard extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: _isComplete ? AppColors.green.withOpacity(0.03) : AppColors.surface2,
-        border: Border.all(color: _isComplete ? AppColors.green.withOpacity(0.2) : AppColors.border),
+        color: _isComplete ? AppColors.green.withValues(alpha: 0.03) : AppColors.surface2,
+        border: Border.all(color: _isComplete ? AppColors.green.withValues(alpha: 0.2) : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,7 +188,7 @@ class _SourceCard extends StatelessWidget {
             children: [
               Container(
                 width: 24, height: 24,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), color: color.withOpacity(0.12)),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), color: color.withValues(alpha: 0.12)),
                 child: Icon(node.type.icon, size: 12, color: color),
               ),
               const SizedBox(width: 8),
@@ -215,7 +215,7 @@ class _SourceCard extends StatelessWidget {
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: color.withOpacity(0.08)),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: color.withValues(alpha: 0.08)),
               child: Text('${node.cols.length} columns loaded', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
             ),
           ],

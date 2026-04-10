@@ -5,7 +5,7 @@ import '../models/pipeline_models.dart';
 import '../controllers/pipeline_controller.dart';
 
 class StatusBar extends StatelessWidget {
-  const StatusBar();
+  const StatusBar({super.key});
 
   @override
   Widget build(BuildContext context) {

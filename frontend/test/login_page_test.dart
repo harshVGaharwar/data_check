@@ -13,7 +13,7 @@ class MockAuthProvider extends ChangeNotifier implements AuthProvider {
   String? _error;
   bool _loading = false;
   LoginResponse? _user;
-  bool _initialized = true;
+  final bool _initialized = true;
 
   MockAuthProvider({bool loginResult = true, String? error})
       : _loginResult = loginResult,

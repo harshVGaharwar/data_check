@@ -248,7 +248,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: const Color(0xFF004C8F).withOpacity(0.1),
+                        color: const Color(0xFF004C8F).withValues(alpha: 0.1),
                       ),
                       child: const Icon(
                         Icons.add_circle_outline,
@@ -432,7 +432,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
                                 color: sel
-                                    ? const Color(0xFF004C8F).withOpacity(0.08)
+                                    ? const Color(0xFF004C8F).withValues(alpha: 0.08)
                                     : AppColors.surface2,
                                 border: Border.all(
                                   color: sel
@@ -542,7 +542,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(8),
                                   color: sel
-                                      ? AppColors.green.withOpacity(0.08)
+                                      ? AppColors.green.withValues(alpha: 0.08)
                                       : AppColors.surface2,
                                   border: Border.all(
                                     color: sel
@@ -617,13 +617,13 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
                               color: uploaded
-                                  ? AppColors.green.withOpacity(0.04)
+                                  ? AppColors.green.withValues(alpha: 0.04)
                                   : AppColors.surface2,
                               border: Border.all(
                                 color: uploaded
-                                    ? AppColors.green.withOpacity(0.2)
+                                    ? AppColors.green.withValues(alpha: 0.2)
                                     : (_submitted && !uploaded
-                                          ? AppColors.red.withOpacity(0.3)
+                                          ? AppColors.red.withValues(alpha: 0.3)
                                           : AppColors.border),
                               ),
                             ),
@@ -702,7 +702,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                          color: AppColors.red.withOpacity(0.3),
+                                          color: AppColors.red.withValues(alpha: 0.3),
                                         ),
                                       ),
                                       child: const Icon(
@@ -725,11 +725,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                         borderRadius: BorderRadius.circular(6),
                                         color: const Color(
                                           0xFF004C8F,
-                                        ).withOpacity(0.08),
+                                        ).withValues(alpha: 0.08),
                                         border: Border.all(
                                           color: const Color(
                                             0xFF004C8F,
-                                          ).withOpacity(0.2),
+                                          ).withValues(alpha: 0.2),
                                         ),
                                       ),
                                       child: const Text(
@@ -806,7 +806,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -822,8 +822,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: hasError
-                      ? AppColors.red.withOpacity(0.08)
-                      : const Color(0xFF004C8F).withOpacity(0.08),
+                      ? AppColors.red.withValues(alpha: 0.08)
+                      : const Color(0xFF004C8F).withValues(alpha: 0.08),
                 ),
                 child: Icon(
                   icon,
@@ -849,7 +849,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(4),
-                    color: AppColors.red.withOpacity(0.1),
+                    color: AppColors.red.withValues(alpha: 0.1),
                   ),
                   child: const Text(
                     'Required',
@@ -1174,7 +1174,7 @@ class _SuccessDialogState extends State<_SuccessDialog>
                     height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.green.withOpacity(0.1),
+                      color: AppColors.green.withValues(alpha: 0.1),
                     ),
                     child: const Icon(
                       Icons.check_circle_rounded,
@@ -1206,9 +1206,9 @@ class _SuccessDialogState extends State<_SuccessDialog>
                       ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        color: AppColors.green.withOpacity(0.08),
+                        color: AppColors.green.withValues(alpha: 0.08),
                         border: Border.all(
-                          color: AppColors.green.withOpacity(0.2),
+                          color: AppColors.green.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Row(
