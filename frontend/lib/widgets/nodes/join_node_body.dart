@@ -1009,8 +1009,9 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
               if (leftSourceId == null ||
                   leftCol == null ||
                   rightSourceId == null ||
-                  rightCol == null)
+                  rightCol == null) {
                 return;
+              }
               context.read<PipelineController>().addMappingToJoin(
                 widget.nodeId,
                 ColumnMapping(

@@ -7,6 +7,8 @@ import '../theme/app_theme.dart';
 
 enum NodeType { db, manual, fc, laser, join, output }
 
+enum NodeConfirmState { notConfigured, confirmed, editing }
+
 /// Drag payload — carries both node type and optional API sourceValue
 class DragNodeData {
   final NodeType type;
@@ -207,6 +209,9 @@ class PipelineNode {
   List<int>? columnFileBytes;
   List<int>? queryFileBytes;
 
+  /// Confirmation state — drives visual state on canvas + config panel
+  NodeConfirmState confirmState;
+
   /// Original Flutter savedRow id (for updateSingleSource)
   int? sourceId;
 
@@ -237,6 +242,7 @@ class PipelineNode {
     this.separator = ',',
     this.columnFileBytes,
     this.queryFileBytes,
+    this.confirmState = NodeConfirmState.notConfigured,
     this.sourceId,
   })  : cols = cols ?? [],
         selectedCols = selectedCols ?? [],

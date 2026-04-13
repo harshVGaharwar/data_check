@@ -49,6 +49,40 @@ class PipelineController extends ChangeNotifier {
     return sourceNodesOnCanvas < requiredSourceCount;
   }
 
+  /// True when:
+  ///   1. Required source count is met (if set), AND
+  ///   2. ALL source nodes on canvas are confirmed.
+  /// Join Operation drag is gated behind this.
+  bool get allSourceNodesConfirmed {
+    final sources = nodes.where((n) => n.type.isSource).toList();
+    if (sources.isEmpty) return false;
+    // Step 1 — count check
+    if (requiredSourceCount > 0 && sources.length < requiredSourceCount) {
+      return false;
+    }
+    // Step 2 — all confirmed check
+    return sources.every((n) => n.confirmState == NodeConfirmState.confirmed);
+  }
+
+  /// True when join palette should pulse:
+  /// sources all confirmed AND no join node on canvas yet.
+  bool get shouldAnimateJoin =>
+      allSourceNodesConfirmed && !nodes.any((n) => n.type == NodeType.join);
+
+  void confirmNode(String nodeId) {
+    final node = findNode(nodeId);
+    if (node == null) return;
+    node.confirmState = NodeConfirmState.confirmed;
+    notifyListeners();
+  }
+
+  void editNode(String nodeId) {
+    final node = findNode(nodeId);
+    if (node == null) return;
+    node.confirmState = NodeConfirmState.editing;
+    notifyListeners();
+  }
+
   // ── Sidebar actions (same as HTML onSidebarDeptChange / onSidebarTemplateChange) ──
   void setSidebarDept(String dept, {String deptId = ''}) {
     sidebarDept = dept;
@@ -74,7 +108,7 @@ class PipelineController extends ChangeNotifier {
   /// Same as HTML addNode(type, name, x, y)
   PipelineNode addNode(NodeType type, Offset position, {String? name, String sourceTypeValue = '', int sourceTypeId = 0, String sourceTypeName = ''}) {
     // If name is explicitly provided (even empty string), use it; otherwise fall back to type.label
-    final resolvedName = name != null ? name : type.label;
+    final resolvedName = name ?? type.label;
     final node = PipelineNode(
       id: _nextId(),
       type: type,

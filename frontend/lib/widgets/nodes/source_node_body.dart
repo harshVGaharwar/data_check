@@ -59,56 +59,59 @@ class SourceNodeBody extends StatelessWidget {
           ),
         ),
 
-        // Body stats
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          child: Column(
-            children: [
-              _sourceNameRow(),
-              // _statRow('Department', node.department),
-              // _statRow('Template', node.template.isNotEmpty ? node.template : '—'),
-              _statBadgeRow(
-                'Columns',
-                hasCols ? '${node.cols.length} cols' : 'No file',
-                hasCols ? AppColors.blue : AppColors.amber,
-              ),
-              if (node.rows.isNotEmpty) _statRow('Rows', '${node.rows.length}'),
-            ],
+        // Body stats — only after node is configured (confirmed or editing)
+        if (node.confirmState != NodeConfirmState.notConfigured)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Column(
+              children: [
+                _sourceNameRow(),
+                _statBadgeRow(
+                  'Columns',
+                  hasCols ? '${node.cols.length} cols' : 'No file',
+                  hasCols ? AppColors.blue : AppColors.amber,
+                ),
+                if (node.rows.isNotEmpty) _statRow('Rows', '${node.rows.length}'),
+              ],
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color: AppColors.blue.withValues(alpha: 0.08),
+                    border: Border.all(color: AppColors.blue.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.settings_outlined, color: AppColors.blue, size: 12),
+                      SizedBox(width: 5),
+                      Text(
+                        'Click to configure',
+                        style: TextStyle(
+                          color: AppColors.blue,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
           ),
-        ),
 
-        // Footer
+        // Footer — delete only
         Container(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
           decoration: const BoxDecoration(
             border: Border(top: BorderSide(color: AppColors.border)),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              InkWell(
-                onTap: () =>
-                    context.read<PipelineController>().selectNode(node.id),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                    color: AppColors.blue.withValues(alpha: 0.1),
-                    border: Border.all(color: AppColors.blue.withValues(alpha: 0.2)),
-                  ),
-                  child: const Text(
-                    'Configure →',
-                    style: TextStyle(
-                      color: AppColors.blue,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
               InkWell(
                 onTap: () =>
                     context.read<PipelineController>().deleteNode(node.id),

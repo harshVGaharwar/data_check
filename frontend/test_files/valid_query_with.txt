@@ -1,0 +1,11 @@
+WITH active_accounts AS (
+    SELECT account_no, customer_id, balance
+    FROM accounts
+    WHERE status = 'Active'
+),
+high_value AS (
+    SELECT * FROM active_accounts WHERE balance > 50000
+)
+SELECT c.first_name, c.last_name, h.account_no, h.balance
+FROM high_value h
+JOIN customers c ON h.customer_id = c.customer_id

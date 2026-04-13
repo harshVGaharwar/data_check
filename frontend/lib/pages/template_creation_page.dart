@@ -40,7 +40,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     ApprovalItem(name: 'Manager'),
     ApprovalItem(name: 'UAT Sign Off'),
   ];
-  bool _approvalLoading = false;
+  final bool _approvalLoading = false;
   static const _frequencies = [
     'Daily',
     'Weekly',
@@ -257,25 +257,27 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Create New Template',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.text,
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Create New Template',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.text,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Fill in all required sections to create a template',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textDim,
+                          Text(
+                            'Fill in all required sections to create a template',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textDim,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -1033,10 +1035,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
               firstDate: DateTime(2020),
               lastDate: DateTime(2030),
             );
-            if (d != null)
+            if (d != null) {
               onChanged(
                 '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
               );
+            }
           },
           child: Container(
             height: 36,

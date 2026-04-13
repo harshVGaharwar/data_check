@@ -1,0 +1,4 @@
+account_no|branch_code|ifsc_code|balance|account_type|status
+ACC001|BR01|HDFC0001|50000.00|Savings|Active
+ACC002|BR02|HDFC0002|120000.00|Current|Active
+ACC003|BR01|HDFC0001|8500.00|Savings|Inactive

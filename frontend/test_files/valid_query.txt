@@ -1,0 +1,11 @@
+SELECT
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+    a.account_no,
+    a.balance
+FROM customers c
+JOIN accounts a ON c.customer_id = a.customer_id
+WHERE a.status = 'Active'
+  AND a.balance > 10000
+ORDER BY a.balance DESC

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
@@ -16,7 +17,7 @@ class Sidebar extends StatefulWidget {
   State<Sidebar> createState() => _SidebarState();
 }
 
-class _SidebarState extends State<Sidebar> {
+class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
   // dept name → dept id
   Map<String, int> _deptMap = {};
   bool _deptLoading = true;
@@ -24,10 +25,63 @@ class _SidebarState extends State<Sidebar> {
   List<TemplateInfo> _templates = [];
   bool _templateLoading = false;
 
+  late final AnimationController _deptPulse;
+  late final AnimationController _templatePulse;
+  late final AnimationController _sourceCountPulse;
+  late final AnimationController _sourceTypePulse;
+  late final Animation<double> _deptAnim;
+  late final Animation<double> _templateAnim;
+  late final Animation<double> _sourceCountAnim;
+  late final Animation<double> _sourceTypeAnim;
+
   @override
   void initState() {
     super.initState();
+    _deptPulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+
+    _templatePulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _sourceCountPulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 750),
+    );
+
+    _sourceTypePulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _deptAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _deptPulse, curve: Curves.easeInOut));
+    _templateAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _templatePulse, curve: Curves.easeInOut));
+    _sourceCountAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _sourceCountPulse, curve: Curves.easeInOut),
+    );
+    _sourceTypeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _sourceTypePulse, curve: Curves.easeInOut),
+    );
+
     _loadDepartments();
+  }
+
+  @override
+  void dispose() {
+    _deptPulse.dispose();
+    _templatePulse.dispose();
+    _sourceCountPulse.dispose();
+    _sourceTypePulse.dispose();
+    super.dispose();
   }
 
   Future<void> _loadDepartments() async {
@@ -52,6 +106,10 @@ class _SidebarState extends State<Sidebar> {
 
   Future<void> _onDeptSelected(String deptName, PipelineController ctrl) async {
     ctrl.setSidebarDept(deptName, deptId: _deptMap[deptName]?.toString() ?? '');
+    // Dept done → stop dept pulse, start template pulse
+    _deptPulse.stop();
+    _deptPulse.value = 0;
+    _templatePulse.repeat(reverse: true);
     setState(() {
       _templates = [];
       _templateLoading = true;
@@ -83,6 +141,22 @@ class _SidebarState extends State<Sidebar> {
           final templateNames = _templates.map((t) => t.templateName).toList();
           final canAdd = ctrl.canAddSource;
 
+          // Sync source type pulse with canvas count
+          if (ctrl.sidebarTemplate.isNotEmpty && ctrl.requiredSourceCount > 0) {
+            final filled = ctrl.sourceNodesOnCanvas >= ctrl.requiredSourceCount;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              if (filled && _sourceTypePulse.isAnimating) {
+                // All sources added → stop
+                _sourceTypePulse.stop();
+                _sourceTypePulse.value = 0;
+              } else if (!filled && !_sourceTypePulse.isAnimating) {
+                // Node deleted, count dropped → restart
+                _sourceTypePulse.repeat(reverse: true);
+              }
+            });
+          }
+
           return Column(
             children: [
               // Header
@@ -108,72 +182,119 @@ class _SidebarState extends State<Sidebar> {
                     const SizedBox(height: 6),
 
                     // Department
-                    const Text('Department', style: AppTextStyles.fieldLabel),
-                    const SizedBox(height: 4),
-                    _deptLoading
-                        ? _loadingField()
-                        : _sidebarDropdown(
-                            value: ctrl.sidebarDept.isEmpty
-                                ? null
-                                : ctrl.sidebarDept,
-                            hint: '— Select Dept —',
-                            items: deptNames,
-                            onChanged: (v) {
-                              if (v != null) _onDeptSelected(v, ctrl);
-                            },
+                    _StepHighlight(
+                      animation: _deptAnim,
+                      color: AppColors.blue,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Department',
+                            style: AppTextStyles.fieldLabel,
                           ),
+                          const SizedBox(height: 4),
+                          _deptLoading
+                              ? _loadingField()
+                              : _sidebarDropdown(
+                                  value: ctrl.sidebarDept.isEmpty
+                                      ? null
+                                      : ctrl.sidebarDept,
+                                  hint: '— Select Dept —',
+                                  items: deptNames,
+                                  onChanged: (v) {
+                                    if (v != null) _onDeptSelected(v, ctrl);
+                                  },
+                                ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 8),
 
                     // Template
-                    const Text('Template', style: AppTextStyles.fieldLabel),
-                    const SizedBox(height: 4),
-                    _templateLoading
-                        ? _loadingField()
-                        : _sidebarDropdown(
-                            value: templateNames.contains(ctrl.sidebarTemplate)
-                                ? ctrl.sidebarTemplate
-                                : null,
-                            hint: ctrl.sidebarDept.isEmpty
-                                ? '— Select Dept first —'
-                                : '— Select Template —',
-                            items: templateNames,
-                            onChanged: (v) {
-                              if (v == null) return;
-                              final info = _templates.firstWhere(
-                                (t) => t.templateName == v,
-                                orElse: () => TemplateInfo(
-                                  templateId: 0,
-                                  templateName: v,
-                                  department: '',
-                                  frequency: '',
-                                  sourceCount: 0,
-                                  numberOfOutputs: 0,
-                                  normalVolume: 0,
-                                  peakVolume: 0,
-                                  priority: '',
-                                  benefitType: '',
-                                  benefitAmount: 0,
-                                  outputFormats: [],
-                                ),
-                              );
-                              ctrl.setSidebarTemplate(
-                                v,
-                                sourceCount: info.sourceCount > 0
-                                    ? info.sourceCount
-                                    : null,
-                                templateId: info.templateId,
-                              );
-                            },
+                    _StepHighlight(
+                      animation: _templateAnim,
+                      color: AppColors.blue,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Template',
+                            style: AppTextStyles.fieldLabel,
                           ),
+                          const SizedBox(height: 4),
+                          _templateLoading
+                              ? _loadingField()
+                              : _sidebarDropdown(
+                                  value:
+                                      templateNames.contains(
+                                        ctrl.sidebarTemplate,
+                                      )
+                                      ? ctrl.sidebarTemplate
+                                      : null,
+                                  hint: ctrl.sidebarDept.isEmpty
+                                      ? '— Select Dept first —'
+                                      : '— Select Template —',
+                                  items: templateNames,
+                                  onChanged: (v) {
+                                    if (v == null) return;
+                                    final info = _templates.firstWhere(
+                                      (t) => t.templateName == v,
+                                      orElse: () => TemplateInfo(
+                                        templateId: 0,
+                                        templateName: v,
+                                        department: '',
+                                        frequency: '',
+                                        sourceCount: 0,
+                                        numberOfOutputs: 0,
+                                        normalVolume: 0,
+                                        peakVolume: 0,
+                                        priority: '',
+                                        benefitType: '',
+                                        benefitAmount: 0,
+                                        outputFormats: [],
+                                      ),
+                                    );
+                                    ctrl.setSidebarTemplate(
+                                      v,
+                                      sourceCount: info.sourceCount > 0
+                                          ? info.sourceCount
+                                          : null,
+                                      templateId: info.templateId,
+                                    );
+                                    // Template done → stop template pulse
+                                    _templatePulse.stop();
+                                    _templatePulse.value = 0;
+                                    // Blink source count briefly (~1s), then hand off to source type
+                                    _sourceCountPulse.repeat(reverse: true);
+                                    Timer(const Duration(milliseconds: 1000), () {
+                                      if (!mounted) return;
+                                      _sourceCountPulse.stop();
+                                      _sourceCountPulse.value = 0;
+                                      _sourceTypePulse.repeat(reverse: true);
+                                    });
+                                  },
+                                ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 8),
 
                     // Required count
-                    const Text(
-                      'Required Input Sources',
-                      style: AppTextStyles.fieldLabel,
+                    _StepHighlight(
+                      animation: _sourceCountAnim,
+                      color: AppColors.blue,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Required Input Sources',
+                            style: AppTextStyles.fieldLabel,
+                          ),
+                          const SizedBox(height: 4),
+                          _buildRequiredSourcesBox(ctrl),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    _buildRequiredSourcesBox(ctrl),
 
                     // Source counter badge
                     if (ctrl.requiredSourceCount > 0) ...[
@@ -228,41 +349,51 @@ class _SidebarState extends State<Sidebar> {
                     ],
 
                     const SizedBox(height: 12),
-                    const Text(
-                      'SOURCE TYPES',
-                      style: AppTextStyles.sectionLabel,
-                    ),
-                    const SizedBox(height: 6),
-                    Consumer<PipelineMasterProvider>(
-                      builder: (_, master, __) {
-                        if (master.loading) return _loadingField();
-                        if (master.sourceTypes.isEmpty) {
-                          return const Text(
-                            'No source types',
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 11,
-                            ),
-                          );
-                        }
-                        return Column(
-                          children: master.sourceTypes
-                              .map(
-                                (st) => DynamicPaletteItem(
-                                  sourceItem: st,
-                                  enabled:
-                                      canAdd && ctrl.requiredSourceCount > 0,
-                                ),
-                              )
-                              .toList(),
-                        );
-                      },
+                    _StepHighlight(
+                      animation: _sourceTypeAnim,
+                      color: AppColors.blue,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'SOURCE TYPES',
+                            style: AppTextStyles.sectionLabel,
+                          ),
+                          const SizedBox(height: 6),
+                          Consumer<PipelineMasterProvider>(
+                            builder: (_, master, __) {
+                              if (master.loading) return _loadingField();
+                              if (master.sourceTypes.isEmpty) {
+                                return const Text(
+                                  'No source types',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 11,
+                                  ),
+                                );
+                              }
+                              return Column(
+                                children: master.sourceTypes
+                                    .map(
+                                      (st) => DynamicPaletteItem(
+                                        sourceItem: st,
+                                        enabled:
+                                            canAdd &&
+                                            ctrl.requiredSourceCount > 0,
+                                      ),
+                                    )
+                                    .toList(),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 8),
                     const Text('OPERATIONS', style: AppTextStyles.sectionLabel),
                     const SizedBox(height: 6),
-                    PaletteItem(type: NodeType.join, enabled: true),
+                    _JoinPaletteItem(ctrl: ctrl),
 
                     const SizedBox(height: 12),
                     const Text(
@@ -296,7 +427,9 @@ class _SidebarState extends State<Sidebar> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: const Color(0xFFE53935).withValues(alpha: 0.4)),
+          border: Border.all(
+            color: const Color(0xFFE53935).withValues(alpha: 0.4),
+          ),
           color: const Color(0xFFE53935).withValues(alpha: 0.05),
         ),
         child: Row(
@@ -328,19 +461,47 @@ class _SidebarState extends State<Sidebar> {
         border: Border.all(color: AppColors.border2),
         color: AppColors.surface2,
       ),
-      child: Text(
-        ctrl.requiredSourceCount > 0
-            ? '${ctrl.requiredSourceCount}'
-            : 'Select template first',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: ctrl.requiredSourceCount > 0
-              ? AppColors.amber
-              : AppColors.textMuted,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
-        ),
-      ),
+      child: ctrl.requiredSourceCount > 0
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${ctrl.requiredSourceCount}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.amber,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.green.withValues(alpha: 0.15),
+                    border: Border.all(
+                      color: AppColors.green.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: AppColors.green,
+                    size: 10,
+                  ),
+                ),
+              ],
+            )
+          : const Text(
+              'Select template first',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
     );
   }
 
@@ -410,7 +571,7 @@ class _SidebarState extends State<Sidebar> {
 class PaletteItem extends StatelessWidget {
   final NodeType type;
   final bool enabled;
-  const PaletteItem({required this.type, required this.enabled});
+  const PaletteItem({super.key, required this.type, required this.enabled});
 
   @override
   Widget build(BuildContext context) {
@@ -477,7 +638,10 @@ class PaletteItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.blue),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 16,
+              ),
             ],
           ),
           child: Row(
@@ -598,7 +762,10 @@ class DynamicPaletteItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.blue),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 16,
+              ),
             ],
           ),
           child: Row(
@@ -620,6 +787,263 @@ class DynamicPaletteItem extends StatelessWidget {
       ),
       childWhenDragging: Opacity(opacity: 0.3, child: content()),
       child: content(),
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// JOIN PALETTE ITEM — locked until all source nodes are confirmed
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _JoinPaletteItem extends StatefulWidget {
+  final PipelineController ctrl;
+  const _JoinPaletteItem({required this.ctrl});
+
+  @override
+  State<_JoinPaletteItem> createState() => _JoinPaletteItemState();
+}
+
+class _JoinPaletteItemState extends State<_JoinPaletteItem>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseAnim;
+  bool _lastUnlocked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _pulseAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _lastUnlocked = widget.ctrl.shouldAnimateJoin;
+    if (_lastUnlocked) _pulseCtrl.repeat(reverse: true);
+  }
+
+  /// Sync every build:
+  /// - sources confirmed + no join on canvas → animate
+  /// - join dropped on canvas → stop
+  /// - join deleted from canvas → restart
+  void _syncAnimation(bool shouldAnimate) {
+    if (shouldAnimate && !_pulseCtrl.isAnimating) {
+      _pulseCtrl.repeat(reverse: true);
+    } else if (!shouldAnimate && _pulseCtrl.isAnimating) {
+      _pulseCtrl.stop();
+      _pulseCtrl.value = 0;
+    }
+    _lastUnlocked = shouldAnimate;
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = widget.ctrl.allSourceNodesConfirmed;
+    final shouldAnimate = widget.ctrl.shouldAnimateJoin;
+    // Sync every build: join on canvas → stop, join deleted → restart
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncAnimation(shouldAnimate);
+    });
+    const type = NodeType.join;
+    const color = AppColors.blue;
+
+    Widget content({double glowAlpha = 0, double borderAlpha = 1}) => Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: unlocked
+              ? color.withValues(alpha: 0.4 + borderAlpha * 0.6)
+              : AppColors.border2,
+          width: unlocked ? 1.8 : 1.0,
+        ),
+        color: unlocked
+            ? color.withValues(alpha: 0.04 + glowAlpha * 0.08)
+            : AppColors.surface2,
+        boxShadow: unlocked && glowAlpha > 0
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: glowAlpha * 0.35),
+                  blurRadius: 8 + glowAlpha * 10,
+                  spreadRadius: glowAlpha * 2,
+                ),
+              ]
+            : null,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              color: color.withValues(
+                alpha: unlocked ? 0.12 + glowAlpha * 0.1 : 0.07,
+              ),
+            ),
+            child: Icon(
+              unlocked ? type.icon : Icons.lock_outline_rounded,
+              color: unlocked ? color : AppColors.textMuted,
+              size: 14,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  type.label,
+                  style: TextStyle(
+                    color: unlocked ? AppColors.text : AppColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  unlocked ? '✦ Ready to drag' : 'Confirm all sources first',
+                  style: TextStyle(
+                    color: unlocked
+                        ? color.withValues(alpha: 0.8)
+                        : AppColors.textMuted,
+                    fontSize: 10,
+                    fontWeight: unlocked ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (unlocked)
+            AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (_, __) => Icon(
+                Icons.arrow_forward_rounded,
+                color: color.withValues(alpha: 0.4 + _pulseAnim.value * 0.6),
+                size: 14,
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (!unlocked) {
+      return GestureDetector(
+        onTap: () {
+          final sources = widget.ctrl.nodes
+              .where((n) => n.type.isSource)
+              .toList();
+          final required = widget.ctrl.requiredSourceCount;
+          final confirmed = sources
+              .where((n) => n.confirmState == NodeConfirmState.confirmed)
+              .length;
+          final String msg;
+          if (required > 0 && sources.length < required) {
+            msg =
+                'Add all $required required source nodes first'
+                ' (${sources.length}/$required added).';
+          } else {
+            msg =
+                'Configure all source nodes first'
+                ' ($confirmed/${sources.length} confirmed).';
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg), backgroundColor: Colors.orange),
+          );
+        },
+        child: Opacity(opacity: 0.5, child: content()),
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _pulseAnim,
+      builder: (context, _) => Draggable<DragNodeData>(
+        data: DragNodeData(type),
+        feedback: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color),
+              boxShadow: [
+                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 16),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(type.icon, color: color, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  type.label,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        childWhenDragging: Opacity(opacity: 0.3, child: content()),
+        child: content(
+          glowAlpha: _pulseAnim.value,
+          borderAlpha: _pulseAnim.value,
+        ),
+      ),
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STEP HIGHLIGHT — animated glowing border + bg around a sidebar section
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _StepHighlight extends AnimatedWidget {
+  final Color color;
+  final Widget child;
+
+  const _StepHighlight({
+    required Animation<double> animation,
+    required this.color,
+    required this.child,
+  }) : super(listenable: animation);
+
+  Animation<double> get _anim => listenable as Animation<double>;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _anim.value;
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: color.withValues(alpha: t * 0.6),
+          width: 1.5,
+        ),
+        boxShadow: t > 0.1
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: t * 0.25),
+                  blurRadius: 6,
+                  spreadRadius: 3,
+                ),
+              ]
+            : null,
+      ),
+      child: child,
     );
   }
 }

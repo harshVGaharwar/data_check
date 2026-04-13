@@ -43,14 +43,14 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
         Expanded(
           child: Row(
             children: [
-              const Sidebar(),
+              const Flexible(flex: 0, child: Sidebar()),
               Expanded(child: _buildCanvas()),
               Consumer<PipelineController>(
                 builder: (_, ctrl, __) => ctrl.selectedNodeId != null
-                    ? const ConfigPanel()
+                    ? const Flexible(flex: 0, child: ConfigPanel())
                     : const SizedBox.shrink(),
               ),
-              const SourcePreviewSidebar(),
+              const Flexible(flex: 0, child: SourcePreviewSidebar()),
             ],
           ),
         ),
@@ -65,162 +65,160 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
         final edgePainter = EdgePainter(ctrl);
         final isConnecting = ctrl.portDragFromNodeId != null;
 
-        return AnimatedBuilder(
-          animation: _transformCtrl,
-          builder: (context, _) => LayoutBuilder(
-            builder: (context, constraints) {
-              return Stack(
-                children: [
-                  // ── 1. Canvas ──
-                  DragTarget<DragNodeData>(
-                    onAcceptWithDetails: (details) {
-                      final box = context.findRenderObject() as RenderBox;
-                      final localPos = box.globalToLocal(details.offset);
-                      final inv = Matrix4.inverted(_transformCtrl.value);
-                      ctrl.addNode(
-                        details.data.type,
-                        MatrixUtils.transformPoint(inv, localPos),
-                        sourceTypeValue: details.data.sourceValue,
-                        sourceTypeId: details.data.sourceTypeId,
-                        sourceTypeName: details.data.sourceName,
-                        name: '',
-                      );
-                    },
-                    builder: (ctx2, _, __) {
-                      return GestureDetector(
-                        onTapDown: isConnecting
-                            ? null
-                            : (d) {
-                                final box =
-                                    ctx2.findRenderObject() as RenderBox;
-                                final lp = box.globalToLocal(d.globalPosition);
-                                final cp = MatrixUtils.transformPoint(
-                                  Matrix4.inverted(_transformCtrl.value),
-                                  lp,
-                                );
-                                final did = edgePainter.hitTestDisconnect(cp);
-                                if (did != null) {
-                                  ctrl.removeEdge(did);
-                                  return;
-                                }
-                                final eid = edgePainter.hitTestEdge(cp);
-                                if (eid != null) {
-                                  ctrl.selectEdge(eid);
-                                  return;
-                                }
-                                ctrl.deselectAll();
-                              },
-                        child: Container(
-                          color: AppColors.bg,
-                          child: InteractiveViewer(
-                            transformationController: _transformCtrl,
-                            minScale: 0.3,
-                            maxScale: 2.0,
-                            constrained: false,
-                            boundaryMargin: const EdgeInsets.all(2000),
-                            panEnabled: !isConnecting,
-                            scaleEnabled: !isConnecting,
-                            child: SizedBox(
-                              width: 3000,
-                              height: 2000,
-                              child: Stack(
-                                children: [
-                                  CustomPaint(
-                                    size: const Size(3000, 2000),
-                                    painter: _GridPainter(),
-                                  ),
-                                  CustomPaint(
-                                    size: const Size(3000, 2000),
-                                    painter: edgePainter,
-                                  ),
-                                  ...ctrl.nodes.map(
-                                    (n) => _CanvasNode(
-                                      key: ValueKey(n.id),
-                                      node: n,
-                                    ),
-                                  ),
-                                ],
+        return Stack(
+          children: [
+            // ── 1. Canvas ──
+            DragTarget<DragNodeData>(
+              onAcceptWithDetails: (details) {
+                final box = context.findRenderObject() as RenderBox;
+                final localPos = box.globalToLocal(details.offset);
+                final inv = Matrix4.inverted(_transformCtrl.value);
+                ctrl.addNode(
+                  details.data.type,
+                  MatrixUtils.transformPoint(inv, localPos),
+                  sourceTypeValue: details.data.sourceValue,
+                  sourceTypeId: details.data.sourceTypeId,
+                  sourceTypeName: details.data.sourceName,
+                  name: '',
+                );
+              },
+              builder: (ctx2, _, __) {
+                return GestureDetector(
+                  onTapDown: isConnecting
+                      ? null
+                      : (d) {
+                          final box = ctx2.findRenderObject() as RenderBox;
+                          final lp = box.globalToLocal(d.globalPosition);
+                          final cp = MatrixUtils.transformPoint(
+                            Matrix4.inverted(_transformCtrl.value),
+                            lp,
+                          );
+                          final did = edgePainter.hitTestDisconnect(cp);
+                          if (did != null) {
+                            ctrl.removeEdge(did);
+                            return;
+                          }
+                          final eid = edgePainter.hitTestEdge(cp);
+                          if (eid != null) {
+                            ctrl.selectEdge(eid);
+                            return;
+                          }
+                          ctrl.deselectAll();
+                        },
+                  child: Container(
+                    color: AppColors.bg,
+                    child: InteractiveViewer(
+                      transformationController: _transformCtrl,
+                      minScale: 0.3,
+                      maxScale: 2.0,
+                      constrained: false,
+                      boundaryMargin: const EdgeInsets.all(2000),
+                      panEnabled: !isConnecting,
+                      scaleEnabled: !isConnecting,
+                      child: SizedBox(
+                        width: 3000,
+                        height: 2000,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CustomPaint(
+                              size: const Size(3000, 2000),
+                              painter: _GridPainter(),
+                            ),
+                            CustomPaint(
+                              size: const Size(3000, 2000),
+                              painter: edgePainter,
+                            ),
+                            ...ctrl.nodes.map(
+                              (n) => _CanvasNode(
+                                key: ValueKey(n.id),
+                                node: n,
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  // ── 2. SCREEN-SPACE PORT OVERLAY (outside InteractiveViewer!) ──
-                  // Port dots rendered at screen coordinates so taps ALWAYS work
-                  ..._buildPortOverlay(ctrl),
-
-                  // ── 3. Connection banner ──
-                  if (isConnecting)
-                    Positioned(
-                      top: 8,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.amber.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: AppColors.amber.withValues(alpha: 0.4),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.cable,
-                                color: AppColors.amber,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Tap green IN port to connect',
-                                style: TextStyle(
-                                  color: AppColors.amber,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              InkWell(
-                                onTap: () => ctrl.cancelPortDrag(),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                      color: AppColors.amber.withValues(alpha: 0.4),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Cancel',
-                                    style: TextStyle(
-                                      color: AppColors.amber,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          ],
                         ),
                       ),
                     ),
-                ],
-              );
-            },
-          ),
+                  ),
+                );
+              },
+            ),
+
+            // ── 2. SCREEN-SPACE PORT OVERLAY ──
+            // Rebuilt only when _transformCtrl changes, NOT the InteractiveViewer
+            AnimatedBuilder(
+              animation: _transformCtrl,
+              builder: (_, __) => Stack(
+                children: _buildPortOverlay(ctrl),
+              ),
+            ),
+
+            // ── 3. Connection banner ──
+            if (isConnecting)
+              Positioned(
+                top: 8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.amber.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.cable,
+                          color: AppColors.amber,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Tap green IN port to connect',
+                          style: TextStyle(
+                            color: AppColors.amber,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        InkWell(
+                          onTap: () => ctrl.cancelPortDrag(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: AppColors.amber.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: AppColors.amber,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
@@ -358,77 +356,223 @@ class _GridPainter extends CustomPainter {
 // CANVAS NODE (Positioned node with drag + port dots)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-class _CanvasNode extends StatelessWidget {
+class _CanvasNode extends StatefulWidget {
   final PipelineNode node;
   const _CanvasNode({super.key, required this.node});
 
   @override
+  State<_CanvasNode> createState() => _CanvasNodeState();
+}
+
+class _CanvasNodeState extends State<_CanvasNode>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseAnim;
+
+  // Track locally because PipelineNode is mutable — old.node and widget.node
+  // are the SAME object after a mutation, so comparing them always returns equal.
+  late NodeConfirmState _lastConfirmState;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastConfirmState = widget.node.confirmState;
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _pulseAnim = Tween<double>(begin: 0.15, end: 0.55).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    );
+    _maybeStartPulse();
+  }
+
+  @override
+  void didUpdateWidget(_CanvasNode old) {
+    super.didUpdateWidget(old);
+    final current = widget.node.confirmState;
+    if (_lastConfirmState != current) {
+      _lastConfirmState = current;
+      _maybeStartPulse();
+    }
+  }
+
+  void _maybeStartPulse() {
+    if (widget.node.confirmState == NodeConfirmState.editing) {
+      if (!_pulseCtrl.isAnimating) _pulseCtrl.repeat(reverse: true);
+    } else {
+      _pulseCtrl.stop();
+      _pulseCtrl.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<PipelineController>();
+    final node = widget.node;
     final isSelected = ctrl.selectedNodeId == node.id;
     final color = node.type.color;
 
-    bool _nodeDragged = false;
+    final isConfirmed = node.confirmState == NodeConfirmState.confirmed;
+    final isEditing = node.confirmState == NodeConfirmState.editing;
+
+    Color staticBorderColor;
+    if (isConfirmed) {
+      staticBorderColor = AppColors.green;
+    } else if (isEditing) {
+      staticBorderColor = AppColors.amber;
+    } else if (isSelected) {
+      staticBorderColor = color;
+    } else {
+      staticBorderColor = AppColors.border2;
+    }
+
+    bool nodeDragged = false;
 
     return Positioned(
       left: node.position.dx,
       top: node.position.dy,
       child: GestureDetector(
-        // Disable node drag when in connection mode
         onPanStart: ctrl.portDragFromNodeId == null
-            ? (_) => _nodeDragged = false
+            ? (_) => nodeDragged = false
             : null,
         onPanUpdate: ctrl.portDragFromNodeId == null
             ? (d) {
-                _nodeDragged = true;
+                nodeDragged = true;
                 ctrl.moveNode(node.id, d.delta);
               }
             : null,
         onPanEnd: ctrl.portDragFromNodeId == null
             ? (_) => Future.delayed(
                 const Duration(milliseconds: 100),
-                () => _nodeDragged = false,
+                () => nodeDragged = false,
               )
             : null,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Main card body — tapping THIS selects the node
-            GestureDetector(
-              onTap: () {
-                if (!_nodeDragged) ctrl.selectNode(node.id);
-              },
-              child: Container(
-                width: node.nodeWidth,
-                decoration: BoxDecoration(
-                  color: node.type == NodeType.join
-                      ? AppColors.surface2
-                      : AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected ? color : AppColors.border2,
-                    width: 1.5,
+        child: AnimatedBuilder(
+          animation: _pulseAnim,
+          builder: (context, child) {
+            final glowAlpha =
+                isEditing ? _pulseAnim.value : (isSelected || isConfirmed ? 0.2 : 0.0);
+            final borderColor = isEditing
+                ? AppColors.amber.withValues(
+                    alpha: 0.5 + _pulseAnim.value * 0.9,
+                  )
+                : staticBorderColor;
+
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    if (!nodeDragged && node.type != NodeType.join) {
+                      ctrl.selectNode(node.id);
+                    }
+                  },
+                  child: Container(
+                    width: node.nodeWidth,
+                    decoration: BoxDecoration(
+                      color: node.type == NodeType.join
+                          ? AppColors.surface2
+                          : AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: borderColor,
+                        width: isConfirmed || isEditing ? 2.0 : 1.5,
+                      ),
+                      boxShadow: glowAlpha > 0
+                          ? [
+                              BoxShadow(
+                                color: staticBorderColor.withValues(
+                                  alpha: glowAlpha,
+                                ),
+                                blurRadius: isEditing
+                                    ? 8 + _pulseAnim.value * 16
+                                    : 12,
+                                spreadRadius: isEditing
+                                    ? _pulseAnim.value * 2
+                                    : 0,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: child!,
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.2),
-                            blurRadius: 12,
-                          ),
-                        ]
-                      : null,
                 ),
-                child: _buildBody(context),
-              ),
-            ),
-            // Port dots are rendered in screen-space overlay (_buildPortOverlay)
-          ],
+                // ── Confirmation badge ──
+                if (isConfirmed)
+                  Positioned(
+                    top: -8,
+                    right: -8,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.green,
+                        border:
+                            Border.all(color: AppColors.surface, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 11,
+                      ),
+                    ),
+                  ),
+                // ── Editing badge (pulses with animation) ──
+                if (isEditing)
+                  Positioned(
+                    top: -8,
+                    right: -8,
+                    child: AnimatedBuilder(
+                      animation: _pulseAnim,
+                      builder: (_, __) => Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.amber.withValues(
+                            alpha: 0.6 + _pulseAnim.value * 0.4,
+                          ),
+                          border: Border.all(
+                            color: AppColors.surface,
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.amber.withValues(
+                                alpha: _pulseAnim.value * 0.6,
+                              ),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.edit_rounded,
+                          color: Colors.white,
+                          size: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+          child: _buildBody(context),
         ),
       ),
     );
   }
 
   Widget _buildBody(BuildContext context) {
+    final node = widget.node;
     switch (node.type) {
       case NodeType.join:
         return JoinNodeBody(node: node);

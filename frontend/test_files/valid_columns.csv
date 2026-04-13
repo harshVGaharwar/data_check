@@ -1,0 +1,4 @@
+customer_id,first_name,last_name,email,phone,city,state,pincode
+1,John,Doe,john.doe@email.com,9876543210,Mumbai,Maharashtra,400001
+2,Jane,Smith,jane.smith@email.com,9123456780,Delhi,Delhi,110001
+3,Raj,Kumar,raj.kumar@email.com,9012345678,Bengaluru,Karnataka,560001

@@ -59,13 +59,15 @@ class _DashboardPageState extends State<DashboardPage> {
         surfaceTintColor: Colors.transparent,
         iconTheme: const IconThemeData(color: AppColors.text),
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/images/HDFC_Bank_Logo.svg.png',
-              height: 36,
-              fit: BoxFit.contain,
+            Flexible(
+              child: Image.asset(
+                'assets/images/HDFC_Bank_Logo.svg.png',
+                height: 36,
+                fit: BoxFit.contain,
+              ),
             ),
-            const SizedBox(height: 12),
             const SizedBox(width: 10),
             // Column(
             //   crossAxisAlignment: CrossAxisAlignment.start,
