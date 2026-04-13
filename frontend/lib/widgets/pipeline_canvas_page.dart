@@ -20,17 +20,28 @@ class PipelineCanvasPage extends StatefulWidget {
   State<PipelineCanvasPage> createState() => _PipelineCanvasPageState();
 }
 
-class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
+class _PipelineCanvasPageState extends State<PipelineCanvasPage>
+    with TickerProviderStateMixin {
   final _transformCtrl = TransformationController();
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseAnim;
 
   @override
   void initState() {
     super.initState();
     // Empty canvas — user drags sources from sidebar
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.25, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
+    _pulseCtrl.dispose();
     _transformCtrl.dispose();
     super.dispose();
   }
@@ -230,11 +241,22 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
     final connecting = ctrl.portDragFromNodeId != null;
     final dots = <Widget>[];
 
+    // Glow hint: confirmed source node + join node on canvas + no outgoing edge yet
+    final hasJoinNode = ctrl.nodes.any((n) => n.type == NodeType.join);
+
     for (final node in ctrl.nodes) {
       // ── OUT port (blue dot, right side) ──
       {
         final sp = MatrixUtils.transformPoint(matrix, node.outPortCenter);
         final isActive = ctrl.portDragFromNodeId == node.id;
+        final alreadyConnected =
+            ctrl.edges.any((e) => e.fromNodeId == node.id);
+        final shouldGlow = !isActive &&
+            hasJoinNode &&
+            node.type.isSource &&
+            node.confirmState == NodeConfirmState.confirmed &&
+            !alreadyConnected;
+
         dots.add(
           Positioned(
             left: sp.dx - 18,
@@ -254,24 +276,56 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage> {
                 height: 36,
                 color: Colors.transparent,
                 child: Center(
-                  child: Container(
-                    width: isActive ? 20 : 14,
-                    height: isActive ? 20 : 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isActive ? AppColors.amber : AppColors.blue,
-                      border: Border.all(color: AppColors.bg, width: 2),
-                      boxShadow: isActive
-                          ? [
-                              BoxShadow(
-                                color: AppColors.amber.withValues(alpha: 0.7),
-                                blurRadius: 12,
-                                spreadRadius: 3,
+                  child: shouldGlow
+                      ? AnimatedBuilder(
+                          animation: _pulseAnim,
+                          builder: (_, __) {
+                            final glow = _pulseAnim.value;
+                            return Container(
+                              width: 14 + glow * 6,
+                              height: 14 + glow * 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.blue,
+                                border: Border.all(
+                                    color: AppColors.bg, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.blue
+                                        .withValues(alpha: glow * 0.8),
+                                    blurRadius: 10 + glow * 10,
+                                    spreadRadius: 2 + glow * 4,
+                                  ),
+                                  BoxShadow(
+                                    color: AppColors.blue
+                                        .withValues(alpha: glow * 0.4),
+                                    blurRadius: 20 + glow * 16,
+                                    spreadRadius: glow * 6,
+                                  ),
+                                ],
                               ),
-                            ]
-                          : null,
-                    ),
-                  ),
+                            );
+                          },
+                        )
+                      : Container(
+                          width: isActive ? 20 : 14,
+                          height: isActive ? 20 : 14,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isActive ? AppColors.amber : AppColors.blue,
+                            border: Border.all(color: AppColors.bg, width: 2),
+                            boxShadow: isActive
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.amber
+                                          .withValues(alpha: 0.7),
+                                      blurRadius: 12,
+                                      spreadRadius: 3,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                        ),
                 ),
               ),
             ),
