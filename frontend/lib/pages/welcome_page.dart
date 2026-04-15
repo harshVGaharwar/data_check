@@ -151,6 +151,15 @@ class WelcomePage extends StatelessWidget {
             subtitle: 'Upload a pre-built pipeline configuration file directly.',
             onTap: onNavigate,
           ),
+          const SizedBox(height: 12),
+          _NavCard(
+            index: 4,
+            icon: Icons.storage_rounded,
+            color: AppColors.violet,
+            title: 'Source Configuration',
+            subtitle: 'Register a new data source in the master list — set source type, ITGRC, name, and DB vault.',
+            onTap: onNavigate,
+          ),
 
           const SizedBox(height: 28),
 

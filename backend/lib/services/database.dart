@@ -409,14 +409,93 @@ class Database {
   ];
 
   // ── Approval List ──
-  final List<String> approvalList = [
-    'Unit Head',
-    'UAT Sign Off',
-    'Marketing',
-    'BCU Head',
-    'CCU Head Approval',
-    'Functional Head Approval',
-    'SMS Whitelisting',
+  final List<Map<String, dynamic>> approvalList = [
+    {
+      'id': 1,
+      'approvalName': 'Unit Head',
+      'createdBy': 'Admin',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 2,
+      'approvalName': 'UAT Sign Off',
+      'createdBy': 'Admin',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 3,
+      'approvalName': 'Marketing',
+      'createdBy': 'Admin',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 4,
+      'approvalName': 'BCU Head',
+      'createdBy': 'Admin',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 5,
+      'approvalName': 'CCU Head Approval',
+      'createdBy': 'Admin',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 6,
+      'approvalName': 'Functional Head Approval',
+      'createdBy': 'Admin',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 7,
+      'approvalName': 'SMS Whitelisting',
+      'createdBy': 'Admin',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+  ];
+
+  // ── Source Master Records ──
+  final List<Map<String, dynamic>> sourceMasterList = [
+    {
+      'id': 1,
+      'name': '',
+      'sourceType': 'ABC',
+      'appName': 'MyApplication',
+      'itgrc': 1,
+      'dbVault': 'VaultDB',
+      'createdBy': 'admin_user',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 2,
+      'name': '',
+      'sourceType': 'ABC',
+      'appName': 'MyApplication',
+      'itgrc': 1,
+      'dbVault': 'VaultDB',
+      'createdBy': 'admin_user',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 3,
+      'name': 'test',
+      'sourceType': 'ABC',
+      'appName': 'MyApplication',
+      'itgrc': 1,
+      'dbVault': 'VaultDB',
+      'createdBy': 'admin_user',
+      'createdOn': '0001-01-01T00:00:00',
+    },
+    {
+      'id': 4,
+      'name': 'test',
+      'sourceType': 'ABC',
+      'appName': 'MyApplication',
+      'itgrc': 1,
+      'dbVault': 'VaultDB',
+      'createdBy': 'admin_user',
+      'createdOn': '0001-01-01T00:00:00',
+    },
   ];
 
   // ── Departments ──

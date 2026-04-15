@@ -13,6 +13,10 @@ class PipelineController extends ChangeNotifier {
   String? selectedNodeId;
   String? selectedEdgeId;
 
+  /// Increments every time clearCanvas() is called.
+  /// Widgets watch this to reset their local animation/state.
+  int canvasVersion = 0;
+
   // ── Sidebar state (same as HTML sidebar dept/template/count) ──
   String sidebarDept = '';
   String sidebarTemplate = '';
@@ -93,7 +97,11 @@ class PipelineController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setSidebarTemplate(String template, {int? sourceCount, int templateId = 0}) {
+  void setSidebarTemplate(
+    String template, {
+    int? sourceCount,
+    int templateId = 0,
+  }) {
     sidebarTemplate = template;
     sidebarTemplateId = templateId;
     requiredSourceCount =
@@ -106,7 +114,14 @@ class PipelineController extends ChangeNotifier {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /// Same as HTML addNode(type, name, x, y)
-  PipelineNode addNode(NodeType type, Offset position, {String? name, String sourceTypeValue = '', int sourceTypeId = 0, String sourceTypeName = ''}) {
+  PipelineNode addNode(
+    NodeType type,
+    Offset position, {
+    String? name,
+    String sourceTypeValue = '',
+    int sourceTypeId = 0,
+    String sourceTypeName = '',
+  }) {
     // If name is explicitly provided (even empty string), use it; otherwise fall back to type.label
     final resolvedName = name ?? type.label;
     final node = PipelineNode(
@@ -146,6 +161,12 @@ class PipelineController extends ChangeNotifier {
     selectedNodeId = null;
     selectedEdgeId = null;
     _nodeIdSeq = 0;
+    sidebarDept = '';
+    sidebarTemplate = '';
+    sidebarTemplateId = 0;
+    sidebarDeptId = '';
+    requiredSourceCount = 0;
+    canvasVersion++;
     notifyListeners();
   }
 
@@ -189,8 +210,12 @@ class PipelineController extends ChangeNotifier {
       return;
     }
 
-    edges.add(PipelineEdge(id: _nextEdgeId(), fromNodeId: fromId, toNodeId: toId));
-    debugPrint('EDGE ADDED: from=$fromId to=$toId | total edges=${edges.length}');
+    edges.add(
+      PipelineEdge(id: _nextEdgeId(), fromNodeId: fromId, toNodeId: toId),
+    );
+    debugPrint(
+      'EDGE ADDED: from=$fromId to=$toId | total edges=${edges.length}',
+    );
 
     final target = findNode(toId);
     if (target != null && target.type == NodeType.join) {
@@ -259,7 +284,8 @@ class PipelineController extends ChangeNotifier {
   }
 
   void endPortDrag(String? targetNodeId) {
-    if (portDragFromNodeId != null && targetNodeId != null &&
+    if (portDragFromNodeId != null &&
+        targetNodeId != null &&
         portDragFromNodeId != targetNodeId) {
       addEdge(portDragFromNodeId!, targetNodeId);
     }
@@ -358,7 +384,9 @@ class PipelineController extends ChangeNotifier {
     // ── 1. Apply Filters (WHERE) ──
     final validFilters = outNode.filters.where((f) => f.isValid).toList();
     if (validFilters.isNotEmpty) {
-      rows = rows.where((row) => validFilters.every((f) => f.matches(row))).toList();
+      rows = rows
+          .where((row) => validFilters.every((f) => f.matches(row)))
+          .toList();
     }
 
     // ── 2. Apply Sorting (ORDER BY) ──
@@ -385,11 +413,15 @@ class PipelineController extends ChangeNotifier {
     }
 
     // ── 3. Select columns ──
-    final selectedCols = outNode.outputSelectedCols.where((c) => allCols.contains(c)).toList();
+    final selectedCols = outNode.outputSelectedCols
+        .where((c) => allCols.contains(c))
+        .toList();
     final finalCols = selectedCols.isNotEmpty ? selectedCols : allCols;
 
     // ── 4. Apply aliases ──
-    final displayCols = finalCols.map((c) => outNode.columnAliases[c] ?? c).toList();
+    final displayCols = finalCols
+        .map((c) => outNode.columnAliases[c] ?? c)
+        .toList();
 
     // Rebuild rows with only selected cols (using alias as key)
     final finalRows = rows.map((r) {
@@ -400,7 +432,12 @@ class PipelineController extends ChangeNotifier {
       return nr;
     }).toList();
 
-    return {'cols': displayCols, 'rows': finalRows, 'allCols': allCols, 'totalBeforeFilter': rows.length};
+    return {
+      'cols': displayCols,
+      'rows': finalRows,
+      'allCols': allCols,
+      'totalBeforeFilter': rows.length,
+    };
   }
 
   /// Diagnose why output has no result (for status messages)
@@ -413,7 +450,9 @@ class PipelineController extends ChangeNotifier {
 
     if (fromNode.type == NodeType.join) {
       // Check connected sources via edges
-      final joinInEdges = edges.where((e) => e.toNodeId == fromNode.id).toList();
+      final joinInEdges = edges
+          .where((e) => e.toNodeId == fromNode.id)
+          .toList();
       if (joinInEdges.length < 2) return 'Connect at least 2 sources to JOIN';
 
       // Check if mappings exist
@@ -425,17 +464,20 @@ class PipelineController extends ChangeNotifier {
       final leftNode = findNode(firstMap.leftSourceId);
       final rightNode = findNode(firstMap.rightSourceId);
 
-      if (leftNode == null || rightNode == null) return 'Mapping sources are not connected';
+      if (leftNode == null || rightNode == null)
+        return 'Mapping sources are not connected';
 
       if (leftNode.rows.isEmpty && rightNode.rows.isEmpty) {
         return 'Upload data rows in both sources (CSV with header + data)';
       }
       if (leftNode.rows.isEmpty) return 'Upload data rows in ${leftNode.name}';
-      if (rightNode.rows.isEmpty) return 'Upload data rows in ${rightNode.name}';
+      if (rightNode.rows.isEmpty)
+        return 'Upload data rows in ${rightNode.name}';
 
       // Try executing join
       final result = getNodeRows(fromNode.id);
-      if (result == null || result.isEmpty) return 'No matching rows — check column mapping';
+      if (result == null || result.isEmpty)
+        return 'No matching rows — check column mapping';
 
       return null; // should not reach here if getOutputResult works
     }
@@ -457,7 +499,7 @@ class PipelineController extends ChangeNotifier {
     final count = sources.length;
     const srcX = 60.0;
     const joinX = 320.0;
-    const outX = 720.0;
+    // const outX = 720.0;
     const startY = 60.0;
     final gapY = min(180.0, 500.0 / max(count, 1));
 
@@ -505,7 +547,8 @@ class PipelineController extends ChangeNotifier {
     if (sources.isNotEmpty) {
       sidebarDept = sources[0]['department'] ?? 'Finance';
       sidebarTemplate = sources[0]['template'] ?? '';
-      requiredSourceCount = PipelineConfig.templateSourceCount[sidebarTemplate] ?? count;
+      requiredSourceCount =
+          PipelineConfig.templateSourceCount[sidebarTemplate] ?? count;
     }
 
     notifyListeners();
@@ -519,7 +562,8 @@ class PipelineController extends ChangeNotifier {
     for (final node in nodes) {
       if (!node.type.isSource) continue;
       // Try name-based first (for initFromSources), then type-based (for sidebar drag)
-      final demo = PipelineConfig.demoData[node.name] ?? demoDataByType[node.type];
+      final demo =
+          PipelineConfig.demoData[node.name] ?? demoDataByType[node.type];
       if (demo != null && node.rows.isEmpty) {
         node.cols = List<String>.from(demo.cols);
         node.selectedCols = List<String>.from(demo.cols);
@@ -535,8 +579,13 @@ class PipelineController extends ChangeNotifier {
 
   void updateSingleSource(Map<String, dynamic> srcJson) {
     final node = nodes.firstWhere(
-          (n) => n.sourceId == srcJson['id'] && n.type.isSource,
-      orElse: () => PipelineNode(id: '', type: NodeType.db, name: '', position: Offset.zero),
+      (n) => n.sourceId == srcJson['id'] && n.type.isSource,
+      orElse: () => PipelineNode(
+        id: '',
+        type: NodeType.db,
+        name: '',
+        position: Offset.zero,
+      ),
     );
     if (node.id.isEmpty) return;
 
@@ -545,7 +594,8 @@ class PipelineController extends ChangeNotifier {
       node.name = srcJson['name'];
       changed = true;
     }
-    if (srcJson['department'] != null && srcJson['department'] != node.department) {
+    if (srcJson['department'] != null &&
+        srcJson['department'] != node.department) {
       node.department = srcJson['department'];
       changed = true;
     }
@@ -575,7 +625,19 @@ class PipelineController extends ChangeNotifier {
     }
   }
 
-  void updateNodeSourceType(String nodeId, String sourceTypeValue, {int sourceTypeId = 0}) {
+  void updateNodeSeparator(String nodeId, String separator) {
+    final node = findNode(nodeId);
+    if (node != null) {
+      node.separator = separator;
+      notifyListeners();
+    }
+  }
+
+  void updateNodeSourceType(
+    String nodeId,
+    String sourceTypeValue, {
+    int sourceTypeId = 0,
+  }) {
     final node = findNode(nodeId);
     if (node != null) {
       node.sourceTypeValue = sourceTypeValue;
@@ -585,11 +647,17 @@ class PipelineController extends ChangeNotifier {
   }
 
   // ── Set columns from file (same as HTML handleColFile) ──
-  void setNodeColumns(String nodeId, List<String> cols, List<Map<String, dynamic>> rows, String fileName, {List<int>? bytes}) {
+  void setNodeColumns(
+    String nodeId,
+    List<String> cols,
+    List<Map<String, dynamic>> rows,
+    String fileName, {
+    List<int>? bytes,
+  }) {
     final node = findNode(nodeId);
     if (node == null) return;
     node.cols = cols;
-    node.selectedCols = List<String>.from(cols);
+    node.selectedCols = [];
     node.rows = rows;
     node.fileName = fileName;
     node.columnFileBytes = bytes;
@@ -658,7 +726,13 @@ class PipelineController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateOutputFilter(String nodeId, int idx, {String? column, String? operator, String? value}) {
+  void updateOutputFilter(
+    String nodeId,
+    int idx, {
+    String? column,
+    String? operator,
+    String? value,
+  }) {
     final node = findNode(nodeId);
     if (node == null || idx >= node.filters.length) return;
     if (column != null) node.filters[idx].column = column;
@@ -682,7 +756,12 @@ class PipelineController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateOutputSort(String nodeId, int idx, {String? column, bool? ascending}) {
+  void updateOutputSort(
+    String nodeId,
+    int idx, {
+    String? column,
+    bool? ascending,
+  }) {
     final node = findNode(nodeId);
     if (node == null || idx >= node.sortRules.length) return;
     if (column != null) node.sortRules[idx].column = column;

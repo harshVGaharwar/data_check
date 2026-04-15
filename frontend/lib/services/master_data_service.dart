@@ -98,4 +98,46 @@ class MasterDataService {
     }
     return [];
   }
+
+  /// Fetch source master list from API (/template/GetSourceMasterList)
+  Future<List<SourceMasterItem>> getSourceMasterList() async {
+    try {
+      final data = await _api.getRawData(ApiConfig.sourceMasterListEndpoint);
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(SourceMasterItem.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getSourceMasterList error: $e');
+    }
+    return [];
+  }
+
+  /// Add a new source master record
+  Future<({bool success, String message})> addSourceMaster({
+    required String sourceType,
+    required String appName,
+    required int itgrc,
+    required String name,
+    required String dbVault,
+    required String createdBy,
+  }) async {
+    try {
+      final body = {
+        'sourceType': sourceType,
+        'AppName': appName,
+        'ITGRC': itgrc,
+        'Name': name,
+        'DBVault': dbVault,
+        'Createdby': createdBy,
+      };
+      final res = await _api.post(ApiConfig.addSourceMasterEndpoint, body);
+      return (success: res.success, message: res.message);
+    } catch (e) {
+      debugPrint('[MasterData] addSourceMaster error: $e');
+      return (success: false, message: 'Network error. Please try again.');
+    }
+  }
 }

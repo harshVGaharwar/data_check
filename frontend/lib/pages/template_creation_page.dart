@@ -35,12 +35,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
   List<DepartmentItem> _departments = [];
   bool _deptLoading = true;
-  final List<ApprovalItem> _approvalOptions = const [
-    ApprovalItem(name: 'Unit Head'),
-    ApprovalItem(name: 'Manager'),
-    ApprovalItem(name: 'UAT Sign Off'),
-  ];
-  final bool _approvalLoading = false;
+  List<ApprovalItem> _approvalOptions = [];
+  bool _approvalLoading = true;
+  List<SourceMasterItem> _sourceMasterList = [];
+  bool _sourceMasterLoading = true;
   static const _frequencies = [
     'Daily',
     'Weekly',
@@ -91,11 +89,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       end: 12,
     ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeCtrl);
     _loadDepartments();
+    _loadApprovals();
+    _loadSourceMasterList();
   }
 
-  void _loadDepartments() async {
-    // Wait for auth to finish restoring the session so the token is set before
-    // the API call goes out (matters on page reload).
+  Future<void> _waitForAuth() async {
     final auth = context.read<AuthProvider>();
     if (!auth.initialized) {
       await Future.doWhile(() async {
@@ -103,6 +101,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
         return mounted && !context.read<AuthProvider>().initialized;
       });
     }
+  }
+
+  void _loadDepartments() async {
+    await _waitForAuth();
     if (!mounted) return;
     final service = context.read<MasterDataService>();
     final depts = await service.getDepartments();
@@ -110,6 +112,32 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       setState(() {
         _departments = depts;
         _deptLoading = false;
+      });
+    }
+  }
+
+  void _loadApprovals() async {
+    await _waitForAuth();
+    if (!mounted) return;
+    final service = context.read<MasterDataService>();
+    final approvals = await service.getApprovalList();
+    if (mounted) {
+      setState(() {
+        _approvalOptions = approvals;
+        _approvalLoading = false;
+      });
+    }
+  }
+
+  void _loadSourceMasterList() async {
+    await _waitForAuth();
+    if (!mounted) return;
+    final service = context.read<MasterDataService>();
+    final list = await service.getSourceMasterList();
+    if (mounted) {
+      setState(() {
+        _sourceMasterList = list;
+        _sourceMasterLoading = false;
       });
     }
   }
@@ -216,6 +244,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     _approvalFiles.clear();
     _approvalFileBytes.clear();
     setState(() => _submitted = false);
+    // sourceList is cleared via _model.reset()
   }
 
   @override
@@ -301,11 +330,24 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                             : _dd(
                                 'Department *',
                                 _departments.map((d) => d.name).toList(),
-                                _departments.where((d) => d.id.toString() == _model.department).firstOrNull?.name ?? '',
+                                _departments
+                                        .where(
+                                          (d) =>
+                                              d.id.toString() ==
+                                              _model.department,
+                                        )
+                                        .firstOrNull
+                                        ?.name ??
+                                    '',
                                 (v) {
                                   if (v == null) return;
-                                  final dept = _departments.firstWhere((d) => d.name == v);
-                                  setState(() => _model.department = dept.id.toString());
+                                  final dept = _departments.firstWhere(
+                                    (d) => d.name == v,
+                                  );
+                                  setState(
+                                    () =>
+                                        _model.department = dept.id.toString(),
+                                  );
                                 },
                               ),
                         _dd(
@@ -338,6 +380,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                 _model.sourceCount = int.tryParse(v ?? '') ?? 0,
                           ),
                         ),
+                        _sourceMasterMultiSelect(),
                         _dd(
                           'Number of Outputs *',
                           _numOutputOptions,
@@ -354,15 +397,15 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                 : 0,
                           ),
                         ),
+                      ]),
+                      const SizedBox(height: 10),
+                      _row([
                         _dd(
                           'Benefit Type',
                           _benefitTypes,
                           _model.benefitType,
                           (v) => setState(() => _model.benefitType = v ?? ''),
                         ),
-                      ]),
-                      const SizedBox(height: 10),
-                      _row([
                         _tf(
                           'Benefit Amount (₹)',
                           _benefitAmtCtrl,
@@ -370,26 +413,25 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           num: true,
                         ),
                         _tf('Benefit in TAT', _tatCtrl, 'e.g. 2 hours'),
+                      ]),
+                      const SizedBox(height: 10),
+                      _row([
                         _dp(
                           'Go Live Date',
                           _model.goLiveDate,
                           (v) => setState(() => _model.goLiveDate = v),
                         ),
-                      ]),
-                      const SizedBox(height: 10),
-                      _row([
                         _dp(
                           'Deactivate Date',
                           _model.deactivateDate,
                           (v) => setState(() => _model.deactivateDate = v),
                         ),
                         _tf('SPOC Person *', _spocCtrl, 'Enter name'),
-                        _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
                       ]),
                       const SizedBox(height: 10),
                       _row([
+                        _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
                         _tf('Unit Head', _unitHeadCtrl, 'Enter name'),
-                        const SizedBox(),
                         const SizedBox(),
                       ]),
                     ],
@@ -434,7 +476,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
                                 color: sel
-                                    ? const Color(0xFF004C8F).withValues(alpha: 0.08)
+                                    ? const Color(
+                                        0xFF004C8F,
+                                      ).withValues(alpha: 0.08)
                                     : AppColors.surface2,
                                 border: Border.all(
                                   color: sel
@@ -704,7 +748,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                          color: AppColors.red.withValues(alpha: 0.3),
+                                          color: AppColors.red.withValues(
+                                            alpha: 0.3,
+                                          ),
                                         ),
                                       ),
                                       child: const Icon(
@@ -1071,6 +1117,261 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  // ── Source Type multi-select dropdown ──
+  Widget _sourceMasterMultiSelect() {
+    final selectedIds = _model.sourceList.map((m) => m['id'] as int).toSet();
+    final hasError = _submitted && _model.sourceList.isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Source Type *', style: AppTextStyles.fieldLabel),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: _sourceMasterLoading
+              ? null
+              : () async {
+                  // Local copy for dialog state
+                  final tempSelected = Set<int>.from(selectedIds);
+                  await showDialog(
+                    context: context,
+                    builder: (ctx) => StatefulBuilder(
+                      builder: (ctx, setDialogState) => AlertDialog(
+                        backgroundColor: AppColors.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        title: const Row(
+                          children: [
+                            Icon(
+                              Icons.source_rounded,
+                              size: 18,
+                              color: Color(0xFF004C8F),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Select Source Type',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text,
+                              ),
+                            ),
+                          ],
+                        ),
+                        content: SizedBox(
+                          width: 360,
+                          child: _sourceMasterList.isEmpty
+                              ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Text(
+                                    'No source types available.',
+                                    style: TextStyle(
+                                      color: AppColors.textDim,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                )
+                              : ListView.separated(
+                                  shrinkWrap: true,
+                                  itemCount: _sourceMasterList.length,
+                                  separatorBuilder: (_, __) => const Divider(
+                                    height: 1,
+                                    color: AppColors.border,
+                                  ),
+                                  itemBuilder: (_, i) {
+                                    final item = _sourceMasterList[i];
+                                    final sel = tempSelected.contains(item.id);
+                                    return InkWell(
+                                      onTap: () => setDialogState(() {
+                                        if (sel) {
+                                          tempSelected.remove(item.id);
+                                        } else {
+                                          tempSelected.add(item.id);
+                                        }
+                                      }),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              sel
+                                                  ? Icons.check_box_rounded
+                                                  : Icons
+                                                        .check_box_outline_blank_rounded,
+                                              size: 20,
+                                              color: sel
+                                                  ? const Color(0xFF004C8F)
+                                                  : AppColors.textDim,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    item.displayName,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: sel
+                                                          ? FontWeight.w600
+                                                          : FontWeight.w400,
+                                                      color: sel
+                                                          ? const Color(
+                                                              0xFF004C8F,
+                                                            )
+                                                          : AppColors.text,
+                                                    ),
+                                                  ),
+                                                  if (item.appName.isNotEmpty)
+                                                    Text(
+                                                      item.appName,
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        color:
+                                                            AppColors.textDim,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: AppColors.textDim),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _model.sourceList = _sourceMasterList
+                                    .where((s) => tempSelected.contains(s.id))
+                                    .map((s) => s.toJson())
+                                    .toList();
+                              });
+                              Navigator.of(ctx).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF004C8F),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text('Done'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 36),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: hasError ? AppColors.red : AppColors.border,
+                width: hasError ? 1.5 : 1,
+              ),
+              color: AppColors.surface2,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _sourceMasterLoading
+                      ? const Row(
+                          children: [
+                            SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.textDim,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Loading...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        )
+                      : _model.sourceList.isEmpty
+                      ? const Text(
+                          'Select',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        )
+                      : Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: _model.sourceList.map((m) {
+                            final name = (m['name'] as String? ?? '').trim();
+                            final type = m['sourceType'] as String? ?? '';
+                            final label = name.isNotEmpty ? name : type;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                color: const Color(
+                                  0xFF004C8F,
+                                ).withValues(alpha: 0.1),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF004C8F,
+                                  ).withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Text(
+                                label,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF004C8F),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 18,
+                  color: AppColors.textDim,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (hasError) _err('Source Type is required'),
       ],
     );
   }

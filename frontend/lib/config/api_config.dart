@@ -22,13 +22,15 @@ class ApiConfig {
 
   // Master Data
   static const String departmentsEndpoint = '/master/departments';
-  static const String approvalListEndpoint = '/master/approval-list';
+  static const String approvalListEndpoint = '/template/GetApprovalList';
   static const String templatesEndpoint = '/master/templates';
   static const String sourceTypeEndpoint = '/master/source-type';
   static const String operationsEndpoint = '/master/operations';
 
   // Source Configuration
   static const String saveSourceConfigEndpoint = '/pipeline/save-sources';
+  static const String addSourceMasterEndpoint = '/templateAddSourceMasterList';
+  static const String sourceMasterListEndpoint = '/template/GetSourceMasterList';
 
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 30);

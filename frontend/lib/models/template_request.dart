@@ -59,6 +59,9 @@ class TemplateRequest {
   Map<String, String> approvalFiles;
   // Actual file bytes handled separately in multipart upload
 
+  /// Selected source master items (from /template/GetSourceMasterList)
+  List<Map<String, dynamic>> sourceList;
+
   TemplateRequest({
     this.templateName = '',
     this.department = '',
@@ -79,9 +82,11 @@ class TemplateRequest {
     List<String>? outputFormats,
     List<String>? approvals,
     Map<String, String>? approvalFiles,
+    List<Map<String, dynamic>>? sourceList,
   }) : outputFormats = outputFormats ?? [],
        approvals = approvals ?? [],
-       approvalFiles = approvalFiles ?? {};
+       approvalFiles = approvalFiles ?? {},
+       sourceList = sourceList ?? [];
 
   Map<String, dynamic> toJson() => {
     'Template': [
@@ -102,6 +107,7 @@ class TemplateRequest {
         'SpocManager': spocManager,
         'UnitHead': unitHead,
         'Priority': priority,
+        'SourceList': sourceList.map((m) => m['id']).join(','),
       },
     ],
     'OutputFormats': outputFormats
@@ -124,7 +130,8 @@ class TemplateRequest {
       frequency.isNotEmpty &&
       spocPerson.isNotEmpty &&
       sourceCount > 0 &&
-      numberOfOutputs > 0;
+      numberOfOutputs > 0 &&
+      sourceList.isNotEmpty;
 
   bool get isOutputFormatValid => outputFormats.isNotEmpty;
 
@@ -158,5 +165,6 @@ class TemplateRequest {
     outputFormats = [];
     approvals = [];
     approvalFiles = {};
+    sourceList = [];
   }
 }

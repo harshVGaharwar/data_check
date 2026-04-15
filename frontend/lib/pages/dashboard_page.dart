@@ -7,6 +7,7 @@ import 'welcome_page.dart';
 import 'template_creation_page.dart';
 import 'template_configuration_page.dart';
 import 'configuration_upload_page.dart';
+import 'source_configuration_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -25,6 +26,7 @@ class _DashboardPageState extends State<DashboardPage> {
     'Template Creation',
     'Template Configuration',
     'Configuration Upload',
+    'Source Configuration',
   ];
 
   final _icons = const [
@@ -32,6 +34,7 @@ class _DashboardPageState extends State<DashboardPage> {
     Icons.add_circle_outline,
     Icons.settings_applications_outlined,
     Icons.cloud_upload_outlined,
+    Icons.storage_rounded,
   ];
 
   @override
@@ -42,6 +45,7 @@ class _DashboardPageState extends State<DashboardPage> {
       const TemplateCreationPage(),
       const TemplateConfigurationPage(),
       const ConfigurationUploadPage(),
+      const SourceConfigurationPage(),
     ];
     _restorePageIndex();
   }
@@ -245,11 +249,10 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
             onTap: () async {
-              Navigator.of(context).pop();
+              final nav = Navigator.of(context);
+              nav.pop();
               await context.read<AuthProvider>().logout();
-              if (context.mounted) {
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
+              nav.pushReplacementNamed('/login');
             },
           ),
           const SizedBox(height: 8),

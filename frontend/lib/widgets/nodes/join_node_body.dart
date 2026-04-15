@@ -7,6 +7,7 @@ import '../../models/pipeline_config.dart';
 import '../../controllers/pipeline_controller.dart';
 import '../../providers/pipeline_master_provider.dart';
 import '../../services/pipeline_service.dart';
+import '../mapping_preview_dialog.dart';
 
 class JoinNodeBody extends StatelessWidget {
   final PipelineNode node;
@@ -37,7 +38,9 @@ class JoinNodeBody extends StatelessWidget {
             color: AppColors.violet.withValues(alpha: 0.12),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
             border: Border(
-              bottom: BorderSide(color: AppColors.violet.withValues(alpha: 0.2)),
+              bottom: BorderSide(
+                color: AppColors.violet.withValues(alpha: 0.2),
+              ),
             ),
           ),
           child: Row(
@@ -236,7 +239,9 @@ class JoinNodeBody extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                                 color: AppColors.violet.withValues(alpha: 0.15),
                                 border: Border.all(
-                                  color: AppColors.violet.withValues(alpha: 0.3),
+                                  color: AppColors.violet.withValues(
+                                    alpha: 0.3,
+                                  ),
                                 ),
                               ),
                               child: Text(
@@ -388,7 +393,6 @@ class JoinNodeBody extends StatelessWidget {
     PipelineNode node,
   ) async {
     final master = Provider.of<PipelineMasterProvider>(context, listen: false);
-    final validMappings = node.mappings.where((m) => m.isValid).toList();
 
     // ── Validate: all required source nodes must be connected ──
     final inEdges = ctrl.edges.where((e) => e.toNodeId == node.id).toList();
@@ -466,11 +470,7 @@ class JoinNodeBody extends StatelessWidget {
       return;
     }
 
-    final templateId = ctrl.sidebarTemplateId;
-    final deptId = ctrl.sidebarDeptId;
-    final templateName = ctrl.sidebarTemplate;
-
-    // ── 1. Sources (only those connected to a join node via edges) ──
+    // ── Build sourceNodes early (needed for preview dialog) ──
     final connectedSourceIds = ctrl.edges
         .where(
           (e) => ctrl.nodes.any(
@@ -482,6 +482,22 @@ class JoinNodeBody extends StatelessWidget {
     final sourceNodes = ctrl.nodes
         .where((n) => n.type.isSource && connectedSourceIds.contains(n.id))
         .toList();
+
+    // ── Show preview dialog — only proceed if user confirms ──
+    final confirmed = await showMappingPreview(
+      context,
+      ctrl: ctrl,
+      sourceNodes: sourceNodes,
+    );
+    if (confirmed != true) return;
+
+    if (!context.mounted) return;
+
+    final templateId = ctrl.sidebarTemplateId;
+    final deptId = ctrl.sidebarDeptId;
+    final templateName = ctrl.sidebarTemplate;
+
+    // ── 1. Sources (only those connected to a join node via edges) ──
     final sources = sourceNodes.asMap().entries.map((entry) {
       final s = entry.value;
       return {
@@ -555,6 +571,25 @@ class JoinNodeBody extends StatelessWidget {
       }
     }
 
+    // ── 5. Output Columns (source col → user-defined output col name) ──
+    final deptIdInt = int.tryParse(deptId) ?? 0;
+    final outputColumns = <Map<String, dynamic>>[];
+    for (final s in sourceNodes) {
+      for (final col in s.selectedCols) {
+        final outputName = (s.columnAliases[col] ?? '').isNotEmpty
+            ? s.columnAliases[col]!
+            : col;
+        outputColumns.add({
+          'template_id': templateId,
+          'department': deptIdInt,
+          'sourceid': s.sourceId ?? 0,
+          'sourceName': s.name,
+          'SourceColName': col,
+          'ColumnName': outputName,
+        });
+      }
+    }
+
     // ── Full payload ──
     final payload = {
       'TemplateId': templateId,
@@ -562,6 +597,7 @@ class JoinNodeBody extends StatelessWidget {
       'JoinMappings': joinMappings,
       'Edges': edgeList,
       'connectedSources': connectedSourcesData,
+      'output_columns': outputColumns,
     };
 
     // ── Collect file entries (column files + query files) ──
@@ -663,7 +699,10 @@ class JoinNodeBody extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               InkWell(
-                onTap: () => Navigator.of(ctx).pop(),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  ctrl.clearCanvas();
+                },
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 10),
@@ -814,12 +853,6 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
     if (sourceId == null) return [];
     final src = widget.connectedSources.where((s) => s.id == sourceId).toList();
     return src.isNotEmpty ? src.first.cols : [];
-  }
-
-  String _nameFor(String? sourceId) {
-    if (sourceId == null) return '?';
-    final src = widget.connectedSources.where((s) => s.id == sourceId).toList();
-    return src.isNotEmpty ? src.first.name : '?';
   }
 
   @override
@@ -1035,7 +1068,9 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(7),
                 color: AppColors.violet.withValues(alpha: 0.15),
-                border: Border.all(color: AppColors.violet.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.violet.withValues(alpha: 0.3),
+                ),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,

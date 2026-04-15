@@ -36,6 +36,8 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
   late final Animation<double> _sourceCountAnim;
   late final Animation<double> _sourceTypeAnim;
 
+  int _lastCanvasVersion = 0;
+
   @override
   void initState() {
     super.initState();
@@ -132,8 +134,38 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     });
   }
 
+  void _resetAnimations() {
+    // Stop every pulse and reset to zero
+    for (final c in [
+      _templatePulse,
+      _sourceCountPulse,
+      _sourceTypePulse,
+    ]) {
+      c.stop();
+      c.value = 0;
+    }
+    // Restart only dept pulse — user must pick dept again
+    if (!_deptPulse.isAnimating) {
+      _deptPulse.repeat(reverse: true);
+    }
+    setState(() {
+      _templates = [];
+      _templateLoading = false;
+      _sourceCountError = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Detect canvas clear and reset sidebar animations/state
+    final ctrl = context.watch<PipelineController>();
+    if (ctrl.canvasVersion != _lastCanvasVersion) {
+      _lastCanvasVersion = ctrl.canvasVersion;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _resetAnimations();
+      });
+    }
+
     return Container(
       width: 220,
       color: AppColors.surface,
@@ -365,7 +397,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'SSOURCE TYPES',
+                            'SOURCE TYPE',
                             style: AppTextStyles.sectionLabel,
                           ),
                           const SizedBox(height: 6),

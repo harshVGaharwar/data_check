@@ -7,8 +7,11 @@ import 'package:dart_frog/dart_frog.dart';
 
 
 import '../routes/index.dart' as index;
+import '../routes/api/v1/templateAddSourceMasterList.dart' as api_v1_template_add_source_master_list;
 import '../routes/api/v1/templates/index.dart' as api_v1_templates_index;
 import '../routes/api/v1/templates/[id].dart' as api_v1_templates_$id;
+import '../routes/api/v1/template/GetSourceMasterList.dart' as api_v1_template_get_source_master_list;
+import '../routes/api/v1/template/GetApprovalList.dart' as api_v1_template_get_approval_list;
 import '../routes/api/v1/pipeline/submit-mapping.dart' as api_v1_pipeline_submit_mapping;
 import '../routes/api/v1/pipeline/save-sources.dart' as api_v1_pipeline_save_sources;
 import '../routes/api/v1/master/templates.dart' as api_v1_master_templates;
@@ -36,7 +39,9 @@ Handler buildRootHandler() {
   final pipeline = const Pipeline().addMiddleware(middleware.middleware);
   final router = Router()
     ..mount('/', (context) => buildHandler()(context))
+    ..mount('/api/v1', (context) => buildApiV1Handler()(context))
     ..mount('/api/v1/templates', (context) => buildApiV1TemplatesHandler()(context))
+    ..mount('/api/v1/template', (context) => buildApiV1TemplateHandler()(context))
     ..mount('/api/v1/pipeline', (context) => buildApiV1PipelineHandler()(context))
     ..mount('/api/v1/master', (context) => buildApiV1MasterHandler()(context))
     ..mount('/api/v1/auth', (context) => buildApiV1AuthHandler()(context));
@@ -50,10 +55,24 @@ Handler buildHandler() {
   return pipeline.addHandler(router);
 }
 
+Handler buildApiV1Handler() {
+  final pipeline = const Pipeline();
+  final router = Router()
+    ..all('/templateAddSourceMasterList', (context) => api_v1_template_add_source_master_list.onRequest(context,));
+  return pipeline.addHandler(router);
+}
+
 Handler buildApiV1TemplatesHandler() {
   final pipeline = const Pipeline();
   final router = Router()
     ..all('/<id>', (context,id,) => api_v1_templates_$id.onRequest(context,id,))..all('/', (context) => api_v1_templates_index.onRequest(context,));
+  return pipeline.addHandler(router);
+}
+
+Handler buildApiV1TemplateHandler() {
+  final pipeline = const Pipeline();
+  final router = Router()
+    ..all('/GetApprovalList', (context) => api_v1_template_get_approval_list.onRequest(context,))..all('/GetSourceMasterList', (context) => api_v1_template_get_source_master_list.onRequest(context,));
   return pipeline.addHandler(router);
 }
 

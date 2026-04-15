@@ -1,10 +1,10 @@
-import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../models/pipeline_models.dart';
 import '../controllers/pipeline_controller.dart';
-import '../services/pipeline_service.dart';
+
 
 class SourcePreviewSidebar extends StatelessWidget {
   const SourcePreviewSidebar({super.key});
@@ -90,71 +90,71 @@ class SourcePreviewSidebar extends StatelessWidget {
     // queryFileName is optional for manual type
   }
 
-  void _saveSourceConfig(BuildContext context, PipelineController ctrl, List<PipelineNode> sources) async {
-    final payload = {
-      'sources': sources.map((s) => {
-        'sourceId': s.id,
-        'sourceName': s.name,
-        'sourceType': s.type.name,
-        'separator': s.separator,
-        'columnFile': s.fileName,
-        'queryFile': s.queryFileName,
-        'columns': s.cols,
-        'selectedColumns': s.selectedCols,
-      }).toList(),
-    };
+  // void _saveSourceConfig(BuildContext context, PipelineController ctrl, List<PipelineNode> sources) async {
+  //   final payload = {
+  //     'sources': sources.map((s) => {
+  //       'sourceId': s.id,
+  //       'sourceName': s.name,
+  //       'sourceType': s.type.name,
+  //       'separator': s.separator,
+  //       'columnFile': s.fileName,
+  //       'queryFile': s.queryFileName,
+  //       'columns': s.cols,
+  //       'selectedColumns': s.selectedCols,
+  //     }).toList(),
+  //   };
 
-    debugPrint('[SAVE SOURCE CONFIG]\n${const JsonEncoder.withIndent('  ').convert(payload)}');
+  //   debugPrint('[SAVE SOURCE CONFIG]\n${const JsonEncoder.withIndent('  ').convert(payload)}');
 
-    // Show loader
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF004C8F))));
+  //   // Show loader
+  //   showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF004C8F))));
 
-    // Call API
-    try {
-      final service = context.read<PipelineService>();
-      await service.saveSourceConfig(payload);
-    } catch (_) {
-      debugPrint('[SAVE SOURCE CONFIG] API not available — dev mode');
-    }
+  //   // Call API
+  //   try {
+  //     final service = context.read<PipelineService>();
+  //     await service.saveSourceConfig(payload);
+  //   } catch (_) {
+  //     debugPrint('[SAVE SOURCE CONFIG] API not available — dev mode');
+  //   }
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (context.mounted) Navigator.of(context).pop();
+  //   await Future.delayed(const Duration(milliseconds: 500));
+  //   if (context.mounted) Navigator.of(context).pop();
 
-    // Success dialog
-    if (context.mounted) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 56, height: 56,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.green.withValues(alpha: 0.1)),
-                child: const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 36),
-              ),
-              const SizedBox(height: 14),
-              const Text('Sources Saved!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.text)),
-              const SizedBox(height: 6),
-              Text('${sources.length} source configuration(s) saved successfully.',
-                  textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textDim)),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity, height: 38,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF004C8F), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                  child: const Text('OK', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
+  //   // Success dialog
+  //   if (context.mounted) {
+  //     showDialog(
+  //       context: context,
+  //       builder: (ctx) => AlertDialog(
+  //         backgroundColor: AppColors.surface,
+  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  //         content: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             Container(
+  //               width: 56, height: 56,
+  //               decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.green.withValues(alpha: 0.1)),
+  //               child: const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 36),
+  //             ),
+  //             const SizedBox(height: 14),
+  //             const Text('Sources Saved!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.text)),
+  //             const SizedBox(height: 6),
+  //             Text('${sources.length} source configuration(s) saved successfully.',
+  //                 textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.textDim)),
+  //             const SizedBox(height: 18),
+  //             SizedBox(
+  //               width: double.infinity, height: 38,
+  //               child: ElevatedButton(
+  //                 onPressed: () => Navigator.of(ctx).pop(),
+  //                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF004C8F), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+  //                 child: const Text('OK', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
 }
 
 class _SourceCard extends StatelessWidget {
