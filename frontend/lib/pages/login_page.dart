@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../services/storage_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -37,7 +38,9 @@ class _LoginPageState extends State<LoginPage> {
     if (mounted) setState(() => _loading = false);
 
     if (mounted && success) {
-      Navigator.of(context).pushReplacementNamed('/dashboard');
+      // Always land on Welcome page (index 0) after a fresh login
+      await context.read<StorageService>().savePageIndex(0);
+      if (mounted) Navigator.of(context).pushReplacementNamed('/dashboard');
     } else if (mounted) {
       final error = context.read<AuthProvider>().error;
       ScaffoldMessenger.of(context).showSnackBar(

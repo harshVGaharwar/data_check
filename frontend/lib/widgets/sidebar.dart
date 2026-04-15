@@ -24,6 +24,8 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
 
   List<TemplateInfo> _templates = [];
   bool _templateLoading = false;
+  bool _sourceCountError =
+      false; // true when template has no sourceCount configured
 
   late final AnimationController _deptPulse;
   late final AnimationController _templatePulse;
@@ -159,18 +161,6 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
 
           return Column(
             children: [
-              // Header
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppColors.border)),
-                ),
-                child: const Text(
-                  'PIPELINE CONFIG',
-                  style: AppTextStyles.sectionLabel,
-                ),
-              ),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(10),
@@ -189,8 +179,8 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Department',
-                            style: AppTextStyles.fieldLabel,
+                            'DEPARTMENTS',
+                            style: AppTextStyles.sectionLabel,
                           ),
                           const SizedBox(height: 4),
                           _deptLoading
@@ -218,9 +208,10 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Template',
-                            style: AppTextStyles.fieldLabel,
+                            'TEMPLATE',
+                            style: AppTextStyles.sectionLabel,
                           ),
+
                           const SizedBox(height: 4),
                           _templateLoading
                               ? _loadingField()
@@ -264,14 +255,30 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                     // Template done → stop template pulse
                                     _templatePulse.stop();
                                     _templatePulse.value = 0;
-                                    // Blink source count briefly (~1s), then hand off to source type
-                                    _sourceCountPulse.repeat(reverse: true);
-                                    Timer(const Duration(milliseconds: 1000), () {
-                                      if (!mounted) return;
-                                      _sourceCountPulse.stop();
-                                      _sourceCountPulse.value = 0;
-                                      _sourceTypePulse.repeat(reverse: true);
-                                    });
+
+                                    if (info.sourceCount == 0) {
+                                      // ── ERROR: source count not configured ──
+                                      // Keep pulsing in red; block progression to source types
+                                      setState(() => _sourceCountError = true);
+                                      _sourceTypePulse.stop();
+                                      _sourceTypePulse.value = 0;
+                                      _sourceCountPulse.repeat(reverse: true);
+                                    } else {
+                                      // ── OK: blink source count briefly, then hand off ──
+                                      setState(() => _sourceCountError = false);
+                                      _sourceCountPulse.repeat(reverse: true);
+                                      Timer(
+                                        const Duration(milliseconds: 1000),
+                                        () {
+                                          if (!mounted) return;
+                                          _sourceCountPulse.stop();
+                                          _sourceCountPulse.value = 0;
+                                          _sourceTypePulse.repeat(
+                                            reverse: true,
+                                          );
+                                        },
+                                      );
+                                    }
                                   },
                                 ),
                         ],
@@ -282,13 +289,15 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                     // Required count
                     _StepHighlight(
                       animation: _sourceCountAnim,
-                      color: AppColors.blue,
+                      color: _sourceCountError
+                          ? const Color(0xFFE53935)
+                          : AppColors.blue,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Required Input Sources',
-                            style: AppTextStyles.fieldLabel,
+                            'SOURCE COUNT',
+                            style: AppTextStyles.sectionLabel,
                           ),
                           const SizedBox(height: 4),
                           _buildRequiredSourcesBox(ctrl),
@@ -356,7 +365,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'SOURCE TYPES',
+                            'SSOURCE TYPES',
                             style: AppTextStyles.sectionLabel,
                           ),
                           const SizedBox(height: 6),
@@ -1029,10 +1038,7 @@ class _StepHighlight extends AnimatedWidget {
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(
-          color: color.withValues(alpha: t * 0.6),
-          width: 1.5,
-        ),
+        border: Border.all(color: color.withValues(alpha: t * 0.6), width: 1.5),
         boxShadow: t > 0.1
             ? [
                 BoxShadow(

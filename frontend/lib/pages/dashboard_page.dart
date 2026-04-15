@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../services/storage_service.dart';
+import 'welcome_page.dart';
 import 'template_creation_page.dart';
 import 'template_configuration_page.dart';
 import 'configuration_upload_page.dart';
@@ -17,19 +18,17 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
 
-  final _pages = const <Widget>[
-    TemplateCreationPage(),
-    TemplateConfigurationPage(),
-    ConfigurationUploadPage(),
-  ];
+  late final List<Widget> _pages;
 
   final _titles = const [
+    'Home',
     'Template Creation',
     'Template Configuration',
     'Configuration Upload',
   ];
 
   final _icons = const [
+    Icons.home_outlined,
     Icons.add_circle_outline,
     Icons.settings_applications_outlined,
     Icons.cloud_upload_outlined,
@@ -38,7 +37,18 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+    _pages = [
+      WelcomePage(onNavigate: (i) => _navigate(i)),
+      const TemplateCreationPage(),
+      const TemplateConfigurationPage(),
+      const ConfigurationUploadPage(),
+    ];
     _restorePageIndex();
+  }
+
+  void _navigate(int index) {
+    setState(() => _selectedIndex = index);
+    context.read<StorageService>().savePageIndex(index);
   }
 
   Future<void> _restorePageIndex() async {
@@ -284,8 +294,7 @@ class _DashboardPageState extends State<DashboardPage> {
             : null,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         onTap: () {
-          setState(() => _selectedIndex = index);
-          context.read<StorageService>().savePageIndex(index);
+          _navigate(index);
           Navigator.of(context).pop();
         },
       ),

@@ -7,8 +7,97 @@ import '../models/pipeline_models.dart';
 import '../controllers/pipeline_controller.dart';
 import '../providers/pipeline_master_provider.dart';
 
-class ConfigPanel extends StatelessWidget {
+class ConfigPanel extends StatefulWidget {
   const ConfigPanel({super.key});
+
+  @override
+  State<ConfigPanel> createState() => _ConfigPanelState();
+}
+
+class _ConfigPanelState extends State<ConfigPanel>
+    with TickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final Animation<double> _anim;
+
+  // Track which node is open so we reset state on switch
+  String? _prevNodeId;
+
+  // True only after the user explicitly changes the separator dropdown
+  bool _sepAcknowledged = false;
+
+  // Persistent controller for the source-name field so typing doesn't lose focus
+  final TextEditingController _nameCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── Returns 0-4 depending on what the user should fill next ──
+  // Non-manual : 0=sourceName  1=queryFile   2=columnFile  3=outputFormat  4=configBtn
+  // Manual     : 0=sourceName  1=separator   2=columnFile  3=outputFormat  4=configBtn
+  int _computeStep(PipelineNode node) {
+    if (node.confirmState != NodeConfirmState.notConfigured) return -1;
+    if (node.name.trim().isEmpty) return 0;
+    final isManual = node.type == NodeType.manual;
+    if (isManual) {
+      if (!_sepAcknowledged) return 1;         // separator
+      if (node.fileName == null) return 2;     // column file
+      if (node.selectedCols.isEmpty) return 3; // output format
+      return 4;                                // config button
+    } else {
+      if (node.queryFileName == null) return 1; // query file
+      if (node.fileName == null) return 2;      // column file
+      if (node.selectedCols.isEmpty) return 3;  // output format
+      return 4;                                 // config button
+    }
+  }
+
+  // ── Wraps [child] with a pulsing glow border only when [forStep] is active ──
+  Widget _hl(int forStep, int activeStep, Widget child,
+      {Color color = AppColors.blue, bool borderOnly = false}) {
+    if (forStep != activeStep) return child;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) {
+        final t = _anim.value;
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: color.withValues(alpha: t * 0.65),
+              width: 1.5,
+            ),
+            color: borderOnly ? null : color.withValues(alpha: t * 0.05),
+            boxShadow: t > 0.1 && !borderOnly
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: t * 0.18),
+                      blurRadius: 6,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: child,
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +106,20 @@ class ConfigPanel extends StatelessWidget {
         final node = ctrl.selectedNodeId != null
             ? ctrl.findNode(ctrl.selectedNodeId!)
             : null;
+
+        // ── Detect node switch → reset state and sync name controller ──
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final newId = ctrl.selectedNodeId;
+          if (newId != _prevNodeId) {
+            final newNode = newId != null ? ctrl.findNode(newId) : null;
+            _nameCtrl.text = newNode?.name ?? '';
+            setState(() {
+              _prevNodeId = newId;
+              _sepAcknowledged = false;
+            });
+          }
+        });
 
         return Container(
           width: 260,
@@ -125,6 +228,7 @@ class ConfigPanel extends StatelessWidget {
     final master = context.watch<PipelineMasterProvider>();
     final isLocked = node.confirmState == NodeConfirmState.confirmed;
     final isManual = node.type == NodeType.manual;
+    final step = _computeStep(node);
     final separators = [
       'Comma (,)',
       'Pipe (|)',
@@ -142,135 +246,120 @@ class ConfigPanel extends StatelessWidget {
         _SourceTypeDropdown(node: node, ctrl: ctrl, isLocked: isLocked),
         const SizedBox(height: 14),
 
-        // ── Source Name ──
+        // ── Source Name ── (step 0)
         const Text('Source Name *', style: AppTextStyles.fieldLabel),
         const SizedBox(height: 4),
-        TextFormField(
-          key: ValueKey('name_${node.id}'),
-          initialValue: node.name,
-          readOnly: isLocked,
-          onChanged: isLocked ? null : (v) => ctrl.updateNodeName(node.id, v),
-          style: TextStyle(
-            color: isLocked ? AppColors.textDim : AppColors.text,
-            fontSize: 12.5,
+        _hl(0, step,
+          TextFormField(
+            controller: _nameCtrl,
+            readOnly: isLocked,
+            onChanged: isLocked ? null : (v) => ctrl.updateNodeName(node.id, v),
+            style: TextStyle(
+              color: isLocked ? AppColors.textDim : AppColors.text,
+              fontSize: 12.5,
+            ),
+            decoration: _inputDecor(locked: isLocked),
           ),
-          decoration: _inputDecor(locked: isLocked),
+          borderOnly: true,
         ),
         const SizedBox(height: 14),
 
-        // ── Separator (Manual type only) ──
+        // ── Separator (Manual only) ── (step 1 for manual)
         if (isManual) ...[
           const Text('File Separator *', style: AppTextStyles.fieldLabel),
           const SizedBox(height: 4),
-          Opacity(
-            opacity: isLocked ? 0.5 : 1.0,
-            child: IgnorePointer(
-              ignoring: isLocked,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(color: AppColors.border2),
-                  color: AppColors.surface2,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: _sepToLabel(node.separator, separators),
-                    dropdownColor: AppColors.surface2,
-                    style: const TextStyle(fontSize: 12, color: AppColors.text),
-                    items: separators
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        final sep = v.contains(',')
-                            ? ','
-                            : v.contains('|')
-                            ? '|'
-                            : v.contains('\\t')
-                            ? '\t'
-                            : v.contains(';')
-                            ? ';'
-                            : ' ';
-                        node.separator = sep;
-                        ctrl.notifyListeners();
-                      }
-                    },
+          _hl(1, step,
+            Opacity(
+              opacity: isLocked ? 0.5 : 1.0,
+              child: IgnorePointer(
+                ignoring: isLocked,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: AppColors.border2),
+                    color: AppColors.surface2,
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _sepToLabel(node.separator, separators),
+                      dropdownColor: AppColors.surface2,
+                      style: const TextStyle(fontSize: 12, color: AppColors.text),
+                      items: separators
+                          .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          final sep = v.contains(',')
+                              ? ','
+                              : v.contains('|')
+                              ? '|'
+                              : v.contains('\\t')
+                              ? '\t'
+                              : v.contains(';')
+                              ? ';'
+                              : ' ';
+                          node.separator = sep;
+                          ctrl.notifyListeners();
+                          setState(() => _sepAcknowledged = true);
+                        }
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
+            borderOnly: true,
           ),
           const SizedBox(height: 14),
         ],
 
-        // ── Non-manual: info banner ──
+        // ── Non-manual: Query File Upload ── (step 1 for non-manual)
         if (!isManual) ...[
-          // Container(
-          //   padding: const EdgeInsets.all(10),
-          //   decoration: BoxDecoration(
-          //     borderRadius: BorderRadius.circular(7),
-          //     color: AppColors.blue.withValues(alpha: 0.07),
-          //     border: Border.all(color: AppColors.blue.withValues(alpha: 0.18)),
-          //   ),
-          //   child: const Text(
-          //     'Separator auto-detected from uploaded column file',
-          //     style: TextStyle(color: Color(0xFF93C5FD), fontSize: 10.5),
-          //   ),
-          // ),
-          const SizedBox(height: 14),
-
-          // ── Query File Upload (non-manual only) ──
-          const Text(
-            'Upload Query File (.txt) *',
-            style: AppTextStyles.fieldLabel,
-          ),
+          const Text('Upload Query File (.txt) *', style: AppTextStyles.fieldLabel),
           const SizedBox(height: 4),
-          _uploadButton(
-            icon: Icons.description_outlined,
-            label: 'Upload Query File (.txt)',
-            isLocked: isLocked,
-            onTap: isLocked ? null : () async {
-              final result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: ['txt'],
-                withData: true,
-              );
-              if (result != null && result.files.single.bytes != null) {
-                final fileName = result.files.single.name;
-                final queryBytes = result.files.single.bytes!;
-                final queryText = utf8.decode(queryBytes, allowMalformed: true);
-
-                if (!_isValidQueryFile(queryText)) {
+          _hl(1, step,
+            _uploadButton(
+              icon: Icons.description_outlined,
+              label: 'Upload Query File (.txt)',
+              isLocked: isLocked,
+              onTap: isLocked ? null : () async {
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['txt'],
+                  withData: true,
+                );
+                if (result != null && result.files.single.bytes != null) {
+                  final fileName = result.files.single.name;
+                  final queryBytes = result.files.single.bytes!;
+                  final queryText = utf8.decode(queryBytes, allowMalformed: true);
+                  if (!_isValidQueryFile(queryText)) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Invalid file: the query file must contain a valid SQL query (e.g. starting with SELECT, WITH, INSERT, etc.).',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                    return;
+                  }
+                  ctrl.setQueryFile(node.id, fileName, bytes: queryBytes.toList());
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Invalid file: the query file must contain a valid SQL query (e.g. starting with SELECT, WITH, INSERT, etc.).',
-                        ),
-                        backgroundColor: Colors.red,
+                      SnackBar(
+                        content: Text('Query file loaded: $fileName'),
+                        backgroundColor: AppColors.green,
                       ),
                     );
                   }
-                  return;
                 }
-
-                ctrl.setQueryFile(
-                  node.id,
-                  fileName,
-                  bytes: queryBytes.toList(),
-                );
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Query file loaded: $fileName'),
-                      backgroundColor: AppColors.green,
-                    ),
-                  );
-                }
-              }
-            },
+              },
+            ),
+            borderOnly: true,
           ),
           if (node.queryFileName != null) ...[
             const SizedBox(height: 4),
@@ -279,154 +368,125 @@ class ConfigPanel extends StatelessWidget {
           const SizedBox(height: 14),
         ],
 
-        // ── Column File Upload ──
-        const Text(
-          'Upload Column File (.csv / .txt) *',
-          style: AppTextStyles.fieldLabel,
+        // ── Column File Upload ── (step 2)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Upload Column File (.csv / .txt) *',
+              style: AppTextStyles.fieldLabel,
+            ),
+            const SizedBox(height: 4),
+            _hl(2, step, _uploadButton(
+                icon: Icons.upload_file_rounded,
+                label: 'Upload Column File (.csv / .txt)',
+                isLocked: isLocked,
+                onTap: isLocked ? null : () async {
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['csv', 'txt'],
+                    withData: true,
+                  );
+                  if (result == null || result.files.single.bytes == null) return;
+                  final bytes = result.files.single.bytes!;
+                  final fileName = result.files.single.name;
+                  final text = utf8.decode(bytes, allowMalformed: true);
+                  final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+                  if (lines.isEmpty) return;
+                  final firstLine = lines.first;
+                  String sep = ',';
+                  if ('|'.allMatches(firstLine).length > 1) {
+                    sep = '|';
+                  } else if ('\t'.allMatches(firstLine).length > 1) {
+                    sep = '\t';
+                  } else if (';'.allMatches(firstLine).length > 1) {
+                    sep = ';';
+                  }
+                  final cols = firstLine
+                      .split(sep)
+                      .map((c) => c.trim().replaceAll('"', '').trim())
+                      .where((c) => c.isNotEmpty)
+                      .toList();
+                  if (cols.isEmpty) return;
+                  if (!_isValidColumnHeaders(cols)) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Invalid file: the first row must contain column headers, not raw data or unstructured text.',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                    return;
+                  }
+                  final rows = <Map<String, dynamic>>[];
+                  for (int i = 1; i < lines.length; i++) {
+                    final vals = lines[i].split(sep).map((v) => v.trim().replaceAll('"', '').trim()).toList();
+                    final row = <String, dynamic>{};
+                    for (int j = 0; j < cols.length; j++) {
+                      row[cols[j]] = j < vals.length ? vals[j] : '';
+                    }
+                    rows.add(row);
+                  }
+                  ctrl.setNodeColumns(node.id, cols, rows, fileName, bytes: bytes.toList());
+                  node.separator = sep;
+                  ctrl.notifyListeners();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${cols.length} columns, ${rows.length} rows extracted from $fileName'),
+                        backgroundColor: AppColors.green,
+                      ),
+                    );
+                  }
+                },
+              ), borderOnly: true),
+              if (node.fileName != null) ...[
+                const SizedBox(height: 4),
+                _fileInfoBar(node.fileName!, '${node.cols.length} cols', AppColors.green),
+              ],
+            ],
         ),
-        const SizedBox(height: 4),
-        _uploadButton(
-          icon: Icons.upload_file_rounded,
-          label: 'Upload Column File (.csv / .txt)',
-          isLocked: isLocked,
-          onTap: isLocked ? null : () async {
-            final result = await FilePicker.platform.pickFiles(
-              type: FileType.custom,
-              allowedExtensions: ['csv', 'txt'],
-              withData: true,
-            );
-            if (result == null || result.files.single.bytes == null) return;
-
-            final bytes = result.files.single.bytes!;
-            final fileName = result.files.single.name;
-            final text = utf8.decode(bytes, allowMalformed: true);
-            final lines = text
-                .split('\n')
-                .where((l) => l.trim().isNotEmpty)
-                .toList();
-            if (lines.isEmpty) return;
-
-            // Auto-detect separator (same as HTML logic)
-            final firstLine = lines.first;
-            String sep = ',';
-            if ('|'.allMatches(firstLine).length > 1) {
-              sep = '|';
-            } else if ('\t'.allMatches(firstLine).length > 1) {
-              sep = '\t';
-            } else if (';'.allMatches(firstLine).length > 1) {
-              sep = ';';
-            }
-
-            // Extract columns from header
-            final cols = firstLine
-                .split(sep)
-                .map((c) => c.trim().replaceAll('"', '').trim())
-                .where((c) => c.isNotEmpty)
-                .toList();
-
-            if (cols.isEmpty) return;
-
-            if (!_isValidColumnHeaders(cols)) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Invalid file: the first row must contain column headers, not raw data or unstructured text.',
-                    ),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-              return;
-            }
-
-            // Parse data rows
-            final rows = <Map<String, dynamic>>[];
-            for (int i = 1; i < lines.length; i++) {
-              final vals = lines[i]
-                  .split(sep)
-                  .map((v) => v.trim().replaceAll('"', '').trim())
-                  .toList();
-              final row = <String, dynamic>{};
-              for (int j = 0; j < cols.length; j++) {
-                row[cols[j]] = j < vals.length ? vals[j] : '';
-              }
-              rows.add(row);
-            }
-
-            ctrl.setNodeColumns(
-              node.id,
-              cols,
-              rows,
-              fileName,
-              bytes: bytes.toList(),
-            );
-            // Store auto-detected separator
-            node.separator = sep;
-            ctrl.notifyListeners();
-
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${cols.length} columns, ${rows.length} rows extracted from $fileName',
-                  ),
-                  backgroundColor: AppColors.green,
-                ),
-              );
-            }
-          },
-        ),
-        if (node.fileName != null) ...[
-          const SizedBox(height: 4),
-          _fileInfoBar(
-            node.fileName!,
-            '${node.cols.length} cols',
-            AppColors.green,
-          ),
-        ],
         const SizedBox(height: 14),
 
-        // ── Columns (pills — toggle on/off) ──
+        // ── Output Format Selection ── (step 3)
         if (node.cols.isNotEmpty) ...[
           Text(
             'Output Format Selection (${node.selectedCols.length}/${node.cols.length})',
             style: AppTextStyles.fieldLabel,
           ),
           const SizedBox(height: 6),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: node.cols.map((c) {
-              final sel = node.selectedCols.contains(c);
-              return InkWell(
-                onTap: isLocked ? null : () => ctrl.toggleColumn(node.id, c),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                    color: sel
-                        ? AppColors.blue.withValues(alpha: 0.15)
-                        : AppColors.surface2,
-                    border: Border.all(
-                      color: sel ? AppColors.blue : AppColors.border2,
+          _hl(3, step,
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: node.cols.map((c) {
+                final sel = node.selectedCols.contains(c);
+                return InkWell(
+                  onTap: isLocked ? null : () => ctrl.toggleColumn(node.id, c),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(5),
+                      color: sel ? AppColors.blue.withValues(alpha: 0.15) : AppColors.surface2,
+                      border: Border.all(color: sel ? AppColors.blue : AppColors.border2),
+                    ),
+                    child: Text(
+                      c,
+                      style: TextStyle(
+                        color: sel ? AppColors.blue : AppColors.textDim,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ),
-                  child: Text(
-                    c,
-                    style: TextStyle(
-                      color: sel ? AppColors.blue : AppColors.textDim,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
+            borderOnly: true,
           ),
         ] else
           Container(
@@ -446,17 +506,17 @@ class ConfigPanel extends StatelessWidget {
         // ── Data rows count ──
         if (node.rows.isNotEmpty) ...[
           const SizedBox(height: 14),
-          _fileInfoBar(
-            '${node.rows.length} data rows loaded',
-            null,
-            AppColors.green,
-          ),
+          _fileInfoBar('${node.rows.length} data rows loaded', null, AppColors.green),
         ],
 
         const SizedBox(height: 20),
 
-        // ── Confirm / Edit button ──
-        _ConfirmSection(node: node, ctrl: ctrl),
+        // ── Confirm / Edit button ── (step 4 — border-only animation)
+        _hl(4, step,
+          _ConfirmSection(node: node, ctrl: ctrl),
+          color: AppColors.green,
+          borderOnly: true,
+        ),
 
         const SizedBox(height: 8),
       ],
