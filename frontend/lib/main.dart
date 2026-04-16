@@ -11,11 +11,30 @@ import 'providers/template_provider.dart';
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
 
+/// Global key used by ApiService to show snackbars without a BuildContext.
+final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   final apiService = ApiService();
   final storageService = StorageService();
+
+  // Wire up the global message callback so offline/error toasts work on every
+  // page, including the login screen (where no BuildContext is available yet).
+  apiService.configure(
+    showMessage: (msg) {
+      scaffoldMessengerKey.currentState
+        ?..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    },
+  );
 
   runApp(
     MultiProvider(
@@ -53,6 +72,7 @@ class PipelineApp extends StatelessWidget {
     return MaterialApp(
       title: 'HDFC Data Orchestration',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       theme: ThemeData(
         brightness: Brightness.light,
         fontFamily: 'DM Sans',

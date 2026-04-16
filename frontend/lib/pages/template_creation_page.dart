@@ -39,6 +39,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   bool _approvalLoading = true;
   List<SourceMasterItem> _sourceMasterList = [];
   bool _sourceMasterLoading = true;
+
+  // Source-type multi-select overlay
+  final _sourceLayerLink = LayerLink();
+  final _sourceTriggerKey = GlobalKey();
+  OverlayEntry? _sourceOverlayEntry;
   static const _frequencies = [
     'Daily',
     'Weekly',
@@ -144,6 +149,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
   @override
   void dispose() {
+    _closeSourceDropdown();
     _scrollCtrl.dispose();
     _nameCtrl.dispose();
     _normalVolCtrl.dispose();
@@ -155,6 +161,43 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     _unitHeadCtrl.dispose();
     _shakeCtrl.dispose();
     super.dispose();
+  }
+
+  void _openSourceDropdown() {
+    _closeSourceDropdown();
+    final renderBox =
+        _sourceTriggerKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = renderBox?.size.width ?? 280.0;
+    final initialSelected = Set<int>.from(
+      _model.sourceList.map((m) => m['id'] as int),
+    );
+
+    _sourceOverlayEntry = OverlayEntry(
+      builder: (_) => _SourceMultiSelectOverlay(
+        layerLink: _sourceLayerLink,
+        items: _sourceMasterList,
+        initialSelected: initialSelected,
+        dropdownWidth: width,
+        onDismiss: _closeSourceDropdown,
+        onDone: (selected) {
+          setState(() {
+            _model.sourceList = _sourceMasterList
+                .where((s) => selected.contains(s.id))
+                .map((s) => s.toJson())
+                .toList();
+          });
+          _closeSourceDropdown();
+        },
+      ),
+    );
+    Overlay.of(context).insert(_sourceOverlayEntry!);
+    setState(() {}); // refresh arrow rotation
+  }
+
+  void _closeSourceDropdown() {
+    _sourceOverlayEntry?.remove();
+    _sourceOverlayEntry = null;
+    if (mounted) setState(() {});
   }
 
   void _syncModel() {
@@ -1123,251 +1166,116 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
   // ── Source Type multi-select dropdown ──
   Widget _sourceMasterMultiSelect() {
-    final selectedIds = _model.sourceList.map((m) => m['id'] as int).toSet();
     final hasError = _submitted && _model.sourceList.isEmpty;
+    final isOpen = _sourceOverlayEntry != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Source Type *', style: AppTextStyles.fieldLabel),
         const SizedBox(height: 4),
-        InkWell(
-          onTap: _sourceMasterLoading
-              ? null
-              : () async {
-                  // Local copy for dialog state
-                  final tempSelected = Set<int>.from(selectedIds);
-                  await showDialog(
-                    context: context,
-                    builder: (ctx) => StatefulBuilder(
-                      builder: (ctx, setDialogState) => AlertDialog(
-                        backgroundColor: AppColors.surface,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        title: const Row(
-                          children: [
-                            Icon(
-                              Icons.source_rounded,
-                              size: 18,
-                              color: Color(0xFF004C8F),
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Select Source Type',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.text,
-                              ),
-                            ),
-                          ],
-                        ),
-                        content: SizedBox(
-                          width: 360,
-                          child: _sourceMasterList.isEmpty
-                              ? const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  child: Text(
-                                    'No source types available.',
-                                    style: TextStyle(
-                                      color: AppColors.textDim,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                )
-                              : ListView.separated(
-                                  shrinkWrap: true,
-                                  itemCount: _sourceMasterList.length,
-                                  separatorBuilder: (_, __) => const Divider(
-                                    height: 1,
-                                    color: AppColors.border,
-                                  ),
-                                  itemBuilder: (_, i) {
-                                    final item = _sourceMasterList[i];
-                                    final sel = tempSelected.contains(item.id);
-                                    return InkWell(
-                                      onTap: () => setDialogState(() {
-                                        if (sel) {
-                                          tempSelected.remove(item.id);
-                                        } else {
-                                          tempSelected.add(item.id);
-                                        }
-                                      }),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 10,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              sel
-                                                  ? Icons.check_box_rounded
-                                                  : Icons
-                                                        .check_box_outline_blank_rounded,
-                                              size: 20,
-                                              color: sel
-                                                  ? const Color(0xFF004C8F)
-                                                  : AppColors.textDim,
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    item.displayName,
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight: sel
-                                                          ? FontWeight.w600
-                                                          : FontWeight.w400,
-                                                      color: sel
-                                                          ? const Color(
-                                                              0xFF004C8F,
-                                                            )
-                                                          : AppColors.text,
-                                                    ),
-                                                  ),
-                                                  if (item.appName.isNotEmpty)
-                                                    Text(
-                                                      item.appName,
-                                                      style: const TextStyle(
-                                                        fontSize: 11,
-                                                        color:
-                                                            AppColors.textDim,
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(color: AppColors.textDim),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _model.sourceList = _sourceMasterList
-                                    .where((s) => tempSelected.contains(s.id))
-                                    .map((s) => s.toJson())
-                                    .toList();
-                              });
-                              Navigator.of(ctx).pop();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF004C8F),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: const Text('Done'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 36),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: hasError ? AppColors.red : AppColors.border,
-                width: hasError ? 1.5 : 1,
+        CompositedTransformTarget(
+          link: _sourceLayerLink,
+          child: InkWell(
+            key: _sourceTriggerKey,
+            onTap: _sourceMasterLoading
+                ? null
+                : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isOpen
+                      ? const Color(0xFF004C8F)
+                      : hasError
+                      ? AppColors.red
+                      : AppColors.border,
+                  width: isOpen || hasError ? 1.5 : 1,
+                ),
+                color: AppColors.surface2,
               ),
-              color: AppColors.surface2,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _sourceMasterLoading
-                      ? const Row(
-                          children: [
-                            SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.textDim,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _sourceMasterLoading
+                        ? const Row(
+                            children: [
+                              SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.textDim,
+                                ),
                               ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Loading...',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          )
+                        : _model.sourceList.isEmpty
+                        ? const Text(
+                            'Select',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
                             ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Loading...',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        )
-                      : _model.sourceList.isEmpty
-                      ? const Text(
-                          'Select',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                          ),
-                        )
-                      : Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: _model.sourceList.map((m) {
-                            final name = (m['name'] as String? ?? '').trim();
-                            final type = m['sourceType'] as String? ?? '';
-                            final label = name.isNotEmpty ? name : type;
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                                color: const Color(
-                                  0xFF004C8F,
-                                ).withValues(alpha: 0.1),
-                                border: Border.all(
+                          )
+                        : Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: _model.sourceList.map((m) {
+                              final name = (m['name'] as String? ?? '').trim();
+                              final type = m['sourceType'] as String? ?? '';
+                              final label = name.isNotEmpty ? name : type;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
                                   color: const Color(
                                     0xFF004C8F,
-                                  ).withValues(alpha: 0.25),
+                                  ).withValues(alpha: 0.1),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF004C8F,
+                                    ).withValues(alpha: 0.25),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                label,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF004C8F),
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF004C8F),
+                                  ),
                                 ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 18,
-                  color: AppColors.textDim,
-                ),
-              ],
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 18,
+                      color: AppColors.textDim,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1416,6 +1324,286 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     }
   }
 }
+
+// ── Multi-select overlay ──────────────────────────────────────────────────────
+
+class _SourceMultiSelectOverlay extends StatefulWidget {
+  final LayerLink layerLink;
+  final List<SourceMasterItem> items;
+  final Set<int> initialSelected;
+  final double dropdownWidth;
+  final VoidCallback onDismiss;
+  final void Function(Set<int>) onDone;
+
+  const _SourceMultiSelectOverlay({
+    required this.layerLink,
+    required this.items,
+    required this.initialSelected,
+    required this.dropdownWidth,
+    required this.onDismiss,
+    required this.onDone,
+  });
+
+  @override
+  State<_SourceMultiSelectOverlay> createState() =>
+      _SourceMultiSelectOverlayState();
+}
+
+class _SourceMultiSelectOverlayState extends State<_SourceMultiSelectOverlay> {
+  late Set<int> _selected;
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = Set.from(widget.initialSelected);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<SourceMasterItem> get _filtered {
+    if (_query.isEmpty) return widget.items;
+    final q = _query.toLowerCase();
+    return widget.items
+        .where(
+          (i) =>
+              i.displayName.toLowerCase().contains(q) ||
+              i.appName.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Transparent backdrop — tap outside to dismiss
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: widget.onDismiss,
+            behavior: HitTestBehavior.translucent,
+            child: const SizedBox.expand(),
+          ),
+        ),
+        // Dropdown card anchored below the trigger
+        CompositedTransformFollower(
+          link: widget.layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 40),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface,
+              child: Container(
+                width: widget.dropdownWidth,
+                constraints: const BoxConstraints(maxHeight: 340),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Search bar
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        autofocus: true,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.text,
+                        ),
+                        onChanged: (v) => setState(() => _query = v),
+                        decoration: InputDecoration(
+                          hintText: 'Search source types...',
+                          hintStyle: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 16,
+                            color: AppColors.textDim,
+                          ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface2,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF004C8F),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                    // Item list
+                    Flexible(
+                      child: _filtered.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                'No results found',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textDim,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: _filtered.length,
+                              separatorBuilder: (_, __) => const Divider(
+                                height: 1,
+                                color: AppColors.border,
+                              ),
+                              itemBuilder: (_, i) {
+                                final item = _filtered[i];
+                                final sel = _selected.contains(item.id);
+                                return InkWell(
+                                  onTap: () => setState(() {
+                                    if (sel) {
+                                      _selected.remove(item.id);
+                                    } else {
+                                      _selected.add(item.id);
+                                    }
+                                  }),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          sel
+                                              ? Icons.check_box_rounded
+                                              : Icons
+                                                    .check_box_outline_blank_rounded,
+                                          size: 18,
+                                          color: sel
+                                              ? const Color(0xFF004C8F)
+                                              : AppColors.textDim,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.displayName,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: sel
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w400,
+                                                  color: sel
+                                                      ? const Color(0xFF004C8F)
+                                                      : AppColors.text,
+                                                ),
+                                              ),
+                                              if (item.appName.isNotEmpty)
+                                                Text(
+                                                  item.appName,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: AppColors.textDim,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                    // Footer
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${_selected.length} selected',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textDim,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => widget.onDone(_selected),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF004C8F),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 7,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Done',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _SuccessDialog extends StatefulWidget {
   final VoidCallback onDone;

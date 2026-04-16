@@ -29,7 +29,10 @@ class MasterDataService {
   /// Fetch departments as {name: id} map
   Future<Map<String, int>> getDepartmentMap() async {
     final departments = await getDepartments();
-    return {for (final d in departments) if (d.name.isNotEmpty) d.name: d.id};
+    return {
+      for (final d in departments)
+        if (d.name.isNotEmpty) d.name: d.id,
+    };
   }
 
   /// Fetch templates for a given department ID
@@ -117,7 +120,7 @@ class MasterDataService {
 
   /// Add a new source master record
   Future<({bool success, String message})> addSourceMaster({
-    required String sourceType,
+    required String sourceTypeId,
     required String appName,
     required int itgrc,
     required String name,
@@ -126,7 +129,7 @@ class MasterDataService {
   }) async {
     try {
       final body = {
-        'sourceType': sourceType,
+        'sourceType': sourceTypeId,
         'AppName': appName,
         'ITGRC': itgrc,
         'Name': name,

@@ -7,11 +7,13 @@
       "name": "vizualizer",
       "version": "0.1.0",
       "dependencies": [
+        "connectivity_plus",
         "dio",
         "file_picker",
         "flutter",
         "flutter_secure_storage",
-        "provider"
+        "provider",
+        "web"
       ],
       "devDependencies": [
         "flutter_lints",
@@ -41,6 +43,24 @@
       "version": "5.0.0",
       "dependencies": [
         "lints"
+      ]
+    },
+    {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "connectivity_plus",
+      "version": "6.1.5",
+      "dependencies": [
+        "collection",
+        "connectivity_plus_platform_interface",
+        "flutter",
+        "flutter_web_plugins",
+        "meta",
+        "nm",
+        "web"
       ]
     },
     {
@@ -193,6 +213,29 @@
       "dependencies": []
     },
     {
+      "name": "nm",
+      "version": "0.5.0",
+      "dependencies": [
+        "dbus"
+      ]
+    },
+    {
+      "name": "connectivity_plus_platform_interface",
+      "version": "2.1.0",
+      "dependencies": [
+        "flutter",
+        "meta",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
       "name": "flutter_secure_storage_windows",
       "version": "3.1.2",
       "dependencies": [
@@ -298,13 +341,6 @@
       ]
     },
     {
-      "name": "flutter_web_plugins",
-      "version": "0.0.0",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
       "name": "nested",
       "version": "1.0.0",
       "dependencies": [
@@ -378,6 +414,16 @@
       ]
     },
     {
+      "name": "dbus",
+      "version": "0.7.12",
+      "dependencies": [
+        "args",
+        "ffi",
+        "meta",
+        "xml"
+      ]
+    },
+    {
       "name": "path_provider",
       "version": "2.1.5",
       "dependencies": [
@@ -397,11 +443,6 @@
       ]
     },
     {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
-    },
-    {
       "name": "typed_data",
       "version": "1.4.0",
       "dependencies": [
@@ -411,6 +452,20 @@
     {
       "name": "vm_service",
       "version": "15.0.2",
+      "dependencies": []
+    },
+    {
+      "name": "xml",
+      "version": "6.6.1",
+      "dependencies": [
+        "collection",
+        "meta",
+        "petitparser"
+      ]
+    },
+    {
+      "name": "args",
+      "version": "2.7.0",
       "dependencies": []
     },
     {
@@ -459,6 +514,14 @@
       "dependencies": [
         "flutter",
         "path_provider_platform_interface"
+      ]
+    },
+    {
+      "name": "petitparser",
+      "version": "7.0.2",
+      "dependencies": [
+        "collection",
+        "meta"
       ]
     },
     {

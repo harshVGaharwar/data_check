@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/api_response.dart';
+import '../utils/connectivity_check_stub.dart'
+    if (dart.library.html) '../utils/connectivity_check_web.dart';
 
 typedef AccessTokenRefresher = Future<String?> Function();
 typedef LogoutAndRedirect = Future<void> Function();
@@ -202,6 +205,8 @@ class ApiService {
     T Function(Map<String, dynamic>)? fromData,
     Map<String, dynamic>? queryParameters,
   }) async {
+    final offline = await _offlineGuard<T>();
+    if (offline != null) return offline;
     try {
       debugPrint('[API GET] ${ApiConfig.baseUrl}$endpoint');
       final res = await _dio.get(endpoint, queryParameters: queryParameters);
@@ -217,6 +222,8 @@ class ApiService {
     Map<String, dynamic> body, {
     T Function(Map<String, dynamic>)? fromData,
   }) async {
+    final offline = await _offlineGuard<T>();
+    if (offline != null) return offline;
     try {
       debugPrint('[API POST] ${ApiConfig.baseUrl}$endpoint');
       final res = await _dio.post(endpoint, data: jsonEncode(body));
@@ -232,6 +239,8 @@ class ApiService {
     Map<String, dynamic> body, {
     T Function(Map<String, dynamic>)? fromData,
   }) async {
+    final offline = await _offlineGuard<T>();
+    if (offline != null) return offline;
     try {
       debugPrint('[API PUT] ${ApiConfig.baseUrl}$endpoint');
       final res = await _dio.put(endpoint, data: jsonEncode(body));
@@ -246,6 +255,8 @@ class ApiService {
     String endpoint, {
     T Function(Map<String, dynamic>)? fromData,
   }) async {
+    final offline = await _offlineGuard<T>();
+    if (offline != null) return offline;
     try {
       debugPrint('[API DELETE] ${ApiConfig.baseUrl}$endpoint');
       final res = await _dio.delete(endpoint);
@@ -264,6 +275,8 @@ class ApiService {
     required List<({String key, List<int> bytes, String filename})> fileEntries,
     T Function(Map<String, dynamic>)? fromData,
   }) async {
+    final offline = await _offlineGuard<T>();
+    if (offline != null) return offline;
     try {
       debugPrint('[API MULTIPART] ${ApiConfig.baseUrl}$endpoint');
       final formData = FormData();
@@ -299,6 +312,8 @@ class ApiService {
     required Map<String, String> fileNames,
     T Function(Map<String, dynamic>)? fromData,
   }) async {
+    final offline = await _offlineGuard<T>();
+    if (offline != null) return offline;
     try {
       debugPrint('[API UPLOAD] ${ApiConfig.baseUrl}$endpoint');
       final formData = FormData();
@@ -329,6 +344,11 @@ class ApiService {
   }
 
   Future<dynamic> getRawData(String endpoint) async {
+    if (!await _hasConnection()) {
+      debugPrint('[ApiService] No internet connection — getRawData blocked.');
+      _showMessage?.call('No internet connection. Please check your network.');
+      return null;
+    }
     try {
       debugPrint('[API GET RAW] ${ApiConfig.baseUrl}$endpoint');
       final res = await _dio.get(endpoint);
@@ -343,6 +363,11 @@ class ApiService {
     String endpoint, [
     Map<String, dynamic>? body,
   ]) async {
+    if (!await _hasConnection()) {
+      debugPrint('[ApiService] No internet connection — postRawData blocked.');
+      _showMessage?.call('No internet connection. Please check your network.');
+      return null;
+    }
     try {
       debugPrint('[API POST RAW] ${ApiConfig.baseUrl}$endpoint');
       final res = await _dio.post(endpoint, data: jsonEncode(body ?? {}));
@@ -413,6 +438,36 @@ class ApiService {
         if (data is Map) return data['message']?.toString() ?? 'Request failed';
         return 'Network error: ${e.message}';
     }
+  }
+
+  /// Returns true when the device has an active network connection.
+  /// On web uses navigator.onLine; on mobile/desktop uses connectivity_plus.
+  Future<bool> _hasConnection() async {
+    if (kIsWeb) return checkOnlineStatus();
+    try {
+      final results = await Connectivity().checkConnectivity();
+      return results.any(
+        (r) =>
+            r == ConnectivityResult.wifi ||
+            r == ConnectivityResult.mobile ||
+            r == ConnectivityResult.ethernet,
+      );
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Returns an error [ApiResponse] when offline, null otherwise.
+  Future<ApiResponse<T>?> _offlineGuard<T>() async {
+    if (!await _hasConnection()) {
+      debugPrint('[ApiService] No internet connection — request blocked.');
+      _showMessage?.call('No internet connection. Please check your network.');
+      return ApiResponse.error(
+        'No internet connection. Please check your network.',
+        statusCode: 0,
+      );
+    }
+    return null;
   }
 
   void dispose() {}
