@@ -52,6 +52,14 @@ class ApiConfig {
 //   static const String loginEndpoint = 'account/login';
 //   static const String logoutEndpoint = 'auth/logout';
 
+
+
+  // Source Configuration
+  // static const String saveSourceConfigEndpoint = '/pipeline/save-sources';
+  // static const String addSourceMasterEndpoint = '/templateAddSourceMasterList';
+  // static const String sourceMasterListEndpoint = '/template/GetSourceMasterList';
+
+
 //   // Template Creation
 //   static const String templateCreateEndpoint = '/Template/AddTemplate';
 //   static const String templateListEndpoint = '/templates';

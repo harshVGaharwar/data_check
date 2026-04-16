@@ -57,7 +57,10 @@ class ApiService {
         // Attach Bearer token + log request
         onRequest: (options, handler) {
           if (_authToken != null && _authToken!.isNotEmpty) {
+            debugPrint('┌─ [API REQUEST] ${options.method} ${options.uri}');
             options.headers['Authorization'] = 'Bearer $_authToken';
+
+            debugPrint('┌─ [API Token] $_authToken');
           }
           debugPrint('┌─ [API REQUEST] ${options.method} ${options.uri}');
           if (options.data != null) {
