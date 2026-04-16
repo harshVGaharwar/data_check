@@ -78,11 +78,18 @@ class _ConfigPanelState extends State<ConfigPanel>
     Color color = AppColors.blue,
     bool borderOnly = false,
   }) {
-    if (forStep != activeStep) return child;
+    // Always wrap in AnimatedBuilder + Container with a BoxDecoration so the
+    // widget tree structure stays constant as `step` changes.
+    // KEY: decoration must never be null — Container adds/removes an internal
+    // DecoratedBox when decoration flips null↔non-null, which remounts the
+    // child and kills TextField focus.  Use alpha=0 for the inactive state.
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) {
-        final t = _anim.value;
+      child:
+          child, // passed as AnimatedBuilder.child so it isn't rebuilt every frame
+      builder: (_, builtChild) {
+        final isActive = forStep == activeStep;
+        final t = isActive ? _anim.value : 0.0;
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
@@ -101,7 +108,7 @@ class _ConfigPanelState extends State<ConfigPanel>
                   ]
                 : null,
           ),
-          child: child,
+          child: builtChild,
         );
       },
     );
