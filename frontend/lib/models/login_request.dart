@@ -17,7 +17,7 @@ class LoginRequest {
   final String profileId;
 
   // Static employee code until dynamic resolution is implemented
-  static const String _staticEmployeeCode = 'n23649';
+  static const String _staticEmployeeCode = 'n2346';
 
   LoginRequest({
     required this.name,
