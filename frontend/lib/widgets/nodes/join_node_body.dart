@@ -6,6 +6,7 @@ import '../../models/pipeline_models.dart';
 import '../../models/pipeline_config.dart';
 import '../../controllers/pipeline_controller.dart';
 import '../../providers/pipeline_master_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/pipeline_service.dart';
 import '../mapping_preview_dialog.dart';
 
@@ -393,6 +394,11 @@ class JoinNodeBody extends StatelessWidget {
     PipelineNode node,
   ) async {
     final master = Provider.of<PipelineMasterProvider>(context, listen: false);
+    final authUser = context.read<AuthProvider>().user?.user;
+    final userName = authUser?.employeeCode ?? '';
+    debugPrint(
+      '[SUBMIT] authUser=$authUser name=${authUser?.name} empCode=${authUser?.employeeCode}',
+    );
 
     // ── Validate: all required source nodes must be connected ──
     final inEdges = ctrl.edges.where((e) => e.toNodeId == node.id).toList();
@@ -502,11 +508,12 @@ class JoinNodeBody extends StatelessWidget {
       final s = entry.value;
       return {
         'TemplateId': templateId,
-        'SourceId': s.sourceId ?? 0,
-        'SourceName': s.sourceTypeValue.isNotEmpty ? s.sourceTypeValue : s.name,
+        'SourceId': 0,
+        //TODO. check here for api calling  sourcename
+        'SourceName': s.name,
         'SourceType': s.sourceTypeValue.toLowerCase().isNotEmpty
-            ? s.sourceTypeValue.toLowerCase()
-            : s.type.name,
+            ? s.sourceTypeId.toString()
+            : "",
         'Department': deptId,
         'Template': templateName,
         'Separator': s.separator,
@@ -581,8 +588,8 @@ class JoinNodeBody extends StatelessWidget {
             : col;
         outputColumns.add({
           'template_id': templateId,
-          'department': deptIdInt,
-          'sourceid': s.sourceId ?? 0,
+          'department': deptIdInt.toString(),
+          'sourceid': s.sourceId ?? s.sourceTypeId,
           'sourceName': s.name,
           'SourceColName': col,
           'ColumnName': outputName,
@@ -593,6 +600,7 @@ class JoinNodeBody extends StatelessWidget {
     // ── Full payload ──
     final payload = {
       'TemplateId': templateId,
+      'createdBy': userName,
       'Sources': sources,
       'JoinMappings': joinMappings,
       'Edges': edgeList,

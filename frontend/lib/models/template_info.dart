@@ -1,3 +1,33 @@
+/// Lightweight template model returned by GetManualTemplateDetails.
+/// Response shape: { templateId, templateName, department, sourceCount, manualCount }
+class ManualTemplateInfo {
+  final int templateId;
+  final String templateName;
+  final String? department;
+  final int sourceCount;
+  final int manualCount;
+
+  ManualTemplateInfo({
+    required this.templateId,
+    required this.templateName,
+    this.department,
+    required this.sourceCount,
+    required this.manualCount,
+  });
+
+  factory ManualTemplateInfo.fromJson(Map<String, dynamic> json) {
+    return ManualTemplateInfo(
+      templateId: _toInt(json['templateId']),
+      templateName: json['templateName']?.toString() ?? '',
+      department: json['department']?.toString(),
+      sourceCount: _toInt(json['sourceCount']),
+      manualCount: _toInt(json['manualCount']),
+    );
+  }
+
+  static int _toInt(dynamic v) => v is int ? v : int.tryParse('$v') ?? 0;
+}
+
 class TemplateInfo {
   final int templateId;
   final String templateName;

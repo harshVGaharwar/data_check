@@ -1,3 +1,18 @@
+/// Item returned by GetSourceList
+class SourceListItem {
+  final int id;
+  final String name;
+
+  const SourceListItem({required this.id, required this.name});
+
+  factory SourceListItem.fromJson(Map<String, dynamic> json) {
+    return SourceListItem(
+      id: json['id'] as int? ?? int.tryParse('${json['id']}') ?? 0,
+      name: (json['s_Name'] ?? '').toString(),
+    );
+  }
+}
+
 class DepartmentItem {
   final int id;
   final String name;

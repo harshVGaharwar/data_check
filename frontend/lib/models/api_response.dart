@@ -77,6 +77,25 @@ class CreateTemplateResponse {
   }
 }
 
+/// Response model for templateAddSourceMasterList API
+/// {"status":"Success","reqID":17}
+class AddSourceMasterResponse {
+  final String status;
+  final int reqId;
+
+  AddSourceMasterResponse({required this.status, required this.reqId});
+
+  bool get isSuccess => status.toLowerCase() == 'success';
+
+  factory AddSourceMasterResponse.fromJson(Map<String, dynamic> json) {
+    final rawReqId = json['reqID'] ?? json['reqId'] ?? json['ReqID'] ?? json['req_id'] ?? 0;
+    return AddSourceMasterResponse(
+      status: json['status']?.toString() ?? '',
+      reqId: int.tryParse(rawReqId.toString()) ?? 0,
+    );
+  }
+}
+
 /// Template list item
 class TemplateListItem {
   final String id;

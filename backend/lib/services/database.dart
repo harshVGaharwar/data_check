@@ -399,6 +399,7 @@ class Database {
     {'id': 1, 'sourceName': '1 - Manual', 'sourceValue': 'manual'},
     {'id': 2, 'sourceName': '2 - QRS', 'sourceValue': 'qrs'},
     {'id': 3, 'sourceName': '2 - FC', 'sourceValue': 'fc'},
+    {'id': 4, 'sourceName': '2 - lasersoft', 'sourceValue': 'ls'},
   ];
 
   // ── Operations ──
@@ -455,6 +456,8 @@ class Database {
   ];
 
   // ── Source Master Records ──
+  final List<Map<String, dynamic>> manualUploads = [];
+
   final List<Map<String, dynamic>> sourceMasterList = [
     {
       'id': 1,
@@ -497,6 +500,62 @@ class Database {
       'createdOn': '0001-01-01T00:00:00',
     },
   ];
+
+  // ── Manual Upload Templates (by dept ID) ──
+  final Map<int, List<Map<String, dynamic>>> manualTemplatesByDept = {
+    1: [
+      {'templateId': 0, 'templateName': '--Select--', 'department': null, 'sourceCount': 0, 'manualCount': 0},
+      {'templateId': 1, 'templateName': 'GL Reconciliation', 'department': 'Finance', 'sourceCount': 3, 'manualCount': 1},
+      {'templateId': 2, 'templateName': 'P&L Report', 'department': 'Finance', 'sourceCount': 2, 'manualCount': 1},
+    ],
+    2: [
+      {'templateId': 0, 'templateName': '--Select--', 'department': null, 'sourceCount': 0, 'manualCount': 0},
+      {'templateId': 5, 'templateName': 'Ops Daily Report', 'department': 'Operations', 'sourceCount': 2, 'manualCount': 1},
+    ],
+    4: [
+      {'templateId': 0, 'templateName': '--Select--', 'department': null, 'sourceCount': 0, 'manualCount': 0},
+      {'templateId': 9, 'templateName': 'IT Asset Register', 'department': 'IT', 'sourceCount': 1, 'manualCount': 1},
+    ],
+    5: [
+      {'templateId': 0, 'templateName': '--Select--', 'department': null, 'sourceCount': 0, 'manualCount': 0},
+      {'templateId': 11, 'templateName': '11 - asdsa', 'department': null, 'sourceCount': 0, 'manualCount': 2},
+      {'templateId': 12, 'templateName': '12 - 2 manual 2 QRS', 'department': null, 'sourceCount': 0, 'manualCount': 2},
+      {'templateId': 13, 'templateName': '13 - temp1', 'department': null, 'sourceCount': 0, 'manualCount': 4},
+      {'templateId': 15, 'templateName': '15 - Msodi', 'department': null, 'sourceCount': 0, 'manualCount': 3},
+      {'templateId': 16, 'templateName': '16 - Template1', 'department': null, 'sourceCount': 0, 'manualCount': 2},
+      {'templateId': 17, 'templateName': '17 - Template1', 'department': null, 'sourceCount': 0, 'manualCount': 2},
+      {'templateId': 19, 'templateName': '19 - Template3', 'department': null, 'sourceCount': 0, 'manualCount': 2},
+      {'templateId': 22, 'templateName': '22 - temp1', 'department': null, 'sourceCount': 0, 'manualCount': 2},
+      {'templateId': 24, 'templateName': '24 - temp10', 'department': null, 'sourceCount': 0, 'manualCount': 2},
+    ],
+  };
+
+  // ── Source List (by dept + template) ──
+  final Map<String, List<Map<String, dynamic>>> sourceListByDeptTemplate = {
+    '1_1': [
+      {'id': 0, 's_Name': '--Select--'},
+      {'id': 1, 's_Name': 'Finacle Core'},
+      {'id': 2, 's_Name': 'Oracle GL'},
+    ],
+    '1_2': [
+      {'id': 0, 's_Name': '--Select--'},
+      {'id': 3, 's_Name': 'SAP FI'},
+    ],
+    '2_5': [
+      {'id': 0, 's_Name': '--Select--'},
+      {'id': 4, 's_Name': 'Ops DB'},
+    ],
+    '4_9': [
+      {'id': 0, 's_Name': '--Select--'},
+      {'id': 5, 's_Name': 'Asset DB'},
+    ],
+    '7_15': [
+      {'id': 0, 's_Name': '--Select--'},
+      {'id': 97, 's_Name': 'source1'},
+      {'id': 98, 's_Name': 'source2'},
+      {'id': 99, 's_Name': 'source3'},
+    ],
+  };
 
   // ── Departments ──
   final List<Department> departments = [

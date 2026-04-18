@@ -32,21 +32,30 @@ class LoginUser {
 
   factory LoginUser.fromJson(Map<String, dynamic> json) {
     return LoginUser(
-      id: json['id'] as int? ?? 0,
-      name: json['name'] as String? ?? '',
-      employeeCode: json['employeeCode'] as String? ?? '',
-      email: json['email'] as String? ?? '',
-      location: json['location'] as String? ?? '',
-      locationCode: json['locationcode'] as String? ?? '',
-      city: json['city'] as String? ?? '',
-      department: json['department'] as String? ?? '',
-      contactNumber: json['contactNumber'] as String? ?? '',
-      role: json['role'] as String? ?? '',
-      ipAddress: json['ipAddress'] as String? ?? '',
-      profileDescription: json['profileDescription'] as String? ?? '',
-      profileId: json['profileId'] as String? ?? '',
+      id: _toInt(json['id']),
+      name: _str(json['name'] ?? json['Name']),
+      employeeCode: _str(
+        json['employeeCode'] ??
+            json['EmployeeCode'] ??
+            json['employee_code'] ??
+            json['empCode'] ??
+            json['EmpCode'],
+      ),
+      email: _str(json['email'] ?? json['Email']),
+      location: _str(json['location'] ?? json['Location']),
+      locationCode: _str(json['locationcode'] ?? json['locationCode'] ?? json['LocationCode']),
+      city: _str(json['city'] ?? json['City']),
+      department: _str(json['department'] ?? json['Department']),
+      contactNumber: _str(json['contactNumber'] ?? json['ContactNumber']),
+      role: _str(json['role'] ?? json['Role']),
+      ipAddress: _str(json['ipAddress'] ?? json['IpAddress'] ?? json['IPAddress']),
+      profileDescription: _str(json['profileDescription'] ?? json['ProfileDescription']),
+      profileId: _str(json['profileId'] ?? json['ProfileId'] ?? json['profileID']),
     );
   }
+
+  static String _str(dynamic v) => v?.toString() ?? '';
+  static int _toInt(dynamic v) => v is int ? v : int.tryParse('$v') ?? 0;
 }
 
 /// Full response model for HDFC DataLake Login API

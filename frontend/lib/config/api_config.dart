@@ -31,6 +31,10 @@ class ApiConfig {
   static const String saveSourceConfigEndpoint = '/pipeline/save-sources';
   static const String addSourceMasterEndpoint = '/templateAddSourceMasterList';
   static const String sourceMasterListEndpoint = '/template/GetSourceMasterList';
+  static const String manualTemplatesEndpoint =
+      '/template/GetManualTemplateDetails';
+  static const String sourceListEndpoint = '/template/GetSourceList';
+  static const String uploadManualDataEndpoint = '/template/UploadManualData';
 
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 30);

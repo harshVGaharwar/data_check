@@ -44,7 +44,10 @@ Future<Response> onRequest(RequestContext context) async {
   if (kDevMode) {
     final db = Database();
     final newRecord = {
-      'id': (db.sourceMasterList.map((m) => m['id'] as int? ?? 0).fold(0, (a, b) => a > b ? a : b)) + 1,
+      'id': (db.sourceMasterList
+              .map((m) => m['id'] as int? ?? 0)
+              .fold(0, (a, b) => a > b ? a : b)) +
+          1,
       'sourceType': sourceType,
       'AppName': body['AppName']?.toString() ?? '',
       'ITGRC': itgrc,
@@ -58,10 +61,10 @@ Future<Response> onRequest(RequestContext context) async {
     print('[ADD SOURCE MASTER] Saved: $newRecord');
 
     return Response.json(
-      body: ApiResponse.success(
-        message: 'Source added successfully',
-        data: newRecord,
-      ).toJson(),
+      body: {
+        'status': 'Success',
+        'reqID': newRecord['id'],
+      },
     );
   }
 
@@ -87,7 +90,8 @@ Future<Response> onRequest(RequestContext context) async {
         )
         .timeout(const Duration(seconds: 30));
 
-    print('[ADD SOURCE MASTER] External API status: ${externalResponse.statusCode}');
+    print(
+        '[ADD SOURCE MASTER] External API status: ${externalResponse.statusCode}');
 
     if (externalResponse.statusCode >= 200 &&
         externalResponse.statusCode < 300) {

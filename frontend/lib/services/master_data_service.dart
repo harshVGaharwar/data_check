@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
+import '../models/api_response.dart';
 import '../models/master_models.dart';
 import '../models/template_info.dart';
 import '../services/api_service.dart';
@@ -33,6 +34,51 @@ class MasterDataService {
       for (final d in departments)
         if (d.name.isNotEmpty) d.name: d.id,
     };
+  }
+
+  /// Fetch source list for a given department + template.
+  /// Uses GetSourceList?DeptId=<deptId>&TemplateId=<templateId>.
+  /// Filters out the backend placeholder entry (id == 0).
+  Future<List<SourceListItem>> getSourceList({
+    required int deptId,
+    required int templateId,
+  }) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.sourceListEndpoint}?DeptId=$deptId&TemplateId=$templateId',
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(SourceListItem.fromJson)
+            .where((s) => s.id != 0)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getSourceList error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch manual-upload templates for a given department ID.
+  /// Uses GetManualTemplateDetails?DeptId=<id>.
+  /// Filters out the backend placeholder entry (templateId == 0).
+  Future<List<ManualTemplateInfo>> getManualTemplatesByDept(int deptId) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.manualTemplatesEndpoint}?DeptId=$deptId',
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(ManualTemplateInfo.fromJson)
+            .where((t) => t.templateId != 0)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getManualTemplatesByDept error: $e');
+    }
+    return [];
   }
 
   /// Fetch templates for a given department ID
@@ -118,8 +164,27 @@ class MasterDataService {
     return [];
   }
 
+  /// Upload manual data files
+  Future<({bool success, String message, int reqId})> uploadManualData({
+    required List<Map<String, String>> entries,
+  }) async {
+    try {
+      final body = {'manualFileUploadslist': entries};
+      final res = await _api.post<AddSourceMasterResponse>(
+        ApiConfig.uploadManualDataEndpoint,
+        body,
+        fromData: AddSourceMasterResponse.fromJson,
+      );
+      final reqId = res.data?.reqId ?? 0;
+      return (success: res.success, message: res.message, reqId: reqId);
+    } catch (e) {
+      debugPrint('[MasterData] uploadManualData error: $e');
+      return (success: false, message: 'Network error. Please try again.', reqId: 0);
+    }
+  }
+
   /// Add a new source master record
-  Future<({bool success, String message})> addSourceMaster({
+  Future<({bool success, String message, int reqId})> addSourceMaster({
     required String sourceTypeId,
     required String appName,
     required int itgrc,
@@ -136,11 +201,16 @@ class MasterDataService {
         'DBVault': dbVault,
         'Createdby': createdBy,
       };
-      final res = await _api.post(ApiConfig.addSourceMasterEndpoint, body);
-      return (success: res.success, message: res.message);
+      final res = await _api.post<AddSourceMasterResponse>(
+        ApiConfig.addSourceMasterEndpoint,
+        body,
+        fromData: AddSourceMasterResponse.fromJson,
+      );
+      final reqId = res.data?.reqId ?? 0;
+      return (success: res.success, message: res.message, reqId: reqId);
     } catch (e) {
       debugPrint('[MasterData] addSourceMaster error: $e');
-      return (success: false, message: 'Network error. Please try again.');
+      return (success: false, message: 'Network error. Please try again.', reqId: 0);
     }
   }
 }

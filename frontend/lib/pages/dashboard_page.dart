@@ -8,6 +8,7 @@ import 'template_creation_page.dart';
 import 'template_configuration_page.dart';
 import 'configuration_upload_page.dart';
 import 'source_configuration_page.dart';
+import 'manual_upload_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -27,6 +28,7 @@ class _DashboardPageState extends State<DashboardPage> {
     'Template Configuration',
     'Configuration Upload',
     'Source Configuration',
+    'Manual Upload',
   ];
 
   final _icons = const [
@@ -35,6 +37,7 @@ class _DashboardPageState extends State<DashboardPage> {
     Icons.settings_applications_outlined,
     Icons.cloud_upload_outlined,
     Icons.storage_rounded,
+    Icons.upload_file_rounded,
   ];
 
   @override
@@ -46,6 +49,7 @@ class _DashboardPageState extends State<DashboardPage> {
       const TemplateConfigurationPage(),
       const ConfigurationUploadPage(),
       const SourceConfigurationPage(),
+      const ManualUploadPage(),
     ];
     _restorePageIndex();
   }

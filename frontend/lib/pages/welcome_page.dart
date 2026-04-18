@@ -14,7 +14,7 @@ class WelcomePage extends StatelessWidget {
     final user = context.watch<AuthProvider>().user?.user;
     final name = user?.name ?? 'User';
     final dept = user?.department ?? '';
-    final emp  = user?.employeeCode ?? '';
+    final emp = user?.employeeCode ?? '';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -117,78 +117,94 @@ class WelcomePage extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // ── Section title ──
-          const Text(
-            'QUICK ACTIONS',
-            style: AppTextStyles.sectionLabel,
-          ),
-          const SizedBox(height: 12),
+          // // ── Section title ──
+          // const Text('QUICK ACTIONS', style: AppTextStyles.sectionLabel),
+          // const SizedBox(height: 12),
 
-          // ── Nav cards ──
-          _NavCard(
-            index: 1,
-            icon: Icons.add_circle_outline_rounded,
-            color: AppColors.blue,
-            title: 'Template Creation',
-            subtitle: 'Define a new data extraction template — set department, frequency, approval workflow, and output format.',
-            onTap: onNavigate,
-          ),
-          const SizedBox(height: 12),
-          _NavCard(
-            index: 2,
-            icon: Icons.settings_applications_rounded,
-            color: AppColors.violet,
-            title: 'Template Configuration',
-            subtitle: 'Build the data pipeline visually — drag sources, configure join mappings, and submit the final config.',
-            onTap: onNavigate,
-          ),
-          const SizedBox(height: 12),
-          _NavCard(
-            index: 3,
-            icon: Icons.cloud_upload_outlined,
-            color: AppColors.green,
-            title: 'Configuration Upload',
-            subtitle: 'Upload a pre-built pipeline configuration file directly.',
-            onTap: onNavigate,
-          ),
-          const SizedBox(height: 12),
-          _NavCard(
-            index: 4,
-            icon: Icons.storage_rounded,
-            color: AppColors.violet,
-            title: 'Source Configuration',
-            subtitle: 'Register a new data source in the master list — set source type, ITGRC, name, and DB vault.',
-            onTap: onNavigate,
-          ),
+          // // ── Nav cards (grid) ──
+          // GridView.count(
+          //   crossAxisCount: 5,
+          //   shrinkWrap: true,
+          //   physics: const NeverScrollableScrollPhysics(),
+          //   crossAxisSpacing: 8,
+          //   mainAxisSpacing: 8,
+          //   childAspectRatio: 1.2,
+          //   children: [
+          //     _NavCard(
+          //       index: 1,
+          //       icon: Icons.add_circle_outline_rounded,
+          //       color: AppColors.blue,
+          //       title: 'Template Creation',
+          //       subtitle: 'Define a new template',
+          //       onTap: onNavigate,
+          //     ),
+          //     _NavCard(
+          //       index: 2,
+          //       icon: Icons.settings_applications_rounded,
+          //       color: AppColors.violet,
+          //       title: 'Template Config',
+          //       subtitle: 'Build pipeline visually',
+          //       onTap: onNavigate,
+          //     ),
+          //     _NavCard(
+          //       index: 3,
+          //       icon: Icons.cloud_upload_outlined,
+          //       color: AppColors.green,
+          //       title: 'Config Upload',
+          //       subtitle: 'Upload config file',
+          //       onTap: onNavigate,
+          //     ),
+          //     _NavCard(
+          //       index: 4,
+          //       icon: Icons.storage_rounded,
+          //       color: AppColors.amber,
+          //       title: 'Source Config',
+          //       subtitle: 'Register data source',
+          //       onTap: onNavigate,
+          //     ),
+          //     _NavCard(
+          //       index: 5,
+          //       icon: Icons.upload_file_rounded,
+          //       color: AppColors.cyan,
+          //       title: 'Manual Upload',
+          //       subtitle: 'Upload manual data',
+          //       onTap: onNavigate,
+          //     ),
+          //   ],
+          // ),
 
-          const SizedBox(height: 28),
+          // const SizedBox(height: 28),
 
-          // ── Info strip ──
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded, color: AppColors.textDim, size: 18),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Select an action above or use the drawer menu to get started.',
-                    style: TextStyle(
-                      color: AppColors.textDim,
-                      fontSize: 12,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // // ── Info strip ──
+          // Container(
+          //   width: double.infinity,
+          //   padding: const EdgeInsets.all(16),
+          //   decoration: BoxDecoration(
+          //     borderRadius: BorderRadius.circular(12),
+          //     color: AppColors.surface,
+          //     border: Border.all(color: AppColors.border),
+          //   ),
+          //   child: Row(
+          //     children: [
+          //       const Icon(
+          //         Icons.info_outline_rounded,
+          //         color: AppColors.textDim,
+          //         size: 18,
+          //       ),
+          //       const SizedBox(width: 10),
+          //       const Expanded(
+          //         child: Text(
+          //           'Select an action above or use the drawer menu to get started.',
+          //           style: TextStyle(
+          //             color: AppColors.textDim,
+          //             fontSize: 12,
+          //             height: 1.5,
+          //           ),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
@@ -249,15 +265,15 @@ class _NavCardState extends State<_NavCard> {
         onTap: () => widget.onTap(widget.index),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
             color: _hovered
                 ? widget.color.withValues(alpha: 0.06)
                 : AppColors.surface,
             border: Border.all(
               color: _hovered
-                  ? widget.color.withValues(alpha: 0.35)
+                  ? widget.color.withValues(alpha: 0.4)
                   : AppColors.border,
               width: _hovered ? 1.5 : 1,
             ),
@@ -265,53 +281,57 @@ class _NavCardState extends State<_NavCard> {
                 ? [
                     BoxShadow(
                       color: widget.color.withValues(alpha: 0.1),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ]
-                : null,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: widget.color.withValues(alpha: 0.12),
-                ),
-                child: Icon(widget.icon, color: widget.color, size: 22),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.title,
-                      style: const TextStyle(
-                        color: AppColors.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.subtitle,
-                      style: const TextStyle(
-                        color: AppColors.textDim,
-                        fontSize: 11.5,
-                        height: 1.5,
-                      ),
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
                     ),
                   ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Icon badge
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(7),
+                  color: widget.color.withValues(alpha: 0.12),
                 ),
+                child: Icon(widget.icon, color: widget.color, size: 14),
               ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14,
-                color: _hovered ? widget.color : AppColors.textMuted,
+              // Title + subtitle
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    widget.subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textDim,
+                      fontSize: 9.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ],
           ),

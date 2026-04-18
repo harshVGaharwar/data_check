@@ -142,7 +142,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
     setState(() => _saving = false);
 
     if (result.success) {
-      _showSuccessDialog();
+      _showSuccessDialog(reqId: result.reqId);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -157,7 +157,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
     }
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog({required int reqId}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -182,18 +182,90 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
             ),
             const SizedBox(height: 16),
             const Text(
-              'Source Added',
+              'Source Added Successfully',
               style: TextStyle(
                 color: AppColors.text,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               '${_sourceNameCtrl.text.trim()} has been added successfully.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textDim, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            // ── API response card ──
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: AppColors.green.withValues(alpha: 0.06),
+                border: Border.all(
+                  color: AppColors.green.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Status',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: AppColors.green.withValues(alpha: 0.12),
+                        ),
+                        child: const Text(
+                          'Success',
+                          style: TextStyle(
+                            color: AppColors.green,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (reqId > 0) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Request ID',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '#$reqId',
+                          style: const TextStyle(
+                            color: AppColors.green,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             Row(

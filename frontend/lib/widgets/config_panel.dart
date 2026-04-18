@@ -539,44 +539,10 @@ class _ConfigPanelState extends State<ConfigPanel>
         ),
         const SizedBox(height: 14),
 
-        // ── Output Format Selection ── (step 3)
-        if (node.cols.isNotEmpty) ...[
-          Text(
-            'Select Output Format (${node.selectedCols.length}/${node.cols.length})',
-            style: AppTextStyles.fieldLabel,
-          ),
-          const SizedBox(height: 6),
-          _hl(
-            3,
-            step,
-            _OutputColumnSelector(node: node, ctrl: ctrl, isLocked: isLocked),
-            borderOnly: true,
-          ),
-        ] else
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(7),
-              color: AppColors.surface2,
-            ),
-            child: const Center(
-              child: Text(
-                'Upload a file to see columns',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-              ),
-            ),
-          ),
-
         const SizedBox(height: 20),
 
-        // ── Confirm / Edit button ── (step 4 — border-only animation)
-        _hl(
-          4,
-          step,
-          _ConfirmSection(node: node, ctrl: ctrl),
-          color: AppColors.green,
-          borderOnly: true,
-        ),
+        // ── Confirm / Edit button ──
+        _ConfirmSection(node: node, ctrl: ctrl),
 
         const SizedBox(height: 8),
       ],
@@ -767,6 +733,7 @@ class _ConfirmSection extends StatelessWidget {
     final state = node.confirmState;
     final isConfirmed = state == NodeConfirmState.confirmed;
     final isEditing = state == NodeConfirmState.editing;
+    final isReady = _validate() == null;
 
     if (isConfirmed) {
       // ── Confirmed state ──
@@ -877,23 +844,43 @@ class _ConfirmSection extends StatelessWidget {
               ),
             );
           },
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              color: AppColors.blue.withValues(alpha: 0.12),
-              border: Border.all(color: AppColors.blue.withValues(alpha: 0.3)),
+              color: isReady
+                  ? AppColors.blue
+                  : AppColors.border.withValues(alpha: 0.5),
+              border: Border.all(
+                color: isReady ? AppColors.blue : AppColors.border2,
+                width: isReady ? 2.0 : 1.0,
+              ),
+              boxShadow: isReady
+                  ? [
+                      BoxShadow(
+                        color: AppColors.blue.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.check_rounded, color: AppColors.blue, size: 15),
-                SizedBox(width: 8),
+                Icon(
+                  Icons.check_rounded,
+                  color: isReady ? Colors.white : AppColors.textMuted,
+                  size: 15,
+                ),
+                const SizedBox(width: 8),
                 Text(
                   'Configure',
                   style: TextStyle(
-                    color: AppColors.blue,
+                    color: isReady ? Colors.white : AppColors.textMuted,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1031,336 +1018,6 @@ class _SourceTypeDropdown extends StatelessWidget {
           const Icon(Icons.lock_outline, size: 12, color: AppColors.textDim),
         ],
       ),
-    );
-  }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// OUTPUT COLUMN SELECTOR
-// Searchable multi-select dropdown + alias name table for source nodes
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-class _OutputColumnSelector extends StatefulWidget {
-  final PipelineNode node;
-  final PipelineController ctrl;
-  final bool isLocked;
-
-  const _OutputColumnSelector({
-    required this.node,
-    required this.ctrl,
-    required this.isLocked,
-  });
-
-  @override
-  State<_OutputColumnSelector> createState() => _OutputColumnSelectorState();
-}
-
-class _OutputColumnSelectorState extends State<_OutputColumnSelector> {
-  final TextEditingController _searchCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final node = widget.node;
-    final ctrl = widget.ctrl;
-    final isLocked = widget.isLocked;
-    final query = _searchCtrl.text.toLowerCase();
-    final filtered = node.cols
-        .where((c) => query.isEmpty || c.toLowerCase().contains(query))
-        .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Search field ──
-        SizedBox(
-          height: 32,
-          child: TextField(
-            controller: _searchCtrl,
-            readOnly: isLocked,
-            onChanged: (_) => setState(() {}),
-            style: const TextStyle(color: AppColors.text, fontSize: 12),
-            decoration: InputDecoration(
-              hintText: 'Search columns...',
-              hintStyle: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 11,
-              ),
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                size: 15,
-                color: AppColors.textDim,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 0,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(7),
-                borderSide: const BorderSide(color: AppColors.border2),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(7),
-                borderSide: const BorderSide(color: AppColors.border2),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(7),
-                borderSide: BorderSide(
-                  color: isLocked ? AppColors.border2 : AppColors.blue,
-                ),
-              ),
-              filled: true,
-              fillColor: isLocked
-                  ? AppColors.surface2.withValues(alpha: 0.6)
-                  : AppColors.surface2,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-
-        // ── Scrollable columns list with checkboxes ──
-        Container(
-          constraints: const BoxConstraints(maxHeight: 130),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: AppColors.border2),
-            color: AppColors.border,
-          ),
-          child: filtered.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Text(
-                    'No columns match',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 10),
-                  ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) {
-                    final col = filtered[i];
-                    final sel = node.selectedCols.contains(col);
-                    return InkWell(
-                      onTap: isLocked
-                          ? null
-                          : () => ctrl.toggleColumn(node.id, col),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: sel
-                              ? AppColors.blue.withValues(alpha: 0.08)
-                              : Colors.transparent,
-                          border: i < filtered.length - 1
-                              ? const Border(
-                                  bottom: BorderSide(
-                                    color: AppColors.border2,
-                                    width: 0.5,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              sel
-                                  ? Icons.check_box_rounded
-                                  : Icons.check_box_outline_blank_rounded,
-                              size: 14,
-                              color: sel ? AppColors.blue : AppColors.textDim,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                col,
-                                style: TextStyle(
-                                  color: sel ? AppColors.blue : AppColors.text,
-                                  fontSize: 11,
-                                  fontFamily: 'monospace',
-                                  fontWeight: sel
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-
-        // ── Output column name table (shown when any column is selected) ──
-        if (node.selectedCols.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
-              color: AppColors.blue.withValues(alpha: 0.06),
-              border: Border.all(color: AppColors.blue.withValues(alpha: 0.2)),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.drive_file_rename_outline_rounded,
-                  size: 12,
-                  color: AppColors.blue,
-                ),
-                SizedBox(width: 6),
-                Text(
-                  'Now define output column name',
-                  style: TextStyle(
-                    color: AppColors.blue,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          // Table header row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-            child: Row(
-              children: [
-                const Expanded(
-                  flex: 5,
-                  child: Text(
-                    'Column name',
-                    style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Expanded(
-                  flex: 6,
-                  child: Text(
-                    'Output Name',
-                    style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          // Table data rows
-          ...node.selectedCols.map(
-            (col) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        color: AppColors.surface2,
-                        border: Border.all(color: AppColors.border2),
-                      ),
-                      child: Text(
-                        col,
-                        style: const TextStyle(
-                          color: AppColors.textDim,
-                          fontSize: 9.5,
-                          fontFamily: 'monospace',
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 6,
-                    child: SizedBox(
-                      height: 28,
-                      child: TextFormField(
-                        key: ValueKey('src_alias_${node.id}_$col'),
-                        initialValue: node.columnAliases[col] ?? '',
-                        readOnly: isLocked,
-                        onChanged: isLocked
-                            ? null
-                            : (v) => ctrl.setColumnAlias(node.id, col, v),
-                        style: TextStyle(
-                          color: isLocked ? AppColors.textDim : AppColors.text,
-                          fontSize: 10,
-                          fontFamily: 'monospace',
-                        ),
-                        decoration: InputDecoration(
-                          hintText: "enter $col",
-                          hintStyle: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 10,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 0,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(5),
-                            borderSide: const BorderSide(
-                              color: AppColors.border2,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(5),
-                            borderSide: const BorderSide(
-                              color: AppColors.border2,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(5),
-                            borderSide: BorderSide(
-                              color: isLocked
-                                  ? AppColors.border2
-                                  : AppColors.blue,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: isLocked
-                              ? AppColors.surface2.withValues(alpha: 0.6)
-                              : AppColors.surface2,
-                          suffixIcon: isLocked
-                              ? const Icon(
-                                  Icons.lock_outline_rounded,
-                                  size: 11,
-                                  color: AppColors.textMuted,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ],
     );
   }
 }

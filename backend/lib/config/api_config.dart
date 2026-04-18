@@ -17,4 +17,7 @@ class ExternalApi {
   static const String addTemplateConfig = '/api/Template/AddTemplateConfig';
   static const String addSourceMaster = '/api/templateAddSourceMasterList';
   static const String getSourceMasterList = '/api/template/GetSourceMasterList';
+  static const String getManualTemplateDetails = '/api/template/GetManualTemplateDetails';
+  static const String getSourceList = '/api/template/GetSourceList';
+  static const String uploadManualData = '/api/template/UploadManualData';
 }

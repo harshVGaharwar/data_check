@@ -11,7 +11,8 @@ class SourceNodeBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = node.type.color;
-    final hasCols = node.selectedCols.isNotEmpty;
+    final hasCols = node.cols.isNotEmpty;
+    final isManual = node.type == NodeType.manual;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -68,7 +69,11 @@ class SourceNodeBody extends StatelessWidget {
                 _sourceNameRow(),
                 _statBadgeRow(
                   'Columns',
-                  hasCols ? '${node.cols.length} cols' : 'No file',
+                  hasCols
+                      ? '${node.cols.length} cols'
+                      : isManual
+                          ? 'No data'
+                          : 'No file',
                   hasCols ? AppColors.blue : AppColors.amber,
                 ),
                 if (node.rows.isNotEmpty) _statRow('Rows', '${node.rows.length}'),
