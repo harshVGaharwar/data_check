@@ -349,194 +349,191 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Header ──
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: AppColors.violet.withValues(alpha: 0.1),
-                        ),
-                        child: const Icon(
-                          Icons.storage_rounded,
-                          color: AppColors.violet,
-                          size: 24,
-                        ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ──
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.blue.withValues(alpha: 0.1),
                       ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Source Configuration',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.text,
-                              ),
+                      child: const Icon(
+                        Icons.storage_rounded,
+                        color: AppColors.blue,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Source Configuration',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.text,
                             ),
-                            Text(
-                              'Register a new data source in the master list',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textDim,
-                              ),
+                          ),
+                          Text(
+                            'Register a new data source in the master list',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textDim,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── Form card ──
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionLabel('Source Details', Icons.dns_rounded),
+                      const SizedBox(height: 16),
 
-                  // ── Form card ──
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _sectionLabel('Source Details', Icons.dns_rounded),
-                        const SizedBox(height: 16),
+                      // Row 1: Source Type dropdown + ITGRC
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _sourceTypeDropdownField()),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _field(
+                              label: 'ITGRC *',
+                              hint: 'Enter ITGRC reference number',
+                              controller: _itgrcCtrl,
 
-                        // Row 1: Source Type dropdown + ITGRC
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: _sourceTypeDropdownField()),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: _field(
-                                label: 'ITGRC *',
-                                hint: 'Enter ITGRC reference number',
-                                controller: _itgrcCtrl,
-
-                                validator: (v) {
-                                  if (v?.trim().isEmpty ?? true) {
-                                    return 'ITGRC is required';
-                                  }
-                                  if (int.tryParse(v!.trim()) == null) {
-                                    return 'Must be a number';
-                                  }
-                                  return null;
-                                },
-                              ),
+                              validator: (v) {
+                                if (v?.trim().isEmpty ?? true) {
+                                  return 'ITGRC is required';
+                                }
+                                if (int.tryParse(v!.trim()) == null) {
+                                  return 'Must be a number';
+                                }
+                                return null;
+                              },
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Row 2: Source Name + App Name
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _field(
-                                label: 'Source Name *',
-                                hint: 'Enter source name',
-                                controller: _sourceNameCtrl,
-                                validator: (v) => (v?.trim().isEmpty ?? true)
-                                    ? 'Source Name is required'
-                                    : null,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: _field(
-                                label: 'App Name *',
-                                hint: 'Enter application name',
-                                controller: _appNameCtrl,
-                                validator: (v) => (v?.trim().isEmpty ?? true)
-                                    ? 'App Name is required'
-                                    : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Row 3: DB Vault
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _field(
-                                label: 'DB Vault *',
-                                hint: 'Enter DB vault identifier',
-                                controller: _dbVaultCtrl,
-                                validator: (v) => (v?.trim().isEmpty ?? true)
-                                    ? 'DB Vault is required'
-                                    : null,
-                              ),
-                            ),
-                            const Expanded(child: SizedBox()),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── Save button ──
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: _saving ? null : _save,
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.save_rounded, size: 20),
-                      label: Text(
-                        _saving ? 'Saving...' : 'Save Source',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
+                          ),
+                        ],
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.blue,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.blue.withValues(
-                          alpha: 0.5,
-                        ),
-                        disabledForegroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
+                      const SizedBox(height: 14),
+
+                      // Row 2: Source Name + App Name
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _field(
+                              label: 'Source Name *',
+                              hint: 'Enter source name',
+                              controller: _sourceNameCtrl,
+                              validator: (v) => (v?.trim().isEmpty ?? true)
+                                  ? 'Source Name is required'
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _field(
+                              label: 'App Name *',
+                              hint: 'Enter application name',
+                              controller: _appNameCtrl,
+                              validator: (v) => (v?.trim().isEmpty ?? true)
+                                  ? 'App Name is required'
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Row 3: DB Vault
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _field(
+                              label: 'DB Vault *',
+                              hint: 'Enter DB vault identifier',
+                              controller: _dbVaultCtrl,
+                              validator: (v) => (v?.trim().isEmpty ?? true)
+                                  ? 'DB Vault is required'
+                                  : null,
+                            ),
+                          ),
+                          const Expanded(child: SizedBox()),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Save button ──
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_rounded, size: 20),
+                    label: Text(
+                      _saving ? 'Saving...' : 'Save Source',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.blue.withValues(
+                        alpha: 0.5,
+                      ),
+                      disabledForegroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
                   ),
-                  const SizedBox(height: 40),
-                ],
-              ),
+                ),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
@@ -577,7 +574,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isOpen
-                      ? AppColors.violet
+                      ? AppColors.blue
                       : hasError
                       ? AppColors.red
                       : AppColors.border,
@@ -724,7 +721,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.violet, width: 1.5),
+              borderSide: const BorderSide(color: AppColors.blue, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
