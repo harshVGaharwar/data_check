@@ -86,8 +86,9 @@ class _CheckerPageState extends State<CheckerPage> {
       setState(() => _templateLoading = false);
       return;
     }
-    final templates =
-        await context.read<MasterDataService>().getManualTemplatesByDept(deptId);
+    final templates = await context
+        .read<MasterDataService>()
+        .getManualTemplatesByDept(deptId);
     if (!mounted) return;
     setState(() {
       _templates = templates;
@@ -158,7 +159,10 @@ class _CheckerPageState extends State<CheckerPage> {
           if (_fetching) ...[
             const SizedBox(height: 40),
             const Center(
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.blue),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.blue,
+              ),
             ),
           ] else if (_fetched) ...[
             const SizedBox(height: 20),
@@ -190,7 +194,11 @@ class _CheckerPageState extends State<CheckerPage> {
             ),
             border: Border.all(color: AppColors.amber.withValues(alpha: 0.2)),
           ),
-          child: const Icon(Icons.fact_check_outlined, color: AppColors.amber, size: 22),
+          child: const Icon(
+            Icons.fact_check_outlined,
+            color: AppColors.amber,
+            size: 22,
+          ),
         ),
         const SizedBox(width: 14),
         Column(
@@ -235,14 +243,18 @@ class _CheckerPageState extends State<CheckerPage> {
                   value: _selectedDept,
                   items: _deptMap.keys.toList(),
                   loading: _deptLoading,
-                  onChanged: (v) { if (v != null) _onDeptSelected(v); },
+                  onChanged: (v) {
+                    if (v != null) _onDeptSelected(v);
+                  },
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: _labelledDropdown(
                   label: 'Template',
-                  hint: _selectedDept == null ? 'Select department first' : 'Select template',
+                  hint: _selectedDept == null
+                      ? 'Select department first'
+                      : 'Select template',
                   value: _selectedTemplate?.templateName,
                   items: _templates.map((t) => t.templateName).toList(),
                   loading: _templateLoading,
@@ -250,7 +262,9 @@ class _CheckerPageState extends State<CheckerPage> {
                   onChanged: (v) {
                     if (v == null) return;
                     setState(() {
-                      _selectedTemplate = _templates.firstWhere((t) => t.templateName == v);
+                      _selectedTemplate = _templates.firstWhere(
+                        (t) => t.templateName == v,
+                      );
                       _results = [];
                       _fetched = false;
                     });
@@ -278,16 +292,23 @@ class _CheckerPageState extends State<CheckerPage> {
                     onPressed: _fetching ? null : _fetch,
                     icon: const Icon(Icons.search_rounded, size: 16),
                     label: const Text(
-                      'Fetch',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      'Search',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.blue,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.blue.withValues(alpha: 0.4),
+                      disabledBackgroundColor: AppColors.blue.withValues(
+                        alpha: 0.4,
+                      ),
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -301,7 +322,16 @@ class _CheckerPageState extends State<CheckerPage> {
 
   // ── results section ───────────────────────────────────────────────────────
 
-  static const _columns = ['#', 'Request ID', 'Department', 'Template', 'Created By', 'Created Date', 'Download', 'Approval'];
+  static const _columns = [
+    '#',
+    'Request ID',
+    'Department',
+    'Template',
+    'Created By',
+    'Created Date',
+    'Download',
+    'Approval',
+  ];
 
   Widget _buildResultsSection() {
     if (_results.isEmpty) {
@@ -311,7 +341,11 @@ class _CheckerPageState extends State<CheckerPage> {
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.inbox_outlined, size: 44, color: AppColors.textMuted),
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 44,
+                  color: AppColors.textMuted,
+                ),
                 SizedBox(height: 12),
                 Text(
                   'No records found for the given criteria.',
@@ -328,12 +362,19 @@ class _CheckerPageState extends State<CheckerPage> {
         ? _results
         : _results.where((item) {
             final q = _searchQuery.toLowerCase();
-            return (item['requestId']?.toString().toLowerCase().contains(q) ?? false) ||
-                (item['departmentName']?.toString().toLowerCase().contains(q) ?? false) ||
-                (item['templateName']?.toString().toLowerCase().contains(q) ?? false) ||
-                (item['makerBy']?.toString().toLowerCase().contains(q) ?? false) ||
-                (item['filename']?.toString().toLowerCase().contains(q) ?? false) ||
-                _formatDate(item['makerDate']?.toString()).toLowerCase().contains(q);
+            return (item['requestId']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['departmentName']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['templateName']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['makerBy']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['filename']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                _formatDate(
+                  item['makerDate']?.toString(),
+                ).toLowerCase().contains(q);
           }).toList();
 
     final totalPages = max(1, (filtered.length / _rowsPerPage).ceil());
@@ -354,7 +395,11 @@ class _CheckerPageState extends State<CheckerPage> {
               _countBadge(_results.length, label: 'total'),
               if (_searchQuery.isNotEmpty) ...[
                 const SizedBox(width: 6),
-                _countBadge(filtered.length, label: 'filtered', color: AppColors.amber),
+                _countBadge(
+                  filtered.length,
+                  label: 'filtered',
+                  color: AppColors.amber,
+                ),
               ],
               const Spacer(),
             ],
@@ -373,10 +418,18 @@ class _CheckerPageState extends State<CheckerPage> {
               }),
               decoration: _inputDecoration(
                 'Search across all columns…',
-                prefixIcon: const Icon(Icons.search_rounded, size: 16, color: AppColors.textDim),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  size: 16,
+                  color: AppColors.textDim,
+                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 14, color: AppColors.textDim),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: AppColors.textDim,
+                        ),
                         onPressed: () => setState(() {
                           _searchQuery = '';
                           _searchCtrl.clear();
@@ -422,12 +475,20 @@ class _CheckerPageState extends State<CheckerPage> {
                 },
                 children: [
                   _buildHeaderRow(_matchedColumns(_searchQuery)),
-                  ...pageRows.asMap().entries.map((e) => _buildTableRow(e.value, start + e.key)),
+                  ...pageRows.asMap().entries.map(
+                    (e) => _buildTableRow(e.value, start + e.key),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            _buildPaginationBar(filtered.length, totalPages, safePage, start, end),
+            _buildPaginationBar(
+              filtered.length,
+              totalPages,
+              safePage,
+              start,
+              end,
+            ),
           ],
         ],
       ),
@@ -441,12 +502,18 @@ class _CheckerPageState extends State<CheckerPage> {
     final q = query.toLowerCase();
     final matched = <String>{};
     for (final item in _results) {
-      if (item['requestId']?.toString().toLowerCase().contains(q) ?? false) matched.add('Request ID');
-      if (item['departmentName']?.toString().toLowerCase().contains(q) ?? false) matched.add('Department');
-      if (item['templateName']?.toString().toLowerCase().contains(q) ?? false) matched.add('Template');
-      if (item['makerBy']?.toString().toLowerCase().contains(q) ?? false) matched.add('Created By');
-      if (_formatDate(item['makerDate']?.toString()).toLowerCase().contains(q)) matched.add('Created Date');
-      if (item['filename']?.toString().toLowerCase().contains(q) ?? false) matched.add('Download');
+      if (item['requestId']?.toString().toLowerCase().contains(q) ?? false)
+        matched.add('Request ID');
+      if (item['departmentName']?.toString().toLowerCase().contains(q) ?? false)
+        matched.add('Department');
+      if (item['templateName']?.toString().toLowerCase().contains(q) ?? false)
+        matched.add('Template');
+      if (item['makerBy']?.toString().toLowerCase().contains(q) ?? false)
+        matched.add('Created By');
+      if (_formatDate(item['makerDate']?.toString()).toLowerCase().contains(q))
+        matched.add('Created Date');
+      if (item['filename']?.toString().toLowerCase().contains(q) ?? false)
+        matched.add('Download');
     }
     return matched;
   }
@@ -462,10 +529,16 @@ class _CheckerPageState extends State<CheckerPage> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
-            color: isHit ? AppColors.blue.withValues(alpha: 0.1) : Colors.transparent,
+            color: isHit
+                ? AppColors.blue.withValues(alpha: 0.1)
+                : Colors.transparent,
             border: isHit
-                ? const Border(bottom: BorderSide(color: AppColors.blue, width: 2))
-                : const Border(bottom: BorderSide(color: Colors.transparent, width: 2)),
+                ? const Border(
+                    bottom: BorderSide(color: AppColors.blue, width: 2),
+                  )
+                : const Border(
+                    bottom: BorderSide(color: Colors.transparent, width: 2),
+                  ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -501,7 +574,9 @@ class _CheckerPageState extends State<CheckerPage> {
 
   TableRow _buildTableRow(Map<String, dynamic> item, int index) {
     final filename = item['filename']?.toString() ?? '—';
-    final ext = filename.contains('.') ? filename.split('.').last.toLowerCase() : '';
+    final ext = filename.contains('.')
+        ? filename.split('.').last.toLowerCase()
+        : '';
     final extColor = _extColor(ext);
     final makerBy = item['makerBy']?.toString() ?? '—';
     final makerDate = _formatDate(item['makerDate']?.toString());
@@ -518,7 +593,11 @@ class _CheckerPageState extends State<CheckerPage> {
           child: Text(
             '${index + 1}',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
 
@@ -548,16 +627,24 @@ class _CheckerPageState extends State<CheckerPage> {
 
         // Department
         _tdCell(
-          child: Text(deptName,
-              style: const TextStyle(fontSize: 12, color: AppColors.text, fontWeight: FontWeight.w500),
-              overflow: TextOverflow.ellipsis),
+          child: Text(
+            deptName,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.text,
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
 
         // Template
         _tdCell(
-          child: Text(templateName,
-              style: const TextStyle(fontSize: 12, color: AppColors.textDim),
-              overflow: TextOverflow.ellipsis),
+          child: Text(
+            templateName,
+            style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
 
         // Created By
@@ -574,15 +661,24 @@ class _CheckerPageState extends State<CheckerPage> {
                 child: Center(
                   child: Text(
                     makerBy.isNotEmpty ? makerBy[0].toUpperCase() : '?',
-                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.blue),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.blue,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(makerBy,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textDim),
-                    overflow: TextOverflow.ellipsis),
+                child: Text(
+                  makerBy,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDim,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -590,8 +686,10 @@ class _CheckerPageState extends State<CheckerPage> {
 
         // Created Date
         _tdCell(
-          child: Text(makerDate,
-              style: const TextStyle(fontSize: 11, color: AppColors.textDim)),
+          child: Text(
+            makerDate,
+            style: const TextStyle(fontSize: 11, color: AppColors.textDim),
+          ),
         ),
 
         // Download
@@ -606,25 +704,38 @@ class _CheckerPageState extends State<CheckerPage> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: AppColors.blue.withValues(alpha: 0.08),
-                  border: Border.all(color: AppColors.blue.withValues(alpha: 0.18)),
+                  border: Border.all(
+                    color: AppColors.blue.withValues(alpha: 0.18),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 3,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(3),
                         color: extColor.withValues(alpha: 0.15),
                       ),
                       child: Text(
                         ext.isEmpty ? 'FILE' : ext.toUpperCase(),
-                        style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900, color: extColor),
+                        style: TextStyle(
+                          fontSize: 7,
+                          fontWeight: FontWeight.w900,
+                          color: extColor,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Icon(Icons.download_rounded, size: 13, color: AppColors.blue),
+                    const Icon(
+                      Icons.download_rounded,
+                      size: 13,
+                      color: AppColors.blue,
+                    ),
                   ],
                 ),
               ),
@@ -662,10 +773,19 @@ class _CheckerPageState extends State<CheckerPage> {
 
   // ── pagination bar ────────────────────────────────────────────────────────
 
-  Widget _buildPaginationBar(int total, int totalPages, int safePage, int start, int end) {
+  Widget _buildPaginationBar(
+    int total,
+    int totalPages,
+    int safePage,
+    int start,
+    int end,
+  ) {
     return Row(
       children: [
-        const Text('Rows per page:', style: TextStyle(fontSize: 12, color: AppColors.textDim)),
+        const Text(
+          'Rows per page:',
+          style: TextStyle(fontSize: 12, color: AppColors.textDim),
+        ),
         const SizedBox(width: 8),
         Container(
           height: 32,
@@ -681,8 +801,14 @@ class _CheckerPageState extends State<CheckerPage> {
               isDense: true,
               style: const TextStyle(fontSize: 12, color: AppColors.text),
               dropdownColor: AppColors.surface,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textDim),
-              items: [10, 25, 50, 100].map((n) => DropdownMenuItem(value: n, child: Text('$n'))).toList(),
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: AppColors.textDim,
+              ),
+              items: [10, 25, 50, 100]
+                  .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+                  .toList(),
               onChanged: (v) {
                 if (v == null) return;
                 setState(() {
@@ -715,7 +841,11 @@ class _CheckerPageState extends State<CheckerPage> {
         const SizedBox(width: 8),
         Text(
           'Page ${safePage + 1} of $totalPages',
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text,
+          ),
         ),
         const SizedBox(width: 8),
         _pageButton(
@@ -751,7 +881,9 @@ class _CheckerPageState extends State<CheckerPage> {
           height: 30,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: enabled ? AppColors.border2 : AppColors.border),
+            border: Border.all(
+              color: enabled ? AppColors.border2 : AppColors.border,
+            ),
             color: AppColors.surface,
           ),
           child: Icon(
@@ -767,8 +899,10 @@ class _CheckerPageState extends State<CheckerPage> {
   // ── download ──────────────────────────────────────────────────────────────
 
   Future<void> _downloadFile(String filename, Map<String, dynamic> item) async {
-    final templateId = item['template_id']?.toString() ??
-        _selectedTemplate?.templateId.toString() ?? '';
+    final templateId =
+        item['template_id']?.toString() ??
+        _selectedTemplate?.templateId.toString() ??
+        '';
     _snack('Downloading $filename…');
     final result = await context.read<MasterDataService>().downloadCheckerFile(
       filename: filename,
@@ -790,9 +924,13 @@ class _CheckerPageState extends State<CheckerPage> {
   }) async {
     final remarkCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    final color = isApproved ? const Color(0xFF059669) : const Color(0xFFDC2626);
+    final color = isApproved
+        ? const Color(0xFF059669)
+        : const Color(0xFFDC2626);
     final label = isApproved ? 'Approve' : 'Reject';
-    final icon = isApproved ? Icons.check_circle_outline : Icons.cancel_outlined;
+    final icon = isApproved
+        ? Icons.check_circle_outline
+        : Icons.cancel_outlined;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -808,7 +946,11 @@ class _CheckerPageState extends State<CheckerPage> {
             const SizedBox(width: 8),
             Text(
               '$label Request',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
           ],
         ),
@@ -821,7 +963,10 @@ class _CheckerPageState extends State<CheckerPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),
                     color: AppColors.bg,
@@ -829,17 +974,34 @@ class _CheckerPageState extends State<CheckerPage> {
                   ),
                   child: Row(
                     children: [
-                      const Text('Request ID:', style: TextStyle(fontSize: 11, color: AppColors.textDim)),
+                      const Text(
+                        'Request ID:',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textDim,
+                        ),
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         item['requestId']?.toString() ?? '—',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.blue),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.blue,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text('Remark *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
+                const Text(
+                  'Remark *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.text,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: remarkCtrl,
@@ -848,8 +1010,14 @@ class _CheckerPageState extends State<CheckerPage> {
                   style: const TextStyle(fontSize: 13, color: AppColors.text),
                   decoration: InputDecoration(
                     hintText: 'Enter your remark…',
-                    hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    hintStyle: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: AppColors.border2),
@@ -864,12 +1032,17 @@ class _CheckerPageState extends State<CheckerPage> {
                     ),
                     focusedErrorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.red, width: 1.5),
+                      borderSide: const BorderSide(
+                        color: AppColors.red,
+                        width: 1.5,
+                      ),
                     ),
                     filled: true,
                     fillColor: AppColors.bg,
                   ),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Remark is required' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Remark is required'
+                      : null,
                 ),
                 const SizedBox(height: 4),
               ],
@@ -879,7 +1052,10 @@ class _CheckerPageState extends State<CheckerPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textDim)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textDim),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -889,10 +1065,15 @@ class _CheckerPageState extends State<CheckerPage> {
               backgroundColor: color,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             ),
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -903,20 +1084,24 @@ class _CheckerPageState extends State<CheckerPage> {
     final remark = remarkCtrl.text.trim();
     final auth = context.read<AuthProvider>();
     final checkerBy = auth.user?.user.employeeCode ?? '';
-    final templateId = item['template_id']?.toString() ??
-        _selectedTemplate?.templateId.toString() ?? '';
+    final templateId =
+        item['template_id']?.toString() ??
+        _selectedTemplate?.templateId.toString() ??
+        '';
     final deptId = (_deptMap[_selectedDept] ?? 0).toString();
     final requestId = item['requestId']?.toString() ?? '';
 
     setState(() => _fetching = true);
-    final result = await context.read<MasterDataService>().submitCheckerApproval(
-      templateId: templateId,
-      departmentId: deptId,
-      requestId: requestId,
-      checkerBy: checkerBy,
-      remark: remark,
-      isApproved: isApproved,
-    );
+    final result = await context
+        .read<MasterDataService>()
+        .submitCheckerApproval(
+          templateId: templateId,
+          departmentId: deptId,
+          requestId: requestId,
+          checkerBy: checkerBy,
+          remark: remark,
+          isApproved: isApproved,
+        );
     if (!mounted) return;
     setState(() => _fetching = false);
     if (result.success) {
@@ -950,7 +1135,11 @@ class _CheckerPageState extends State<CheckerPage> {
               const SizedBox(width: 4),
               Text(
                 label,
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
@@ -975,7 +1164,11 @@ class _CheckerPageState extends State<CheckerPage> {
       ),
       child: Text(
         label.isEmpty ? '$n' : '$n $label',
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }
@@ -1048,12 +1241,17 @@ class _CheckerPageState extends State<CheckerPage> {
 
   Color _extColor(String ext) {
     switch (ext) {
-      case 'csv':  return AppColors.green;
+      case 'csv':
+        return AppColors.green;
       case 'xlsx':
-      case 'xls':  return AppColors.blue;
-      case 'json': return AppColors.amber;
-      case 'txt':  return AppColors.slate;
-      default:     return AppColors.slate;
+      case 'xls':
+        return AppColors.blue;
+      case 'json':
+        return AppColors.amber;
+      case 'txt':
+        return AppColors.slate;
+      default:
+        return AppColors.slate;
     }
   }
 
@@ -1093,19 +1291,32 @@ class _CheckerPageState extends State<CheckerPage> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: enabled ? AppColors.border2 : AppColors.border),
+                border: Border.all(
+                  color: enabled ? AppColors.border2 : AppColors.border,
+                ),
                 color: enabled ? AppColors.surface : AppColors.bg,
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
                   value: items.contains(value) ? value : null,
-                  hint: Text(hint, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  hint: Text(
+                    hint,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                   dropdownColor: AppColors.surface,
                   style: const TextStyle(fontSize: 13, color: AppColors.text),
-                  icon: Icon(Icons.keyboard_arrow_down_rounded, size: 18,
-                      color: enabled ? AppColors.textDim : AppColors.textMuted),
-                  items: items.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  icon: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: enabled ? AppColors.textDim : AppColors.textMuted,
+                  ),
+                  items: items
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
                   onChanged: enabled ? onChanged : null,
                 ),
               ),
@@ -1125,11 +1336,18 @@ class _CheckerPageState extends State<CheckerPage> {
       child: const Row(
         children: [
           SizedBox(
-            width: 12, height: 12,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textDim),
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.textDim,
+            ),
           ),
           SizedBox(width: 8),
-          Text('Loading...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          Text(
+            'Loading...',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
         ],
       ),
     );
