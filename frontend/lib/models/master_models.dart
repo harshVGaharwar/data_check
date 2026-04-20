@@ -38,11 +38,10 @@ class ApprovalItem {
     name: (json['approvalName'] ?? '').toString(),
   );
 
-  static List<ApprovalItem> listFromJson(List<dynamic> json) =>
-      json
-          .whereType<Map<String, dynamic>>()
-          .map(ApprovalItem.fromJson)
-          .toList();
+  static List<ApprovalItem> listFromJson(List<dynamic> json) => json
+      .whereType<Map<String, dynamic>>()
+      .map(ApprovalItem.fromJson)
+      .toList();
 }
 
 class SourceTypeItem {
