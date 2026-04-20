@@ -187,7 +187,8 @@ class MasterDataService {
   }
 
   /// Download a checker file by filename + template_id
-  Future<({bool success, String message, List<int> bytes})> downloadCheckerFile({
+  Future<({bool success, String message, List<int> bytes})>
+  downloadCheckerFile({
     required String filename,
     required String templateId,
   }) async {
@@ -202,7 +203,11 @@ class MasterDataService {
     } catch (e) {
       debugPrint('[MasterData] downloadCheckerFile error: $e');
     }
-    return (success: false, message: 'Failed to download file.', bytes: <int>[]);
+    return (
+      success: false,
+      message: 'Failed to download file.',
+      bytes: <int>[],
+    );
   }
 
   /// Submit checker approval / rejection
@@ -236,7 +241,11 @@ class MasterDataService {
     } catch (e) {
       debugPrint('[MasterData] submitCheckerApproval error: $e');
     }
-    return (success: false, message: 'Network error. Please try again.', reqId: 0);
+    return (
+      success: false,
+      message: 'Network error. Please try again.',
+      reqId: 0,
+    );
   }
 
   /// Upload manual data files
