@@ -87,8 +87,22 @@ class ApiConfig {
 //   static const String sourceTypeEndpoint = 'Template/GetSourceType';
 //   static const String operationsEndpoint = 'Template/GetOperations';
 
-//   // Source Configuration
-//   static const String saveSourceConfigEndpoint = '/pipeline/save-sources';
+
+
+  // Configuration Upload
+  //static const String configUploadEndpoint = '/config/upload';
+
+// source Configuraiton 
+//  static const String saveSourceConfigEndpoint = '/pipeline/save-sources';
+//   static const String addSourceMasterEndpoint = '/templateAddSourceMasterList';
+//   static const String sourceMasterListEndpoint = '/template/GetSourceMasterList';
+//   static const String manualTemplatesEndpoint =
+//       '/template/GetManualTemplateDetails';
+//   static const String sourceListEndpoint = '/template/GetSourceList';
+//   static const String uploadManualDataEndpoint = '/template/UploadManualData';
+//   static const String checkerListEndpoint = '/template/GetCheckerTayList';
+//   static const String checkerApprovalEndpoint = '/template/UploadManualDataChecker';
+//   static const String downloadFileEndpoint = '/template/DownloadFile';
 
 //   // Timeouts
 //   static const Duration connectTimeout = Duration(seconds: 30);

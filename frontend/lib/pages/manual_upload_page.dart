@@ -128,7 +128,10 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
       return;
     }
     if ((_selectedTemplate?.manualCount ?? 0) == 0) {
-      _showSnack('No manual uploads required for this template.', isError: true);
+      _showSnack(
+        'No manual uploads required for this template.',
+        isError: true,
+      );
       return;
     }
     if (_slotFiles.isEmpty) {
@@ -138,7 +141,8 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
 
     final deptId = _deptMap[_selectedDept!]!;
     final templateId = _selectedTemplate!.templateId;
-    final createdBy = context.read<AuthProvider>().user?.user.employeeCode ?? '';
+    final createdBy =
+        context.read<AuthProvider>().user?.user.employeeCode ?? '';
 
     final entries = _slotFiles.entries.map((e) {
       final sourceId = e.key < _sources.length ? _sources[e.key].id : e.key;
@@ -152,14 +156,19 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
     }).toList();
 
     setState(() => _saving = true);
-    final result = await context.read<MasterDataService>().uploadManualData(entries: entries);
+    final result = await context.read<MasterDataService>().uploadManualData(
+      entries: entries,
+    );
     if (!mounted) return;
     setState(() => _saving = false);
 
     if (result.success) {
       _showSuccessDialog(reqId: result.reqId);
     } else {
-      _showSnack(result.message.isNotEmpty ? result.message : 'Upload failed.', isError: true);
+      _showSnack(
+        result.message.isNotEmpty ? result.message : 'Upload failed.',
+        isError: true,
+      );
     }
   }
 
@@ -180,12 +189,20 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
                 shape: BoxShape.circle,
                 color: AppColors.green.withValues(alpha: 0.12),
               ),
-              child: const Icon(Icons.check_circle_rounded, color: AppColors.green, size: 38),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.green,
+                size: 38,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
               'Upload Successful',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.text,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -200,21 +217,39 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 color: AppColors.green.withValues(alpha: 0.06),
-                border: Border.all(color: AppColors.green.withValues(alpha: 0.25)),
+                border: Border.all(
+                  color: AppColors.green.withValues(alpha: 0.25),
+                ),
               ),
               child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Status', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      const Text(
+                        'Status',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           color: AppColors.green.withValues(alpha: 0.12),
                         ),
-                        child: const Text('Success', style: TextStyle(color: AppColors.green, fontSize: 11, fontWeight: FontWeight.w700)),
+                        child: const Text(
+                          'Success',
+                          style: TextStyle(
+                            color: AppColors.green,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -223,8 +258,21 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Request ID', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                        Text('#$reqId', style: const TextStyle(color: AppColors.green, fontSize: 13, fontWeight: FontWeight.w700)),
+                        const Text(
+                          'Request ID',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                        Text(
+                          '#$reqId',
+                          style: const TextStyle(
+                            color: AppColors.green,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -243,9 +291,14 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
                   backgroundColor: AppColors.green,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
+                child: const Text(
+                  'Done',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ],
