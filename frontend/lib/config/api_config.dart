@@ -35,6 +35,9 @@ class ApiConfig {
       '/template/GetManualTemplateDetails';
   static const String sourceListEndpoint = '/template/GetSourceList';
   static const String uploadManualDataEndpoint = '/template/UploadManualData';
+  static const String checkerListEndpoint = '/template/GetCheckerTayList';
+  static const String checkerApprovalEndpoint = '/template/UploadManualDataChecker';
+  static const String downloadFileEndpoint = '/template/DownloadFile';
 
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 30);

@@ -343,6 +343,29 @@ class ApiService {
     }
   }
 
+  Future<List<int>?> getFileBytes(
+    String endpoint, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    if (!await _hasConnection()) return null;
+    try {
+      debugPrint('[API GET FILE] ${ApiConfig.baseUrl}$endpoint');
+      final res = await _dio.get<List<int>>(
+        endpoint,
+        queryParameters: queryParameters,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      if (res.statusCode != null &&
+          res.statusCode! >= 200 &&
+          res.statusCode! < 300) {
+        return res.data;
+      }
+    } on DioException catch (e) {
+      debugPrint('[API ERROR] getFileBytes $endpoint: $e');
+    }
+    return null;
+  }
+
   Future<dynamic> getRawData(String endpoint) async {
     if (!await _hasConnection()) {
       debugPrint('[ApiService] No internet connection — getRawData blocked.');

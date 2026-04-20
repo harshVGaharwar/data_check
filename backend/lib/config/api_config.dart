@@ -20,4 +20,7 @@ class ExternalApi {
   static const String getManualTemplateDetails = '/api/template/GetManualTemplateDetails';
   static const String getSourceList = '/api/template/GetSourceList';
   static const String uploadManualData = '/api/template/UploadManualData';
+  static const String getCheckerTayList = '/api/template/GetCheckerTayList';
+  static const String uploadManualDataChecker = '/api/template/UploadManualDataChecker';
+  static const String downloadFile = '/api/template/DownloadFile';
 }

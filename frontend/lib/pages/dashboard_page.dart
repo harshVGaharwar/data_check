@@ -9,6 +9,7 @@ import 'template_configuration_page.dart';
 import 'configuration_upload_page.dart';
 import 'source_configuration_page.dart';
 import 'manual_upload_page.dart';
+import 'checker_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -29,6 +30,7 @@ class _DashboardPageState extends State<DashboardPage> {
     'Configuration Upload',
     'Source Configuration',
     'Manual Upload',
+    'Checker',
   ];
 
   final _icons = const [
@@ -38,6 +40,7 @@ class _DashboardPageState extends State<DashboardPage> {
     Icons.cloud_upload_outlined,
     Icons.storage_rounded,
     Icons.upload_file_rounded,
+    Icons.fact_check_outlined,
   ];
 
   @override
@@ -50,6 +53,7 @@ class _DashboardPageState extends State<DashboardPage> {
       const ConfigurationUploadPage(),
       const SourceConfigurationPage(),
       const ManualUploadPage(),
+      const CheckerPage(),
     ];
     _restorePageIndex();
   }

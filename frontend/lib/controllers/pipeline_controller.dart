@@ -464,20 +464,23 @@ class PipelineController extends ChangeNotifier {
       final leftNode = findNode(firstMap.leftSourceId);
       final rightNode = findNode(firstMap.rightSourceId);
 
-      if (leftNode == null || rightNode == null)
+      if (leftNode == null || rightNode == null) {
         return 'Mapping sources are not connected';
+      }
 
       if (leftNode.rows.isEmpty && rightNode.rows.isEmpty) {
         return 'Upload data rows in both sources (CSV with header + data)';
       }
       if (leftNode.rows.isEmpty) return 'Upload data rows in ${leftNode.name}';
-      if (rightNode.rows.isEmpty)
+      if (rightNode.rows.isEmpty) {
         return 'Upload data rows in ${rightNode.name}';
+      }
 
       // Try executing join
       final result = getNodeRows(fromNode.id);
-      if (result == null || result.isEmpty)
+      if (result == null || result.isEmpty) {
         return 'No matching rows — check column mapping';
+      }
 
       return null; // should not reach here if getOutputResult works
     }

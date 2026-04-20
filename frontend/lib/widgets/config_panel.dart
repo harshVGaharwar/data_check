@@ -441,8 +441,9 @@ class _ConfigPanelState extends State<ConfigPanel>
                           allowedExtensions: ['csv', 'txt'],
                           withData: true,
                         );
-                        if (result == null || result.files.single.bytes == null)
+                        if (result == null || result.files.single.bytes == null) {
                           return;
+                        }
                         final bytes = result.files.single.bytes!;
                         final fileName = result.files.single.name;
                         final text = utf8.decode(bytes, allowMalformed: true);

@@ -230,8 +230,8 @@ class _SectionCard extends StatelessWidget {
     required this.accentColor,
     required this.child,
     this.badge,
-    this.selected = false,
     this.onTap,
+    this.selected = false,
   });
 
   @override

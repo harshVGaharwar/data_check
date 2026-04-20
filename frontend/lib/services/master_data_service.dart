@@ -164,6 +164,81 @@ class MasterDataService {
     return [];
   }
 
+  /// Fetch checker task list
+  Future<List<Map<String, dynamic>>> getCheckerTayList({
+    required String templateId,
+    required String departmentId,
+    required String requestId,
+  }) async {
+    try {
+      final body = {
+        'template_id': templateId,
+        'department_id': departmentId,
+        'Request_id': requestId,
+      };
+      final data = await _api.postRawData(ApiConfig.checkerListEndpoint, body);
+      if (data is List) {
+        return data.whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getCheckerTayList error: $e');
+    }
+    return [];
+  }
+
+  /// Download a checker file by filename + template_id
+  Future<({bool success, String message, List<int> bytes})> downloadCheckerFile({
+    required String filename,
+    required String templateId,
+  }) async {
+    try {
+      final bytes = await _api.getFileBytes(
+        ApiConfig.downloadFileEndpoint,
+        queryParameters: {'filename': filename, 'template_id': templateId},
+      );
+      if (bytes != null && bytes.isNotEmpty) {
+        return (success: true, message: '', bytes: bytes);
+      }
+    } catch (e) {
+      debugPrint('[MasterData] downloadCheckerFile error: $e');
+    }
+    return (success: false, message: 'Failed to download file.', bytes: <int>[]);
+  }
+
+  /// Submit checker approval / rejection
+  Future<({bool success, String message, int reqId})> submitCheckerApproval({
+    required String templateId,
+    required String departmentId,
+    required String requestId,
+    required String checkerBy,
+    required String remark,
+    required bool isApproved,
+  }) async {
+    try {
+      final body = {
+        'Template_id': templateId,
+        'department_id': departmentId,
+        'Request_id': requestId,
+        'CheckerBy': checkerBy,
+        'Remart': remark,
+        'isApproved': isApproved ? 'Y' : 'N',
+      };
+      final data = await _api.postRawData(
+        ApiConfig.checkerApprovalEndpoint,
+        body,
+      );
+      if (data is Map<String, dynamic>) {
+        final status = data['status']?.toString() ?? '';
+        final reqId = data['reqID'];
+        final id = reqId is int ? reqId : int.tryParse('$reqId') ?? 0;
+        return (success: status == 'Success', message: status, reqId: id);
+      }
+    } catch (e) {
+      debugPrint('[MasterData] submitCheckerApproval error: $e');
+    }
+    return (success: false, message: 'Network error. Please try again.', reqId: 0);
+  }
+
   /// Upload manual data files
   Future<({bool success, String message, int reqId})> uploadManualData({
     required List<Map<String, String>> entries,
@@ -179,7 +254,11 @@ class MasterDataService {
       return (success: res.success, message: res.message, reqId: reqId);
     } catch (e) {
       debugPrint('[MasterData] uploadManualData error: $e');
-      return (success: false, message: 'Network error. Please try again.', reqId: 0);
+      return (
+        success: false,
+        message: 'Network error. Please try again.',
+        reqId: 0,
+      );
     }
   }
 
@@ -210,7 +289,11 @@ class MasterDataService {
       return (success: res.success, message: res.message, reqId: reqId);
     } catch (e) {
       debugPrint('[MasterData] addSourceMaster error: $e');
-      return (success: false, message: 'Network error. Please try again.', reqId: 0);
+      return (
+        success: false,
+        message: 'Network error. Please try again.',
+        reqId: 0,
+      );
     }
   }
 }

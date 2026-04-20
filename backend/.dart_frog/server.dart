@@ -10,11 +10,14 @@ import '../routes/index.dart' as index;
 import '../routes/api/v1/templateAddSourceMasterList.dart' as api_v1_template_add_source_master_list;
 import '../routes/api/v1/templates/index.dart' as api_v1_templates_index;
 import '../routes/api/v1/templates/[id].dart' as api_v1_templates_$id;
+import '../routes/api/v1/template/UploadManualDataChecker.dart' as api_v1_template_upload_manual_data_checker;
 import '../routes/api/v1/template/UploadManualData.dart' as api_v1_template_upload_manual_data;
 import '../routes/api/v1/template/GetSourceMasterList.dart' as api_v1_template_get_source_master_list;
 import '../routes/api/v1/template/GetSourceList.dart' as api_v1_template_get_source_list;
 import '../routes/api/v1/template/GetManualTemplateDetails.dart' as api_v1_template_get_manual_template_details;
+import '../routes/api/v1/template/GetCheckerTayList.dart' as api_v1_template_get_checker_tay_list;
 import '../routes/api/v1/template/GetApprovalList.dart' as api_v1_template_get_approval_list;
+import '../routes/api/v1/template/DownloadFile.dart' as api_v1_template_download_file;
 import '../routes/api/v1/pipeline/submit-mapping.dart' as api_v1_pipeline_submit_mapping;
 import '../routes/api/v1/pipeline/save-sources.dart' as api_v1_pipeline_save_sources;
 import '../routes/api/v1/master/templates.dart' as api_v1_master_templates;
@@ -75,7 +78,7 @@ Handler buildApiV1TemplatesHandler() {
 Handler buildApiV1TemplateHandler() {
   final pipeline = const Pipeline();
   final router = Router()
-    ..all('/GetApprovalList', (context) => api_v1_template_get_approval_list.onRequest(context,))..all('/GetManualTemplateDetails', (context) => api_v1_template_get_manual_template_details.onRequest(context,))..all('/GetSourceList', (context) => api_v1_template_get_source_list.onRequest(context,))..all('/GetSourceMasterList', (context) => api_v1_template_get_source_master_list.onRequest(context,))..all('/UploadManualData', (context) => api_v1_template_upload_manual_data.onRequest(context,));
+    ..all('/DownloadFile', (context) => api_v1_template_download_file.onRequest(context,))..all('/GetApprovalList', (context) => api_v1_template_get_approval_list.onRequest(context,))..all('/GetCheckerTayList', (context) => api_v1_template_get_checker_tay_list.onRequest(context,))..all('/GetManualTemplateDetails', (context) => api_v1_template_get_manual_template_details.onRequest(context,))..all('/GetSourceList', (context) => api_v1_template_get_source_list.onRequest(context,))..all('/GetSourceMasterList', (context) => api_v1_template_get_source_master_list.onRequest(context,))..all('/UploadManualData', (context) => api_v1_template_upload_manual_data.onRequest(context,))..all('/UploadManualDataChecker', (context) => api_v1_template_upload_manual_data_checker.onRequest(context,));
   return pipeline.addHandler(router);
 }
 
