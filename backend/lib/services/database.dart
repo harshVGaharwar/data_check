@@ -460,9 +460,9 @@ class Database {
 
   final List<Map<String, dynamic>> sourceMasterList = [
     {
-      'id': 1,
-      'name': '',
-      'sourceType': 'ABC',
+      'id': 10,
+      'name': 'unimailing',
+      'sourceType': 1,
       'appName': 'MyApplication',
       'itgrc': 1,
       'dbVault': 'VaultDB',
@@ -470,9 +470,9 @@ class Database {
       'createdOn': '0001-01-01T00:00:00',
     },
     {
-      'id': 2,
-      'name': '',
-      'sourceType': 'ABC',
+      'id': 12,
+      'name': 'unimailing2',
+      'sourceType': 1,
       'appName': 'MyApplication',
       'itgrc': 1,
       'dbVault': 'VaultDB',
@@ -480,9 +480,9 @@ class Database {
       'createdOn': '0001-01-01T00:00:00',
     },
     {
-      'id': 3,
+      'id': 13,
       'name': 'test',
-      'sourceType': 'ABC',
+      'sourceType': 2,
       'appName': 'MyApplication',
       'itgrc': 1,
       'dbVault': 'VaultDB',
@@ -490,9 +490,9 @@ class Database {
       'createdOn': '0001-01-01T00:00:00',
     },
     {
-      'id': 4,
+      'id': 14,
       'name': 'test',
-      'sourceType': 'ABC',
+      'sourceType': 3,
       'appName': 'MyApplication',
       'itgrc': 1,
       'dbVault': 'VaultDB',
@@ -504,29 +504,131 @@ class Database {
   // ── Manual Upload Templates (by dept ID) ──
   final Map<int, List<Map<String, dynamic>>> manualTemplatesByDept = {
     1: [
-      {'templateId': 0, 'templateName': '--Select--', 'department': null, 'sourceCount': 0, 'manualCount': 0},
-      {'templateId': 1, 'templateName': 'GL Reconciliation', 'department': 'Finance', 'sourceCount': 3, 'manualCount': 1},
-      {'templateId': 2, 'templateName': 'P&L Report', 'department': 'Finance', 'sourceCount': 2, 'manualCount': 1},
+      {
+        'templateId': 0,
+        'templateName': '--Select--',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 0
+      },
+      {
+        'templateId': 1,
+        'templateName': 'GL Reconciliation',
+        'department': 'Finance',
+        'sourceCount': 3,
+        'manualCount': 1
+      },
+      {
+        'templateId': 2,
+        'templateName': 'P&L Report',
+        'department': 'Finance',
+        'sourceCount': 2,
+        'manualCount': 1
+      },
     ],
     2: [
-      {'templateId': 0, 'templateName': '--Select--', 'department': null, 'sourceCount': 0, 'manualCount': 0},
-      {'templateId': 5, 'templateName': 'Ops Daily Report', 'department': 'Operations', 'sourceCount': 2, 'manualCount': 1},
+      {
+        'templateId': 0,
+        'templateName': '--Select--',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 0
+      },
+      {
+        'templateId': 5,
+        'templateName': 'Ops Daily Report',
+        'department': 'Operations',
+        'sourceCount': 2,
+        'manualCount': 1
+      },
     ],
     4: [
-      {'templateId': 0, 'templateName': '--Select--', 'department': null, 'sourceCount': 0, 'manualCount': 0},
-      {'templateId': 9, 'templateName': 'IT Asset Register', 'department': 'IT', 'sourceCount': 1, 'manualCount': 1},
+      {
+        'templateId': 0,
+        'templateName': '--Select--',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 0
+      },
+      {
+        'templateId': 9,
+        'templateName': 'IT Asset Register',
+        'department': 'IT',
+        'sourceCount': 1,
+        'manualCount': 1
+      },
     ],
     5: [
-      {'templateId': 0, 'templateName': '--Select--', 'department': null, 'sourceCount': 0, 'manualCount': 0},
-      {'templateId': 11, 'templateName': '11 - asdsa', 'department': null, 'sourceCount': 0, 'manualCount': 2},
-      {'templateId': 12, 'templateName': '12 - 2 manual 2 QRS', 'department': null, 'sourceCount': 0, 'manualCount': 2},
-      {'templateId': 13, 'templateName': '13 - temp1', 'department': null, 'sourceCount': 0, 'manualCount': 4},
-      {'templateId': 15, 'templateName': '15 - Msodi', 'department': null, 'sourceCount': 0, 'manualCount': 3},
-      {'templateId': 16, 'templateName': '16 - Template1', 'department': null, 'sourceCount': 0, 'manualCount': 2},
-      {'templateId': 17, 'templateName': '17 - Template1', 'department': null, 'sourceCount': 0, 'manualCount': 2},
-      {'templateId': 19, 'templateName': '19 - Template3', 'department': null, 'sourceCount': 0, 'manualCount': 2},
-      {'templateId': 22, 'templateName': '22 - temp1', 'department': null, 'sourceCount': 0, 'manualCount': 2},
-      {'templateId': 24, 'templateName': '24 - temp10', 'department': null, 'sourceCount': 0, 'manualCount': 2},
+      {
+        'templateId': 0,
+        'templateName': '--Select--',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 0
+      },
+      {
+        'templateId': 11,
+        'templateName': '11 - asdsa',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 2
+      },
+      {
+        'templateId': 12,
+        'templateName': '12 - 2 manual 2 QRS',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 2
+      },
+      {
+        'templateId': 13,
+        'templateName': '13 - temp1',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 4
+      },
+      {
+        'templateId': 15,
+        'templateName': '15 - Msodi',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 3
+      },
+      {
+        'templateId': 16,
+        'templateName': '16 - Template1',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 2
+      },
+      {
+        'templateId': 17,
+        'templateName': '17 - Template1',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 2
+      },
+      {
+        'templateId': 19,
+        'templateName': '19 - Template3',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 2
+      },
+      {
+        'templateId': 22,
+        'templateName': '22 - temp1',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 2
+      },
+      {
+        'templateId': 24,
+        'templateName': '24 - temp10',
+        'department': null,
+        'sourceCount': 0,
+        'manualCount': 2
+      },
     ],
   };
 

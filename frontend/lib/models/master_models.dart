@@ -48,11 +48,13 @@ class SourceTypeItem {
   final int id;
   final String sourceName;
   final String sourceValue;
+  final int? sourceType;
 
   const SourceTypeItem({
     required this.id,
     required this.sourceName,
     required this.sourceValue,
+    this.sourceType,
   });
 
   factory SourceTypeItem.fromJson(Map<String, dynamic> json) {
@@ -60,14 +62,63 @@ class SourceTypeItem {
       id: json['id'] as int? ?? 0,
       sourceName: json['sourceName'] as String? ?? '',
       sourceValue: json['sourceValue'] as String? ?? '',
+      sourceType: json['sourceType'] as int?,
     );
+  }
+}
+
+/// Item returned by template/GetSourceMasterListFilterwise
+class SourceMasterFilterItem {
+  final int id;
+  final String name;
+  final int? sourceType;
+  final String? appName;
+  final int itgrc;
+  final String? dbVault;
+  final String? createdBy;
+  final String templateId;
+  final String departmentId;
+
+  const SourceMasterFilterItem({
+    required this.id,
+    required this.name,
+    this.sourceType,
+    this.appName,
+    required this.itgrc,
+    this.dbVault,
+    this.createdBy,
+    required this.templateId,
+    required this.departmentId,
+  });
+
+  factory SourceMasterFilterItem.fromJson(Map<String, dynamic> json) {
+    return SourceMasterFilterItem(
+      id: json['id'] as int? ?? 0,
+      name: (json['name'] ?? '').toString(),
+      sourceType: json['sourceType'] as int?,
+      appName: json['appName'] as String?,
+      itgrc: json['itgrc'] as int? ?? 0,
+      dbVault: json['dbVault'] as String?,
+      createdBy: json['createdBy'] as String?,
+      templateId: (json['template_id'] ?? '').toString(),
+      departmentId: (json['department_id'] ?? '').toString(),
+    );
+  }
+
+  String get sourceTypeLabel {
+    switch (sourceType) {
+      case 1: return 'Manual';
+      case 2: return 'QRS';
+      case 3: return 'FC';
+      default: return '';
+    }
   }
 }
 
 class SourceMasterItem {
   final int id;
   final String name;
-  final String sourceType;
+  final int? sourceType;
   final String appName;
   final int itgrc;
   final String dbVault;
@@ -76,7 +127,7 @@ class SourceMasterItem {
   const SourceMasterItem({
     required this.id,
     required this.name,
-    required this.sourceType,
+    this.sourceType,
     required this.appName,
     required this.itgrc,
     required this.dbVault,
@@ -87,7 +138,7 @@ class SourceMasterItem {
     return SourceMasterItem(
       id: json['id'] as int? ?? 0,
       name: (json['name'] as String? ?? '').trim(),
-      sourceType: json['sourceType'] as String? ?? '',
+      sourceType: json['sourceType'] as int?,
       appName: json['appName'] as String? ?? '',
       itgrc: json['itgrc'] as int? ?? 0,
       dbVault: json['dbVault'] as String? ?? '',
@@ -95,9 +146,22 @@ class SourceMasterItem {
     );
   }
 
-  /// Label shown in the UI: "name (sourceType)" or just "sourceType"
+  String get sourceTypeLabel {
+    switch (sourceType) {
+      case 1: return 'Manual';
+      case 2: return 'QRS';
+      case 3: return 'FC';
+      default: return '';
+    }
+  }
+
+  /// Label shown in the UI: "name (sourceTypeLabel)" or just "name"
   String get displayName =>
-      name.isNotEmpty ? '$name ($sourceType)' : sourceType;
+      name.isNotEmpty && sourceTypeLabel.isNotEmpty
+          ? '$name ($sourceTypeLabel)'
+          : name.isNotEmpty
+          ? name
+          : sourceTypeLabel;
 
   Map<String, dynamic> toJson() => {
     'id': id,

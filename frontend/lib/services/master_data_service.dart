@@ -148,6 +148,29 @@ class MasterDataService {
     return [];
   }
 
+  /// Fetch filtered source master list by template + department
+  Future<List<SourceMasterFilterItem>> getSourceMasterListFilterwise({
+    required String templateId,
+    required String departmentId,
+  }) async {
+    try {
+      final body = {'template_id': templateId, 'department_id': departmentId};
+      final data = await _api.postRawData(
+        ApiConfig.sourceMasterListFilterwiseEndpoint,
+        body,
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(SourceMasterFilterItem.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getSourceMasterListFilterwise error: $e');
+    }
+    return [];
+  }
+
   /// Fetch source master list from API (/template/GetSourceMasterList)
   Future<List<SourceMasterItem>> getSourceMasterList() async {
     try {
@@ -279,6 +302,7 @@ class MasterDataService {
     required String name,
     required String dbVault,
     required String createdBy,
+    required int deptId,
   }) async {
     try {
       final body = {
@@ -288,6 +312,7 @@ class MasterDataService {
         'Name': name,
         'DBVault': dbVault,
         'Createdby': createdBy,
+        'department_id': deptId,
       };
       final res = await _api.post<AddSourceMasterResponse>(
         ApiConfig.addSourceMasterEndpoint,

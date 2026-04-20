@@ -399,7 +399,7 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('SELECTION', Icons.tune_rounded),
+          // _sectionTitle('SELECTION', Icons.tune_rounded),
           const SizedBox(height: 16),
           Row(
             children: [

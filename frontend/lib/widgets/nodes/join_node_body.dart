@@ -511,9 +511,7 @@ class JoinNodeBody extends StatelessWidget {
         'SourceId': 0,
         //TODO. check here for api calling  sourcename
         'SourceName': s.name,
-        'SourceType': s.sourceTypeValue.toLowerCase().isNotEmpty
-            ? s.sourceTypeId.toString()
-            : "",
+        'SourceType': s.sourceTypeId > 0 ? s.sourceTypeId.toString() : "",
         'Department': deptId,
         'Template': templateName,
         'Separator': s.separator,

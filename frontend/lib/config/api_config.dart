@@ -1,3 +1,5 @@
+const String kAppName = 'DATA FUSION';
+
 /// API Configuration
 /// Change baseUrl to your actual backend server
 class ApiConfig {
@@ -30,13 +32,17 @@ class ApiConfig {
   // Source Configuration
   static const String saveSourceConfigEndpoint = '/pipeline/save-sources';
   static const String addSourceMasterEndpoint = '/templateAddSourceMasterList';
-  static const String sourceMasterListEndpoint = '/template/GetSourceMasterList';
+  static const String sourceMasterListEndpoint =
+      '/template/GetSourceMasterList';
+  static const String sourceMasterListFilterwiseEndpoint =
+      '/template/GetSourceMasterListFilterwise';
   static const String manualTemplatesEndpoint =
       '/template/GetManualTemplateDetails';
   static const String sourceListEndpoint = '/template/GetSourceList';
   static const String uploadManualDataEndpoint = '/template/UploadManualData';
   static const String checkerListEndpoint = '/template/GetCheckerTayList';
-  static const String checkerApprovalEndpoint = '/template/UploadManualDataChecker';
+  static const String checkerApprovalEndpoint =
+      '/template/UploadManualDataChecker';
   static const String downloadFileEndpoint = '/template/DownloadFile';
 
   // Timeouts

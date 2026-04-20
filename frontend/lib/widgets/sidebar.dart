@@ -7,7 +7,6 @@ import '../models/master_models.dart';
 import '../models/template_info.dart';
 import '../controllers/pipeline_controller.dart';
 import '../providers/auth_provider.dart';
-import '../providers/pipeline_master_provider.dart';
 import '../services/master_data_service.dart';
 
 class Sidebar extends StatefulWidget {
@@ -26,6 +25,9 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
   bool _templateLoading = false;
   bool _sourceCountError =
       false; // true when template has no sourceCount configured
+
+  List<SourceMasterFilterItem> _filteredSourceTypes = [];
+  bool _sourceTypesLoading = false;
 
   late final AnimationController _deptPulse;
   late final AnimationController _templatePulse;
@@ -134,13 +136,29 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _loadFilteredSourceTypes({
+    required String templateId,
+    required String departmentId,
+  }) async {
+    setState(() {
+      _filteredSourceTypes = [];
+      _sourceTypesLoading = true;
+    });
+    final service = context.read<MasterDataService>();
+    final types = await service.getSourceMasterListFilterwise(
+      templateId: templateId,
+      departmentId: departmentId,
+    );
+    if (!mounted) return;
+    setState(() {
+      _filteredSourceTypes = types;
+      _sourceTypesLoading = false;
+    });
+  }
+
   void _resetAnimations() {
     // Stop every pulse and reset to zero
-    for (final c in [
-      _templatePulse,
-      _sourceCountPulse,
-      _sourceTypePulse,
-    ]) {
+    for (final c in [_templatePulse, _sourceCountPulse, _sourceTypePulse]) {
       c.stop();
       c.value = 0;
     }
@@ -152,6 +170,8 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
       _templates = [];
       _templateLoading = false;
       _sourceCountError = false;
+      _filteredSourceTypes = [];
+      _sourceTypesLoading = false;
     });
   }
 
@@ -284,6 +304,14 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                           : null,
                                       templateId: info.templateId,
                                     );
+                                    // Load filtered source types for selected dept + template
+                                    final deptId = _deptMap[ctrl.sidebarDept];
+                                    if (deptId != null && info.templateId > 0) {
+                                      _loadFilteredSourceTypes(
+                                        templateId: info.templateId.toString(),
+                                        departmentId: deptId.toString(),
+                                      );
+                                    }
                                     // Template done → stop template pulse
                                     _templatePulse.stop();
                                     _templatePulse.value = 0;
@@ -401,12 +429,12 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                             style: AppTextStyles.sectionLabel,
                           ),
                           const SizedBox(height: 6),
-                          Consumer<PipelineMasterProvider>(
-                            builder: (_, master, __) {
-                              if (master.loading) return _loadingField();
-                              if (master.sourceTypes.isEmpty) {
+                          Builder(
+                            builder: (_) {
+                              if (_sourceTypesLoading) return _loadingField();
+                              if (_filteredSourceTypes.isEmpty) {
                                 return const Text(
-                                  'No source types',
+                                  'Select template to load sources',
                                   style: TextStyle(
                                     color: AppColors.textMuted,
                                     fontSize: 11,
@@ -414,7 +442,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                 );
                               }
                               return Column(
-                                children: master.sourceTypes
+                                children: _filteredSourceTypes
                                     .map(
                                       (st) => DynamicPaletteItem(
                                         sourceItem: st,
@@ -708,17 +736,14 @@ class PaletteItem extends StatelessWidget {
   }
 }
 
-NodeType _sourceValueToNodeType(String sourceValue) {
-  switch (sourceValue.toUpperCase()) {
-    case 'DB':
-    case 'QRS':
-      return NodeType.db;
-    case 'MANUAL':
+NodeType _sourceTypeToNodeType(int? sourceType) {
+  switch (sourceType) {
+    case 1:
       return NodeType.manual;
-    case 'FC':
+    case 2:
+      return NodeType.db; // QRS
+    case 3:
       return NodeType.fc;
-    case 'LASER':
-      return NodeType.laser;
     default:
       return NodeType.db;
   }
@@ -726,7 +751,7 @@ NodeType _sourceValueToNodeType(String sourceValue) {
 
 // Dynamic palette item driven by API source type data
 class DynamicPaletteItem extends StatelessWidget {
-  final SourceTypeItem sourceItem;
+  final SourceMasterFilterItem sourceItem;
   final bool enabled;
   const DynamicPaletteItem({
     required this.sourceItem,
@@ -736,7 +761,7 @@ class DynamicPaletteItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nodeType = _sourceValueToNodeType(sourceItem.sourceValue);
+    final nodeType = _sourceTypeToNodeType(sourceItem.sourceType);
     final color = nodeType.color;
 
     Widget content() => Container(
@@ -764,20 +789,21 @@ class DynamicPaletteItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sourceItem.sourceName,
+                  sourceItem.name,
                   style: const TextStyle(
                     color: AppColors.text,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Text(
-                  sourceItem.sourceValue,
-                  style: const TextStyle(
-                    color: AppColors.textDim,
-                    fontSize: 10,
+                if (sourceItem.sourceTypeLabel.isNotEmpty)
+                  Text(
+                    sourceItem.sourceTypeLabel,
+                    style: const TextStyle(
+                      color: AppColors.textDim,
+                      fontSize: 10,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -790,8 +816,8 @@ class DynamicPaletteItem extends StatelessWidget {
     return Draggable<DragNodeData>(
       data: DragNodeData(
         nodeType,
-        sourceValue: sourceItem.sourceValue,
-        sourceName: sourceItem.sourceName,
+        sourceValue: sourceItem.sourceTypeLabel,
+        sourceName: sourceItem.name,
         sourceTypeId: sourceItem.id,
       ),
       feedback: Material(
@@ -815,7 +841,7 @@ class DynamicPaletteItem extends StatelessWidget {
               Icon(nodeType.icon, color: color, size: 16),
               const SizedBox(width: 8),
               Text(
-                sourceItem.sourceName,
+                sourceItem.name,
                 style: const TextStyle(
                   color: AppColors.text,
                   fontSize: 12,

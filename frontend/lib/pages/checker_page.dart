@@ -231,7 +231,7 @@ class _CheckerPageState extends State<CheckerPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionLabel('FILTER', Icons.tune_rounded),
+          // _sectionLabel('FILTER', Icons.tune_rounded),
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,

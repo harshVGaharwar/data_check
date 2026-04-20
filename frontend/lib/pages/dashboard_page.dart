@@ -27,7 +27,7 @@ class _DashboardPageState extends State<DashboardPage> {
     'Home',
     'Template Creation',
     'Template Configuration',
-    'Configuration Upload',
+    // 'Configuration Upload',
     'Source Configuration',
     'Manual Upload',
     'Checker',
@@ -37,7 +37,7 @@ class _DashboardPageState extends State<DashboardPage> {
     Icons.home_outlined,
     Icons.add_circle_outline,
     Icons.settings_applications_outlined,
-    Icons.cloud_upload_outlined,
+    // Icons.cloud_upload_outlined,
     Icons.storage_rounded,
     Icons.upload_file_rounded,
     Icons.fact_check_outlined,
@@ -50,7 +50,7 @@ class _DashboardPageState extends State<DashboardPage> {
       WelcomePage(onNavigate: (i) => _navigate(i)),
       const TemplateCreationPage(),
       const TemplateConfigurationPage(),
-      const ConfigurationUploadPage(),
+      // const ConfigurationUploadPage(),
       const SourceConfigurationPage(),
       const ManualUploadPage(),
       const CheckerPage(),
@@ -115,10 +115,10 @@ class _DashboardPageState extends State<DashboardPage> {
           child: Container(height: 1, color: AppColors.border),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, size: 20),
-            onPressed: () {},
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.notifications_outlined, size: 20),
+          //   onPressed: () {},
+          // ),
           const SizedBox(width: 4),
           Consumer<AuthProvider>(
             builder: (context, auth, _) {

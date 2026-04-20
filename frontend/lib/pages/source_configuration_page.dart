@@ -26,6 +26,14 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
   final _sourceTriggerKey = GlobalKey();
   OverlayEntry? _sourceOverlayEntry;
 
+  // Department dropdown state
+  List<DepartmentItem> _departments = [];
+  bool _departmentsLoading = true;
+  DepartmentItem? _selectedDepartment;
+  final _deptLayerLink = LayerLink();
+  final _deptTriggerKey = GlobalKey();
+  OverlayEntry? _deptOverlayEntry;
+
   // Text fields
   final _sourceNameCtrl =
       TextEditingController(); // "Source Name" → API key: Name
@@ -52,6 +60,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
       end: 10,
     ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeCtrl);
     _loadSourceTypes();
+    _loadDepartments();
   }
 
   void _loadSourceTypes() async {
@@ -65,9 +74,21 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
     }
   }
 
+  void _loadDepartments() async {
+    final service = context.read<MasterDataService>();
+    final depts = await service.getDepartments();
+    if (mounted) {
+      setState(() {
+        _departments = depts;
+        _departmentsLoading = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _closeSourceDropdown();
+    _closeDeptDropdown();
     _sourceNameCtrl.dispose();
     _appNameCtrl.dispose();
     _itgrcCtrl.dispose();
@@ -107,12 +128,42 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
     if (mounted) setState(() {});
   }
 
+  void _openDeptDropdown() {
+    _closeDeptDropdown();
+    final renderBox =
+        _deptTriggerKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = renderBox?.size.width ?? 280.0;
+    _deptOverlayEntry = OverlayEntry(
+      builder: (_) => _SelectDropdownOverlay(
+        layerLink: _deptLayerLink,
+        items: _departments.map((d) => (id: d.id, label: d.name)).toList(),
+        selectedId: _selectedDepartment?.id,
+        dropdownWidth: width,
+        searchHint: 'Search departments...',
+        onDismiss: _closeDeptDropdown,
+        onSelect: (id, label) {
+          final dept = _departments.firstWhere((d) => d.id == id);
+          setState(() => _selectedDepartment = dept);
+          _closeDeptDropdown();
+        },
+      ),
+    );
+    Overlay.of(context).insert(_deptOverlayEntry!);
+    setState(() {});
+  }
+
+  void _closeDeptDropdown() {
+    _deptOverlayEntry?.remove();
+    _deptOverlayEntry = null;
+    if (mounted) setState(() {});
+  }
+
   // ── Save ───────────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
     setState(() => _submitted = true);
 
-    if (_selectedSourceType == null) {
+    if (_selectedSourceType == null || _selectedDepartment == null) {
       _shakeCtrl.forward(from: 0);
       return;
     }
@@ -136,6 +187,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
       name: _sourceNameCtrl.text.trim(),
       dbVault: _dbVaultCtrl.text.trim(),
       createdBy: createdBy,
+      deptId: _selectedDepartment!.id,
     );
 
     if (!mounted) return;
@@ -295,7 +347,10 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _resetForm();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.green,
                       foregroundColor: Colors.white,
@@ -323,6 +378,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
 
   void _resetForm() {
     _selectedSourceType = null;
+    _selectedDepartment = null;
     _sourceNameCtrl.clear();
     _appNameCtrl.clear();
     _itgrcCtrl.clear();
@@ -417,29 +473,13 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                       _sectionLabel('Source Details', Icons.dns_rounded),
                       const SizedBox(height: 16),
 
-                      // Row 1: Source Type dropdown + ITGRC
+                      // Row 1: Department + Source Type
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: _sourceTypeDropdownField()),
+                          Expanded(child: _departmentDropdownField()),
                           const SizedBox(width: 14),
-                          Expanded(
-                            child: _field(
-                              label: 'ITGRC *',
-                              hint: 'Enter ITGRC reference number',
-                              controller: _itgrcCtrl,
-
-                              validator: (v) {
-                                if (v?.trim().isEmpty ?? true) {
-                                  return 'ITGRC is required';
-                                }
-                                if (int.tryParse(v!.trim()) == null) {
-                                  return 'Must be a number';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
+                          Expanded(child: _sourceTypeDropdownField()),
                         ],
                       ),
                       const SizedBox(height: 14),
@@ -473,10 +513,27 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                       ),
                       const SizedBox(height: 14),
 
-                      // Row 3: DB Vault
+                      // Row 3: ITGRC + DB Vault
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Expanded(
+                            child: _field(
+                              label: 'ITGRC *',
+                              hint: 'Enter ITGRC reference number',
+                              controller: _itgrcCtrl,
+                              validator: (v) {
+                                if (v?.trim().isEmpty ?? true) {
+                                  return 'ITGRC is required';
+                                }
+                                if (int.tryParse(v!.trim()) == null) {
+                                  return 'Must be a number';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: _field(
                               label: 'DB Vault *',
@@ -487,7 +544,6 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                                   : null,
                             ),
                           ),
-                          const Expanded(child: SizedBox()),
                         ],
                       ),
                     ],
@@ -670,6 +726,115 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
     );
   }
 
+  Widget _departmentDropdownField() {
+    final isOpen = _deptOverlayEntry != null;
+    final hasError = _submitted && _selectedDepartment == null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Department *',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textDim,
+          ),
+        ),
+        const SizedBox(height: 6),
+        CompositedTransformTarget(
+          link: _deptLayerLink,
+          child: InkWell(
+            key: _deptTriggerKey,
+            onTap: _departmentsLoading
+                ? null
+                : () => isOpen ? _closeDeptDropdown() : _openDeptDropdown(),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isOpen
+                      ? AppColors.blue
+                      : hasError
+                      ? AppColors.red
+                      : AppColors.border,
+                  width: isOpen || hasError ? 1.5 : 1,
+                ),
+                color: AppColors.surface2,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _departmentsLoading
+                        ? const Row(
+                            children: [
+                              SizedBox(
+                                width: 13,
+                                height: 13,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.textDim,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Loading...',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            _selectedDepartment?.name ?? 'Select department',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _selectedDepartment != null
+                                  ? AppColors.text
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                  ),
+                  AnimatedRotation(
+                    turns: isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 18,
+                      color: AppColors.textDim,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: const [
+                Icon(Icons.error_outline, size: 13, color: AppColors.red),
+                SizedBox(width: 4),
+                Text(
+                  'Department is required',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _field({
     required String label,
     required String hint,
@@ -730,6 +895,207 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.red, width: 1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Generic single-select searchable overlay ──────────────────────────────────
+
+typedef _SelectItem = ({int id, String label});
+
+class _SelectDropdownOverlay extends StatefulWidget {
+  final LayerLink layerLink;
+  final List<_SelectItem> items;
+  final int? selectedId;
+  final double dropdownWidth;
+  final String searchHint;
+  final VoidCallback onDismiss;
+  final void Function(int id, String label) onSelect;
+
+  const _SelectDropdownOverlay({
+    required this.layerLink,
+    required this.items,
+    required this.selectedId,
+    required this.dropdownWidth,
+    required this.searchHint,
+    required this.onDismiss,
+    required this.onSelect,
+  });
+
+  @override
+  State<_SelectDropdownOverlay> createState() => _SelectDropdownOverlayState();
+}
+
+class _SelectDropdownOverlayState extends State<_SelectDropdownOverlay> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<_SelectItem> get _filtered {
+    if (_query.isEmpty) return widget.items;
+    final q = _query.toLowerCase();
+    return widget.items
+        .where((i) => i.label.toLowerCase().contains(q))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: widget.onDismiss,
+            behavior: HitTestBehavior.translucent,
+            child: const SizedBox.expand(),
+          ),
+        ),
+        CompositedTransformFollower(
+          link: widget.layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 46),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface,
+              child: Container(
+                width: widget.dropdownWidth,
+                constraints: const BoxConstraints(maxHeight: 320),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        autofocus: true,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.text,
+                        ),
+                        onChanged: (v) => setState(() => _query = v),
+                        decoration: InputDecoration(
+                          hintText: widget.searchHint,
+                          hintStyle: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 16,
+                            color: AppColors.textDim,
+                          ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface2,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.violet,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                    Flexible(
+                      child: _filtered.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                'No results found',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textDim,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: _filtered.length,
+                              separatorBuilder: (_, __) => const Divider(
+                                height: 1,
+                                color: AppColors.border,
+                              ),
+                              itemBuilder: (_, i) {
+                                final item = _filtered[i];
+                                final isSel = widget.selectedId == item.id;
+                                return InkWell(
+                                  onTap: () =>
+                                      widget.onSelect(item.id, item.label),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isSel
+                                              ? Icons.radio_button_checked
+                                              : Icons.radio_button_unchecked,
+                                          size: 18,
+                                          color: isSel
+                                              ? AppColors.violet
+                                              : AppColors.textDim,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            item.label,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: isSel
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w400,
+                                              color: isSel
+                                                  ? AppColors.violet
+                                                  : AppColors.text,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
