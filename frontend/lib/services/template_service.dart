@@ -33,35 +33,31 @@ class TemplateService {
     );
   }
 
-  /// Get all templates
-  Future<ApiResponse<List<TemplateListItem>>> getTemplates() async {
-    final response = await _api.get(ApiConfig.templateListEndpoint);
-    if (response.success) {
-      // Parse list from response
-      try {
-        final list =
-            (response.data as List?)
-                ?.map((e) => TemplateListItem.fromJson(e))
-                .toList() ??
-            [];
-        return ApiResponse(
-          success: true,
-          data: list,
-          message: response.message,
-        );
-      } catch (_) {
-        return ApiResponse(
-          success: true,
-          data: <TemplateListItem>[],
-          message: response.message,
-        );
-      }
-    }
-    return ApiResponse.error(response.message, statusCode: response.statusCode);
-  }
+  // /// Get all templates
+  // Future<ApiResponse<List<TemplateListItem>>> getTemplates() async {
+  //   final response = await _api.get(ApiConfig.templateListEndpoint);
+  //   if (response.success) {
+  //     // Parse list from response
+  //     try {
+  //       final list =
+  //           (response.data as List?)
+  //               ?.map((e) => TemplateListItem.fromJson(e))
+  //               .toList() ??
+  //           [];
+  //       return ApiResponse(
+  //         success: true,
+  //         data: list,
+  //         message: response.message,
+  //       );
+  //     } catch (_) {
+  //       return ApiResponse(
+  //         success: true,
+  //         data: <TemplateListItem>[],
+  //         message: response.message,
+  //       );
+  //     }
+  //   }
+  //   return ApiResponse.error(response.message, statusCode: response.statusCode);
+  // }
 
-  /// Get template by ID
-  Future<ApiResponse> getTemplateById(String id) async {
-    return _api.get('${ApiConfig.templateDetailEndpoint}/$id');
-  }
 }

@@ -79,7 +79,7 @@ class WelcomePage extends StatelessWidget {
                       ],
                       const SizedBox(height: 16),
                       Text(
-                        'HDFC Data Orchestration Platform',
+                        'DATA FUSION',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.65),
                           fontSize: 12,

@@ -19,9 +19,11 @@ void main() {
 
   final apiService = ApiService();
   final storageService = StorageService();
+  final authService = AuthService(apiService);
 
-  // Wire up the global message callback so offline/error toasts work on every
-  // page, including the login screen (where no BuildContext is available yet).
+  // Wire up the global message callback and token-refresh function.
+  // The refreshFn reads the stored refresh token and calls the backend to get
+  // a new access token — used by the 401 interceptor in ApiService.
   apiService.configure(
     showMessage: (msg) {
       scaffoldMessengerKey.currentState
@@ -34,6 +36,15 @@ void main() {
           ),
         );
     },
+    refreshFn: () async {
+      final session = await storageService.loadSession();
+      if (session == null || session.refreshToken.isEmpty) return null;
+      return authService.refreshToken(
+        token: session.refreshToken,
+        userId: session.user.employeeCode,
+        storage: storageService,
+      );
+    },
   );
 
   runApp(
@@ -41,7 +52,7 @@ void main() {
       providers: [
         Provider<ApiService>.value(value: apiService),
         Provider<StorageService>.value(value: storageService),
-        Provider<AuthService>(create: (_) => AuthService(apiService)),
+        Provider<AuthService>.value(value: authService),
         Provider<TemplateService>(create: (_) => TemplateService(apiService)),
         Provider<PipelineService>(create: (_) => PipelineService(apiService)),
         Provider<MasterDataService>(

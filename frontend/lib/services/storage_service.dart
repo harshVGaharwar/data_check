@@ -62,6 +62,16 @@ class StorageService {
     ]);
   }
 
+  Future<void> updateTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    await Future.wait([
+      _storage.write(key: _tokenKey, value: accessToken),
+      _storage.write(key: _refreshTokenKey, value: refreshToken),
+    ]);
+  }
+
   Future<void> savePageIndex(int index) async {
     await _storage.write(key: _pageIndexKey, value: '$index');
   }

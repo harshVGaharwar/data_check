@@ -17,12 +17,20 @@ class ManualUploadPage extends StatefulWidget {
 class _ManualUploadPageState extends State<ManualUploadPage> {
   Map<String, int> _deptMap = {};
   bool _deptLoading = true;
+  bool _deptError = false;
 
   List<ManualTemplateInfo> _templates = [];
   bool _templateLoading = false;
+  bool _templateError = false;
 
   String? _selectedDept;
   ManualTemplateInfo? _selectedTemplate;
+
+  // Searchable overlay links
+  final _deptLayerLink = LayerLink();
+  final _templateLayerLink = LayerLink();
+  OverlayEntry? _deptOverlay;
+  OverlayEntry? _templateOverlay;
 
   List<SourceListItem> _sources = [];
   bool _sourceLoading = false;
@@ -39,6 +47,10 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
   }
 
   Future<void> _loadDepartments() async {
+    setState(() {
+      _deptLoading = true;
+      _deptError = false;
+    });
     final auth = context.read<AuthProvider>();
     if (!auth.initialized) {
       await Future.doWhile(() async {
@@ -53,6 +65,7 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
     setState(() {
       _deptMap = map;
       _deptLoading = false;
+      _deptError = map.isEmpty;
     });
   }
 
@@ -62,6 +75,7 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
       _selectedTemplate = null;
       _templates = [];
       _templateLoading = true;
+      _templateError = false;
       _sources = [];
       _slotFiles.clear();
     });
@@ -78,6 +92,7 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
     setState(() {
       _templates = templates;
       _templateLoading = false;
+      _templateError = templates.isEmpty;
     });
   }
 
@@ -156,9 +171,14 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
     }).toList();
 
     setState(() => _saving = true);
+
+    // TODO
+
     final result = await context.read<MasterDataService>().uploadManualData(
       entries: entries,
+      files: _slotFiles.values.toList(),
     );
+
     if (!mounted) return;
     setState(() => _saving = false);
 
@@ -394,6 +414,68 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
     );
   }
 
+  void _closeDeptOverlay() {
+    _deptOverlay?.remove();
+    _deptOverlay = null;
+    if (mounted) setState(() {});
+  }
+
+  void _closeTemplateOverlay() {
+    _templateOverlay?.remove();
+    _templateOverlay = null;
+    if (mounted) setState(() {});
+  }
+
+  void _openDeptOverlay(double width) {
+    _closeDeptOverlay();
+    final items = _deptMap.keys
+        .map((k) => (id: _deptMap[k]!, label: k))
+        .toList();
+    _deptOverlay = OverlayEntry(
+      builder: (_) => _SelectDropdownOverlay(
+        layerLink: _deptLayerLink,
+        items: items,
+        selectedId: _selectedDept != null ? _deptMap[_selectedDept] : null,
+        dropdownWidth: width,
+        searchHint: 'Search department...',
+        onDismiss: _closeDeptOverlay,
+        onSelect: (id, label) {
+          _closeDeptOverlay();
+          _onDeptSelected(label);
+        },
+      ),
+    );
+    Overlay.of(context).insert(_deptOverlay!);
+    setState(() {});
+  }
+
+  void _openTemplateOverlay(double width) {
+    _closeTemplateOverlay();
+    final items = _templates
+        .asMap()
+        .entries
+        .map((e) => (id: e.key, label: e.value.templateName))
+        .toList();
+    _templateOverlay = OverlayEntry(
+      builder: (_) => _SelectDropdownOverlay(
+        layerLink: _templateLayerLink,
+        items: items,
+        selectedId: _selectedTemplate != null
+            ? _templates.indexOf(_selectedTemplate!)
+            : null,
+        dropdownWidth: width,
+        searchHint: 'Search template...',
+        onDismiss: _closeTemplateOverlay,
+        onSelect: (id, label) {
+          _closeTemplateOverlay();
+          _onTemplateSelected(_templates[id]);
+        },
+      ),
+    );
+    Overlay.of(context).insert(_templateOverlay!);
+    setState(() {});
+  }
+
   Widget _buildSelectionCard() {
     return _card(
       child: Column(
@@ -404,32 +486,70 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
           Row(
             children: [
               Expanded(
-                child: _labelledDropdown(
-                  label: 'Department',
-                  hint: '— Select Department —',
-                  value: _selectedDept,
-                  items: _deptMap.keys.toList(),
-                  loading: _deptLoading,
-                  onChanged: (v) {
-                    if (v != null) _onDeptSelected(v);
+                child: LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Department',
+                          style: AppTextStyles.fieldLabel,
+                        ),
+                        const SizedBox(height: 6),
+                        _deptLoading
+                            ? _loadingField()
+                            : _deptError
+                            ? _errorField(_loadDepartments)
+                            : CompositedTransformTarget(
+                                link: _deptLayerLink,
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      _openDeptOverlay(constraints.maxWidth),
+                                  child: _dropdownTrigger(
+                                    value: _selectedDept,
+                                    hint: '— Select Department —',
+                                    isOpen: _deptOverlay != null,
+                                  ),
+                                ),
+                              ),
+                      ],
+                    );
                   },
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _labelledDropdown(
-                  label: 'Template',
-                  hint: _selectedDept == null
-                      ? '— Select Department first —'
-                      : '— Select Template —',
-                  value: _selectedTemplate?.templateName,
-                  items: _templates.map((t) => t.templateName).toList(),
-                  loading: _templateLoading,
-                  enabled: _selectedDept != null && !_templateLoading,
-                  onChanged: (v) {
-                    if (v == null) return;
-                    _onTemplateSelected(
-                      _templates.firstWhere((t) => t.templateName == v),
+                child: LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    final enabled = _selectedDept != null && !_templateLoading;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Template', style: AppTextStyles.fieldLabel),
+                        const SizedBox(height: 6),
+                        _templateLoading
+                            ? _loadingField()
+                            : _templateError
+                            ? _errorField(() => _onDeptSelected(_selectedDept!))
+                            : CompositedTransformTarget(
+                                link: _templateLayerLink,
+                                child: GestureDetector(
+                                  onTap: enabled
+                                      ? () => _openTemplateOverlay(
+                                          constraints.maxWidth,
+                                        )
+                                      : null,
+                                  child: _dropdownTrigger(
+                                    value: _selectedTemplate?.templateName,
+                                    hint: _selectedDept == null
+                                        ? '— Select Department first —'
+                                        : '— Select Template —',
+                                    isOpen: _templateOverlay != null,
+                                    enabled: enabled,
+                                  ),
+                                ),
+                              ),
+                      ],
                     );
                   },
                 ),
@@ -822,57 +942,75 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
     );
   }
 
-  Widget _labelledDropdown({
-    required String label,
-    required String hint,
+  Widget _dropdownTrigger({
     required String? value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-    bool loading = false,
+    required String hint,
+    required bool isOpen,
     bool enabled = true,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.fieldLabel),
-        const SizedBox(height: 6),
-        loading
-            ? _loadingField()
-            : Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: enabled ? AppColors.border2 : AppColors.border,
-                  ),
-                  color: enabled ? AppColors.surface : AppColors.bg,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: items.contains(value) ? value : null,
-                    hint: Text(
-                      hint,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    dropdownColor: AppColors.surface,
-                    style: const TextStyle(fontSize: 13, color: AppColors.text),
-                    icon: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 18,
-                      color: enabled ? AppColors.textDim : AppColors.textMuted,
-                    ),
-                    items: items
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
-                    onChanged: enabled ? onChanged : null,
-                  ),
-                ),
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isOpen
+              ? AppColors.violet
+              : enabled
+              ? AppColors.border2
+              : AppColors.border,
+        ),
+        color: enabled ? AppColors.surface : AppColors.bg,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              value ?? hint,
+              style: TextStyle(
+                fontSize: 13,
+                color: value != null ? AppColors.text : AppColors.textMuted,
               ),
-      ],
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(
+            isOpen
+                ? Icons.keyboard_arrow_up_rounded
+                : Icons.keyboard_arrow_down_rounded,
+            size: 18,
+            color: enabled ? AppColors.textDim : AppColors.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorField(VoidCallback onRetry) {
+    return GestureDetector(
+      onTap: onRetry,
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.red.withValues(alpha: 0.4)),
+          color: AppColors.red.withValues(alpha: 0.04),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Failed to load. Tap to retry',
+                style: TextStyle(fontSize: 12, color: AppColors.red),
+              ),
+            ),
+            Icon(Icons.refresh_rounded, size: 14, color: AppColors.red),
+          ],
+        ),
+      ),
     );
   }
 
@@ -902,6 +1040,205 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+typedef _SelectItem = ({int id, String label});
+
+class _SelectDropdownOverlay extends StatefulWidget {
+  final LayerLink layerLink;
+  final List<_SelectItem> items;
+  final int? selectedId;
+  final double dropdownWidth;
+  final String searchHint;
+  final VoidCallback onDismiss;
+  final void Function(int id, String label) onSelect;
+
+  const _SelectDropdownOverlay({
+    required this.layerLink,
+    required this.items,
+    required this.selectedId,
+    required this.dropdownWidth,
+    required this.searchHint,
+    required this.onDismiss,
+    required this.onSelect,
+  });
+
+  @override
+  State<_SelectDropdownOverlay> createState() => _SelectDropdownOverlayState();
+}
+
+class _SelectDropdownOverlayState extends State<_SelectDropdownOverlay> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<_SelectItem> get _filtered {
+    if (_query.isEmpty) return widget.items;
+    final q = _query.toLowerCase();
+    return widget.items
+        .where((i) => i.label.toLowerCase().contains(q))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: widget.onDismiss,
+            behavior: HitTestBehavior.translucent,
+            child: const SizedBox.expand(),
+          ),
+        ),
+        CompositedTransformFollower(
+          link: widget.layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 46),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface,
+              child: Container(
+                width: widget.dropdownWidth,
+                constraints: const BoxConstraints(maxHeight: 320),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        autofocus: true,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.text,
+                        ),
+                        onChanged: (v) => setState(() => _query = v),
+                        decoration: InputDecoration(
+                          hintText: widget.searchHint,
+                          hintStyle: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 16,
+                            color: AppColors.textDim,
+                          ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface2,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.violet,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                    Flexible(
+                      child: _filtered.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                'No results found',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textDim,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: _filtered.length,
+                              separatorBuilder: (_, __) => const Divider(
+                                height: 1,
+                                color: AppColors.border,
+                              ),
+                              itemBuilder: (_, i) {
+                                final item = _filtered[i];
+                                final isSel = widget.selectedId == item.id;
+                                return InkWell(
+                                  onTap: () =>
+                                      widget.onSelect(item.id, item.label),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isSel
+                                              ? Icons.radio_button_checked
+                                              : Icons.radio_button_unchecked,
+                                          size: 18,
+                                          color: isSel
+                                              ? AppColors.violet
+                                              : AppColors.textDim,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            item.label,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: isSel
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w400,
+                                              color: isSel
+                                                  ? AppColors.violet
+                                                  : AppColors.text,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -504,14 +504,19 @@ class JoinNodeBody extends StatelessWidget {
     final templateName = ctrl.sidebarTemplate;
 
     // ── 1. Sources (only those connected to a join node via edges) ──
+    const sourceTypeValueToId = {'Manual': 1, 'QRS': 2, 'FC': 3};
     final sources = sourceNodes.asMap().entries.map((entry) {
       final s = entry.value;
+      final sourceId = sourceTypeValueToId[s.sourceTypeValue] ?? 0;
       return {
         'TemplateId': templateId,
-        'SourceId': 0,
-        //TODO. check here for api calling  sourcename
+        'SourceId': s.sourceTypeId > 0 ? s.sourceTypeId.toString() : "",
+
+        /// jo source master se ID mil rahi hai wo
         'SourceName': s.name,
-        'SourceType': s.sourceTypeId > 0 ? s.sourceTypeId.toString() : "",
+        'SourceType': sourceId.toString(),
+
+        /// jo drag kiye ho wo pass hoga
         'Department': deptId,
         'Template': templateName,
         'Separator': s.separator,
@@ -587,7 +592,7 @@ class JoinNodeBody extends StatelessWidget {
         outputColumns.add({
           'template_id': templateId,
           'department': deptIdInt.toString(),
-          'sourceid': s.sourceId ?? s.sourceTypeId,
+          'sourceid': sourceTypeValueToId[s.sourceTypeValue].toString(),
           'sourceName': s.name,
           'SourceColName': col,
           'ColumnName': outputName,
@@ -603,7 +608,7 @@ class JoinNodeBody extends StatelessWidget {
       'JoinMappings': joinMappings,
       'Edges': edgeList,
       'connectedSources': connectedSourcesData,
-      'output_columns': outputColumns,
+      'outputColumns': outputColumns,
     };
 
     // ── Collect file entries (column files + query files) ──

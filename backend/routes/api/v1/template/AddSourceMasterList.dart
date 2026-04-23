@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:http/io_client.dart';
-import '../../../lib/config/api_config.dart';
-import '../../../lib/models/models.dart';
-import '../../../lib/services/database.dart';
+import 'package:pipeline_backend/config/api_config.dart';
+import 'package:pipeline_backend/models/models.dart';
+import 'package:pipeline_backend/services/database.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method != HttpMethod.post) {

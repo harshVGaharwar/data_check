@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/api_response.dart';
@@ -271,18 +274,31 @@ class MasterDataService {
     );
   }
 
-  /// Upload manual data files
+  /// Upload manual data files TODO
   Future<({bool success, String message, int reqId})> uploadManualData({
     required List<Map<String, String>> entries,
+    required List<PlatformFile> files,
   }) async {
     try {
-      final body = {'manualFileUploadslist': entries};
-      final res = await _api.post<AddSourceMasterResponse>(
+      final fields = {
+        "ManualFileUploadList": jsonEncode({"manualFileUploadslist": entries}),
+      };
+
+      final fileEntries = <({String key, List<int> bytes, String filename})>[];
+
+      for (final f in files) {
+        fileEntries.add((key: 'Files', bytes: f.bytes!, filename: f.name));
+      }
+
+      final res = await _api.postMultipart<AddSourceMasterResponse>(
         ApiConfig.uploadManualDataEndpoint,
-        body,
+        fields: fields,
+        fileEntries: fileEntries,
         fromData: AddSourceMasterResponse.fromJson,
       );
+
       final reqId = res.data?.reqId ?? 0;
+
       return (success: res.success, message: res.message, reqId: reqId);
     } catch (e) {
       debugPrint('[MasterData] uploadManualData error: $e');

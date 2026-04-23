@@ -21,6 +21,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
   // Source Type dropdown state
   List<SourceTypeItem> _sourceTypes = [];
   bool _sourceTypesLoading = true;
+  bool _sourceTypesError = false;
   SourceTypeItem? _selectedSourceType;
   final _sourceLayerLink = LayerLink();
   final _sourceTriggerKey = GlobalKey();
@@ -29,6 +30,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
   // Department dropdown state
   List<DepartmentItem> _departments = [];
   bool _departmentsLoading = true;
+  bool _departmentsError = false;
   DepartmentItem? _selectedDepartment;
   final _deptLayerLink = LayerLink();
   final _deptTriggerKey = GlobalKey();
@@ -64,23 +66,33 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
   }
 
   void _loadSourceTypes() async {
+    setState(() {
+      _sourceTypesLoading = true;
+      _sourceTypesError = false;
+    });
     final service = context.read<MasterDataService>();
     final types = await service.getSourceTypes();
     if (mounted) {
       setState(() {
         _sourceTypes = types;
         _sourceTypesLoading = false;
+        _sourceTypesError = types.isEmpty;
       });
     }
   }
 
   void _loadDepartments() async {
+    setState(() {
+      _departmentsLoading = true;
+      _departmentsError = false;
+    });
     final service = context.read<MasterDataService>();
     final depts = await service.getDepartments();
     if (mounted) {
       setState(() {
         _departments = depts;
         _departmentsLoading = false;
+        _departmentsError = depts.isEmpty;
       });
     }
   }
@@ -621,7 +633,9 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
             key: _sourceTriggerKey,
             onTap: _sourceTypesLoading
                 ? null
-                : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
+                : _sourceTypesError
+                    ? _loadSourceTypes
+                    : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               height: 42,
@@ -629,14 +643,18 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isOpen
-                      ? AppColors.blue
-                      : hasError
-                      ? AppColors.red
-                      : AppColors.border,
+                  color: _sourceTypesError
+                      ? AppColors.red.withValues(alpha: 0.4)
+                      : isOpen
+                          ? AppColors.blue
+                          : hasError
+                          ? AppColors.red
+                          : AppColors.border,
                   width: isOpen || hasError ? 1.5 : 1,
                 ),
-                color: AppColors.surface2,
+                color: _sourceTypesError
+                    ? AppColors.red.withValues(alpha: 0.04)
+                    : AppColors.surface2,
               ),
               child: Row(
                 children: [
@@ -662,26 +680,38 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                               ),
                             ],
                           )
-                        : Text(
-                            _selectedSourceType?.sourceName ??
-                                'Select source type',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: _selectedSourceType != null
-                                  ? AppColors.text
-                                  : AppColors.textMuted,
-                            ),
+                        : _sourceTypesError
+                            ? Row(
+                                children: [
+                                  Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Failed to load. Tap to retry',
+                                    style: TextStyle(fontSize: 12, color: AppColors.red),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                _selectedSourceType?.sourceName ?? 'Select source type',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: _selectedSourceType != null
+                                      ? AppColors.text
+                                      : AppColors.textMuted,
+                                ),
+                              ),
+                  ),
+                  _sourceTypesError
+                      ? Icon(Icons.refresh_rounded, size: 14, color: AppColors.red)
+                      : AnimatedRotation(
+                          turns: isOpen ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.textDim,
                           ),
-                  ),
-                  AnimatedRotation(
-                    turns: isOpen ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 18,
-                      color: AppColors.textDim,
-                    ),
-                  ),
+                        ),
                 ],
               ),
             ),
@@ -748,7 +778,9 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
             key: _deptTriggerKey,
             onTap: _departmentsLoading
                 ? null
-                : () => isOpen ? _closeDeptDropdown() : _openDeptDropdown(),
+                : _departmentsError
+                    ? _loadDepartments
+                    : () => isOpen ? _closeDeptDropdown() : _openDeptDropdown(),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               height: 42,
@@ -756,14 +788,18 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isOpen
-                      ? AppColors.blue
-                      : hasError
-                      ? AppColors.red
-                      : AppColors.border,
+                  color: _departmentsError
+                      ? AppColors.red.withValues(alpha: 0.4)
+                      : isOpen
+                          ? AppColors.blue
+                          : hasError
+                          ? AppColors.red
+                          : AppColors.border,
                   width: isOpen || hasError ? 1.5 : 1,
                 ),
-                color: AppColors.surface2,
+                color: _departmentsError
+                    ? AppColors.red.withValues(alpha: 0.04)
+                    : AppColors.surface2,
               ),
               child: Row(
                 children: [
@@ -789,25 +825,38 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                               ),
                             ],
                           )
-                        : Text(
-                            _selectedDepartment?.name ?? 'Select department',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: _selectedDepartment != null
-                                  ? AppColors.text
-                                  : AppColors.textMuted,
-                            ),
+                        : _departmentsError
+                            ? Row(
+                                children: [
+                                  Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Failed to load. Tap to retry',
+                                    style: TextStyle(fontSize: 12, color: AppColors.red),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                _selectedDepartment?.name ?? 'Select department',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: _selectedDepartment != null
+                                      ? AppColors.text
+                                      : AppColors.textMuted,
+                                ),
+                              ),
+                  ),
+                  _departmentsError
+                      ? Icon(Icons.refresh_rounded, size: 14, color: AppColors.red)
+                      : AnimatedRotation(
+                          turns: isOpen ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.textDim,
                           ),
-                  ),
-                  AnimatedRotation(
-                    turns: isOpen ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 18,
-                      color: AppColors.textDim,
-                    ),
-                  ),
+                        ),
                 ],
               ),
             ),

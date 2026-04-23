@@ -66,7 +66,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _restorePageIndex() async {
     final storage = context.read<StorageService>();
     final index = await storage.loadPageIndex();
-    if (mounted && index != _selectedIndex) {
+    if (mounted && index != _selectedIndex && index < _pages.length) {
       setState(() => _selectedIndex = index);
     }
   }
@@ -83,12 +83,10 @@ class _DashboardPageState extends State<DashboardPage> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Flexible(
-              child: Image.asset(
-                'assets/images/HDFC_Bank_Logo.svg.png',
-                height: 36,
-                fit: BoxFit.contain,
-              ),
+            Image.asset(
+              'assets/images/HDFC_Bank_Logo.svg.png',
+              height: 36,
+              fit: BoxFit.contain,
             ),
             const SizedBox(width: 10),
             // Column(
@@ -204,27 +202,14 @@ class _DashboardPageState extends State<DashboardPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.white.withValues(alpha: 0.2),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'H',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
+                Image.asset(
+                  'assets/images/HDFC_Bank_Logo.svg.png',
+                  height: 36,
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'HDFC Pipeline Builder',
+                  'Data Fusion',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,

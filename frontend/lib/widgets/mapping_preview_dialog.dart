@@ -57,10 +57,14 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
         setState(() => _headerVisible = shouldShow);
       }
     });
+    widget.ctrl.addListener(_onCtrlChange);
   }
+
+  void _onCtrlChange() => setState(() {});
 
   @override
   void dispose() {
+    widget.ctrl.removeListener(_onCtrlChange);
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -71,6 +75,7 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
     final sourceNodes = widget.sourceNodes;
     final templateName = ctrl.sidebarTemplate;
     final templateId = ctrl.sidebarTemplateId;
+    final deptName = ctrl.sidebarDept;
     final deptId = ctrl.sidebarDeptId;
     final joinNodes = ctrl.nodes.where((n) => n.type == NodeType.join).toList();
 
@@ -101,6 +106,7 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
                     firstChild: _Header(
                       templateName: templateName,
                       templateId: templateId,
+                      deptName: deptName,
                       deptId: deptId,
                     ),
                     secondChild: const SizedBox(width: double.infinity),
@@ -339,10 +345,12 @@ class _SectionCard extends StatelessWidget {
 class _Header extends StatelessWidget {
   final String templateName;
   final int templateId;
+  final String deptName;
   final String deptId;
   const _Header({
     required this.templateName,
     required this.templateId,
+    required this.deptName,
     required this.deptId,
   });
 
@@ -418,7 +426,7 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: 3),
                 // Meta info
                 Text(
-                  'Template ID: $templateId  ·  Dept: $deptId',
+                  '${deptName.isNotEmpty ? deptName : deptId}  ·  Template: ${templateName.isNotEmpty ? templateName : 'ID $templateId'}',
                   style: const TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 12,

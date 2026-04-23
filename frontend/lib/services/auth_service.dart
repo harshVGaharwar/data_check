@@ -3,6 +3,7 @@ import '../models/api_response.dart';
 import '../models/login_request.dart';
 import '../models/login_response.dart';
 import 'api_service.dart';
+import 'storage_service.dart';
 
 class AuthService {
   final ApiService _api;
@@ -28,6 +29,36 @@ class AuthService {
     final response = await _api.post(ApiConfig.logoutEndpoint, {});
     _api.setToken(null);
     return response;
+  }
+
+  Future<String?> refreshToken({
+    required String token,
+    required String userId,
+    required StorageService storage,
+  }) async {
+    final response = await _api.post<Map<String, dynamic>>(
+      ApiConfig.refreshEndpoint,
+      {
+        'token': token,
+        'userId': userId,
+        'expiryDate': '',
+        'isRevoked': false,
+      },
+      fromData: (json) => json,
+    );
+    if (response.success && response.data != null) {
+      final newAccessToken = response.data!['accessToken'] as String? ?? '';
+      final newRefreshToken = response.data!['refreshToken'] as String? ?? '';
+      if (newAccessToken.isNotEmpty) {
+        _api.setToken(newAccessToken);
+        await storage.updateTokens(
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        );
+        return newAccessToken;
+      }
+    }
+    return null;
   }
 
   void setToken(String token) => _api.setToken(token);

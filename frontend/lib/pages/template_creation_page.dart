@@ -32,13 +32,17 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
   late AnimationController _shakeCtrl;
   late Animation<double> _shakeAnim;
+  String? selectedFormat;
 
   List<DepartmentItem> _departments = [];
   bool _deptLoading = true;
+  bool _deptError = false;
   List<ApprovalItem> _approvalOptions = [];
   bool _approvalLoading = true;
+  bool _approvalError = false;
   List<SourceMasterItem> _sourceMasterList = [];
   bool _sourceMasterLoading = true;
+  bool _sourceMasterError = false;
 
   // Source-type multi-select overlay
   final _sourceLayerLink = LayerLink();
@@ -108,7 +112,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     }
   }
 
-  void _loadDepartments() async {
+  Future<void> _loadDepartments() async {
+    setState(() { _deptLoading = true; _deptError = false; });
     await _waitForAuth();
     if (!mounted) return;
     final service = context.read<MasterDataService>();
@@ -117,11 +122,13 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       setState(() {
         _departments = depts;
         _deptLoading = false;
+        _deptError = depts.isEmpty;
       });
     }
   }
 
-  void _loadApprovals() async {
+  Future<void> _loadApprovals() async {
+    setState(() { _approvalLoading = true; _approvalError = false; });
     await _waitForAuth();
     if (!mounted) return;
     final service = context.read<MasterDataService>();
@@ -130,11 +137,13 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       setState(() {
         _approvalOptions = approvals;
         _approvalLoading = false;
+        _approvalError = approvals.isEmpty;
       });
     }
   }
 
-  void _loadSourceMasterList() async {
+  Future<void> _loadSourceMasterList() async {
+    setState(() { _sourceMasterLoading = true; _sourceMasterError = false; });
     await _waitForAuth();
     if (!mounted) return;
     final service = context.read<MasterDataService>();
@@ -143,6 +152,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       setState(() {
         _sourceMasterList = list;
         _sourceMasterLoading = false;
+        _sourceMasterError = list.isEmpty;
       });
     }
   }
@@ -370,29 +380,31 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                         ),
                         _deptLoading
                             ? _loadingField('Department *')
-                            : _dd(
-                                'Department *',
-                                _departments.map((d) => d.name).toList(),
-                                _departments
-                                        .where(
-                                          (d) =>
-                                              d.id.toString() ==
-                                              _model.department,
-                                        )
-                                        .firstOrNull
-                                        ?.name ??
-                                    '',
-                                (v) {
-                                  if (v == null) return;
-                                  final dept = _departments.firstWhere(
-                                    (d) => d.name == v,
-                                  );
-                                  setState(
-                                    () =>
-                                        _model.department = dept.id.toString(),
-                                  );
-                                },
-                              ),
+                            : _deptError
+                                ? _errorField('Department *', _loadDepartments)
+                                : _dd(
+                                    'Department *',
+                                    _departments.map((d) => d.name).toList(),
+                                    _departments
+                                            .where(
+                                              (d) =>
+                                                  d.id.toString() ==
+                                                  _model.department,
+                                            )
+                                            .firstOrNull
+                                            ?.name ??
+                                        '',
+                                    (v) {
+                                      if (v == null) return;
+                                      final dept = _departments.firstWhere(
+                                        (d) => d.name == v,
+                                      );
+                                      setState(
+                                        () => _model.department =
+                                            dept.id.toString(),
+                                      );
+                                    },
+                                  ),
                         _dd(
                           'Frequency *',
                           _frequencies,
@@ -502,13 +514,15 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                         spacing: 10,
                         runSpacing: 10,
                         children: _outputFormats.map((f) {
-                          final sel = _model.outputFormats.contains(f);
+                          final sel = selectedFormat == f;
+
                           return InkWell(
-                            onTap: () => setState(() {
-                              sel
-                                  ? _model.outputFormats.remove(f)
-                                  : _model.outputFormats.add(f);
-                            }),
+                            onTap: () {
+                              setState(() {
+                                selectedFormat = f;
+                                _model.outputFormats = [f];
+                              });
+                            },
                             borderRadius: BorderRadius.circular(10),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -535,8 +549,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                 children: [
                                   Icon(
                                     sel
-                                        ? Icons.check_circle
-                                        : Icons.radio_button_unchecked,
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_off,
                                     size: 18,
                                     color: sel
                                         ? const Color(0xFF004C8F)
@@ -549,7 +563,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                       fontSize: 13,
                                       fontWeight: sel
                                           ? FontWeight.w700
-                                          : FontWeight.w500,
+                                          : FontWeight.w300,
                                       color: sel
                                           ? const Color(0xFF004C8F)
                                           : AppColors.text,
@@ -604,6 +618,23 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                               ),
                             ),
                           ],
+                        )
+                      else if (_approvalError)
+                        GestureDetector(
+                          onTap: _loadApprovals,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Failed to load. Tap to retry',
+                                style: TextStyle(fontSize: 12, color: AppColors.red),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(Icons.refresh_rounded, size: 14, color: AppColors.red),
+                            ],
+                          ),
                         )
                       else
                         Wrap(
@@ -1011,6 +1042,41 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     );
   }
 
+  Widget _errorField(String label, VoidCallback onRetry) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.fieldLabel),
+        const SizedBox(height: 4),
+        GestureDetector(
+          onTap: onRetry,
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.red.withValues(alpha: 0.4)),
+              color: AppColors.red.withValues(alpha: 0.04),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Failed to load. Tap to retry',
+                    style: TextStyle(fontSize: 12, color: AppColors.red),
+                  ),
+                ),
+                Icon(Icons.refresh_rounded, size: 14, color: AppColors.red),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _tf(
     String label,
     TextEditingController ctrl,
@@ -1180,7 +1246,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
             key: _sourceTriggerKey,
             onTap: _sourceMasterLoading
                 ? null
-                : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
+                : _sourceMasterError
+                    ? _loadSourceMasterList
+                    : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               constraints: const BoxConstraints(minHeight: 36),
@@ -1188,14 +1256,18 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isOpen
-                      ? const Color(0xFF004C8F)
-                      : hasError
-                      ? AppColors.red
-                      : AppColors.border,
+                  color: _sourceMasterError
+                      ? AppColors.red.withValues(alpha: 0.4)
+                      : isOpen
+                          ? const Color(0xFF004C8F)
+                          : hasError
+                          ? AppColors.red
+                          : AppColors.border,
                   width: isOpen || hasError ? 1.5 : 1,
                 ),
-                color: AppColors.surface2,
+                color: _sourceMasterError
+                    ? AppColors.red.withValues(alpha: 0.04)
+                    : AppColors.surface2,
               ),
               child: Row(
                 children: [
@@ -1221,6 +1293,17 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                               ),
                             ],
                           )
+                        : _sourceMasterError
+                        ? Row(
+                            children: [
+                              Icon(Icons.error_outline_rounded, size: 12, color: AppColors.red),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Failed to load. Tap to retry',
+                                style: TextStyle(fontSize: 12, color: AppColors.red),
+                              ),
+                            ],
+                          )
                         : _model.sourceList.isEmpty
                         ? const Text(
                             'Select',
@@ -1234,7 +1317,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                             runSpacing: 4,
                             children: _model.sourceList.map((m) {
                               final name = (m['name'] as String? ?? '').trim();
-                              final type = m['sourceType'] as String? ?? '';
+                              final type = m['sourceType']?.toString() ?? '';
                               final label = name.isNotEmpty ? name : type;
                               return Container(
                                 padding: const EdgeInsets.symmetric(
@@ -1265,15 +1348,17 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           ),
                   ),
                   const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: isOpen ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 18,
-                      color: AppColors.textDim,
-                    ),
-                  ),
+                  _sourceMasterError
+                      ? Icon(Icons.refresh_rounded, size: 14, color: AppColors.red)
+                      : AnimatedRotation(
+                          turns: isOpen ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.textDim,
+                          ),
+                        ),
                 ],
               ),
             ),

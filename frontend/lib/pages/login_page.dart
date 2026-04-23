@@ -77,7 +77,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Data Orchestration',
+                'Data Fusion',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,

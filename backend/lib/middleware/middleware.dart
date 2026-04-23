@@ -46,7 +46,8 @@ Middleware authMiddleware() {
       final path = context.request.uri.path;
 
       // Skip auth for public endpoints
-      if (path.endsWith('/auth/login') ||
+      if (path.endsWith('/account/login') ||
+          path.endsWith('/account/refresh') ||
           path.endsWith('/auth/logout') ||
           path.endsWith('/template/GetApprovalList') ||
           path == '/' ||

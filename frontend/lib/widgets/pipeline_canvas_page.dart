@@ -80,19 +80,27 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
           children: [
             // ── 1. Canvas ──
             DragTarget<DragNodeData>(
+              onWillAcceptWithDetails: (details) {
+                debugPrint('[CANVAS] DragTarget: node hovering → type=${details.data.type} name=${details.data.sourceName}');
+                return true;
+              },
               onAcceptWithDetails: (details) {
                 final box = context.findRenderObject() as RenderBox;
                 final localPos = box.globalToLocal(details.offset);
                 final inv = Matrix4.inverted(_transformCtrl.value);
+                final canvasPos = MatrixUtils.transformPoint(inv, localPos);
+                debugPrint('[CANVAS] DROP accepted → type=${details.data.type} name=${details.data.sourceName} screenPos=$localPos canvasPos=$canvasPos');
                 ctrl.addNode(
                   details.data.type,
-                  MatrixUtils.transformPoint(inv, localPos),
+                  canvasPos,
                   sourceTypeValue: details.data.sourceValue,
                   sourceTypeId: details.data.sourceTypeId,
                   sourceTypeName: details.data.sourceName,
                   name: '',
                 );
+                debugPrint('[CANVAS] Node added → total nodes=${ctrl.nodes.length}');
               },
+              onLeave: (_) => debugPrint('[CANVAS] DragTarget: node left canvas area'),
               builder: (ctx2, _, __) {
                 return GestureDetector(
                   onTapDown: isConnecting
@@ -104,16 +112,20 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                             Matrix4.inverted(_transformCtrl.value),
                             lp,
                           );
+                          debugPrint('[CANVAS] Tap → screenPos=$lp canvasPos=$cp');
                           final did = edgePainter.hitTestDisconnect(cp);
                           if (did != null) {
+                            debugPrint('[CANVAS] Tap hit DISCONNECT button → edgeId=$did');
                             ctrl.removeEdge(did);
                             return;
                           }
                           final eid = edgePainter.hitTestEdge(cp);
                           if (eid != null) {
+                            debugPrint('[CANVAS] Tap hit EDGE → edgeId=$eid');
                             ctrl.selectEdge(eid);
                             return;
                           }
+                          debugPrint('[CANVAS] Tap hit empty canvas → deselectAll');
                           ctrl.deselectAll();
                         },
                   child: Container(
@@ -341,37 +353,40 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
           Positioned(
             left: sp.dx - 18,
             top: sp.dy - 18,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                debugPrint(
-                  'IN-PORT: ${node.name} | from=${ctrl.portDragFromNodeId}',
-                );
-                if (ctrl.portDragFromNodeId != null) {
-                  ctrl.endPortDrag(node.id);
-                }
-              },
-              child: Container(
-                width: 36,
-                height: 36,
-                color: Colors.transparent,
-                child: Center(
-                  child: Container(
-                    width: isTarget ? 20 : 14,
-                    height: isTarget ? 20 : 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.green,
-                      border: Border.all(color: AppColors.bg, width: 2),
-                      boxShadow: isTarget
-                          ? [
-                              BoxShadow(
-                                color: AppColors.green.withValues(alpha: 0.7),
-                                blurRadius: 12,
-                                spreadRadius: 3,
-                              ),
-                            ]
-                          : null,
+            child: IgnorePointer(
+              ignoring: !connecting,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  debugPrint(
+                    'IN-PORT: ${node.name} | from=${ctrl.portDragFromNodeId}',
+                  );
+                  if (ctrl.portDragFromNodeId != null) {
+                    ctrl.endPortDrag(node.id);
+                  }
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  color: Colors.transparent,
+                  child: Center(
+                    child: Container(
+                      width: isTarget ? 20 : 14,
+                      height: isTarget ? 20 : 14,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.green,
+                        border: Border.all(color: AppColors.bg, width: 2),
+                        boxShadow: isTarget
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.green.withValues(alpha: 0.7),
+                                  blurRadius: 12,
+                                  spreadRadius: 3,
+                                ),
+                              ]
+                            : null,
+                      ),
                     ),
                   ),
                 ),
@@ -494,19 +509,26 @@ class _CanvasNodeState extends State<_CanvasNode>
       top: node.position.dy,
       child: GestureDetector(
         onPanStart: ctrl.portDragFromNodeId == null
-            ? (_) => nodeDragged = false
+            ? (_) {
+                nodeDragged = false;
+                debugPrint('[NODE-DRAG] START → id=${node.id} name=${node.name} pos=${node.position}');
+              }
             : null,
         onPanUpdate: ctrl.portDragFromNodeId == null
             ? (d) {
                 nodeDragged = true;
                 ctrl.moveNode(node.id, d.delta);
+                debugPrint('[NODE-DRAG] UPDATE → id=${node.id} delta=${d.delta} newPos=${node.position}');
               }
             : null,
         onPanEnd: ctrl.portDragFromNodeId == null
-            ? (_) => Future.delayed(
-                const Duration(milliseconds: 100),
-                () => nodeDragged = false,
-              )
+            ? (_) {
+                debugPrint('[NODE-DRAG] END → id=${node.id} finalPos=${node.position}');
+                Future.delayed(
+                  const Duration(milliseconds: 100),
+                  () => nodeDragged = false,
+                );
+              }
             : null,
         child: AnimatedBuilder(
           animation: _pulseAnim,
@@ -525,7 +547,10 @@ class _CanvasNodeState extends State<_CanvasNode>
                 GestureDetector(
                   onTap: () {
                     if (!nodeDragged && node.type != NodeType.join) {
+                      debugPrint('[NODE] TAP → id=${node.id} name=${node.name} type=${node.type}');
                       ctrl.selectNode(node.id);
+                    } else {
+                      debugPrint('[NODE] TAP ignored → dragged=$nodeDragged type=${node.type}');
                     }
                   },
                   child: Container(

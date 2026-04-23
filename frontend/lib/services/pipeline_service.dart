@@ -24,13 +24,5 @@ class PipelineService {
     );
   }
 
-  /// Submit output data format
-  Future<ApiResponse> submitDataFormat(Map<String, dynamic> payload) async {
-    return _api.post(ApiConfig.pipelineSubmitFormatEndpoint, payload);
-  }
-
-  /// Save source configuration
-  Future<ApiResponse> saveSourceConfig(Map<String, dynamic> payload) async {
-    return _api.post(ApiConfig.saveSourceConfigEndpoint, payload);
-  }
+ 
 }

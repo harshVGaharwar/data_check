@@ -62,7 +62,7 @@ class SourceTypeItem {
       id: json['id'] as int? ?? 0,
       sourceName: json['sourceName'] as String? ?? '',
       sourceValue: json['sourceValue'] as String? ?? '',
-      sourceType: json['sourceType'] as int?,
+      sourceType: int.tryParse(json['sourceType']?.toString() ?? ''),
     );
   }
 }
@@ -95,7 +95,7 @@ class SourceMasterFilterItem {
     return SourceMasterFilterItem(
       id: json['id'] as int? ?? 0,
       name: (json['name'] ?? '').toString(),
-      sourceType: json['sourceType'] as int?,
+      sourceType: int.tryParse(json['sourceType']?.toString() ?? ''),
       appName: json['appName'] as String?,
       itgrc: json['itgrc'] as int? ?? 0,
       dbVault: json['dbVault'] as String?,
@@ -123,6 +123,7 @@ class SourceMasterItem {
   final int itgrc;
   final String dbVault;
   final String createdBy;
+  final dynamic departmentId;
 
   const SourceMasterItem({
     required this.id,
@@ -132,17 +133,19 @@ class SourceMasterItem {
     required this.itgrc,
     required this.dbVault,
     required this.createdBy,
+    this.departmentId,
   });
 
   factory SourceMasterItem.fromJson(Map<String, dynamic> json) {
     return SourceMasterItem(
       id: json['id'] as int? ?? 0,
       name: (json['name'] as String? ?? '').trim(),
-      sourceType: json['sourceType'] as int?,
+      sourceType: int.tryParse(json['sourceType']?.toString() ?? ''),
       appName: json['appName'] as String? ?? '',
       itgrc: json['itgrc'] as int? ?? 0,
       dbVault: json['dbVault'] as String? ?? '',
       createdBy: json['createdBy'] as String? ?? '',
+      departmentId: json['department_id'],
     );
   }
 
@@ -171,6 +174,7 @@ class SourceMasterItem {
     'itgrc': itgrc,
     'dbVault': dbVault,
     'createdBy': createdBy,
+    'department_id': departmentId,
   };
 }
 

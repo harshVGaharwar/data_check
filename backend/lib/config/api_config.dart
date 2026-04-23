@@ -24,4 +24,5 @@ class ExternalApi {
   static const String getCheckerTayList = '/api/template/GetCheckerTayList';
   static const String uploadManualDataChecker = '/api/template/UploadManualDataChecker';
   static const String downloadFile = '/api/template/DownloadFile';
+  static const String refreshToken = '/api/Account/refresh';
 }
