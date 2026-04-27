@@ -404,9 +404,22 @@ class Database {
 
   // ── Operations ──
   final List<Map<String, dynamic>> operations = [
-    {'id': 1, 'operationName': '1 - left_join', 'operationValue': '='},
-    {'id': 2, 'operationName': '2 - inner_join', 'operationValue': '='},
-    {'id': 3, 'operationName': '3 - right_join', 'operationValue': '='},
+    {
+      'id': 1,
+      'operationName': '1 - All from First ',
+      'operationValue': 'left_join'
+    },
+    {
+      'id': 2,
+      'operationName': '2 - Matches only',
+      'operationValue': 'inner_join'
+    },
+    {
+      'id': 3,
+      'operationName': '3 - All from second',
+      'operationValue': 'right_join'
+    },
+    {'id': 4, 'operationName': '4 - All', 'operationValue': 'union'},
   ];
 
   // ── Approval List ──

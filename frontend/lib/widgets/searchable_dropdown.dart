@@ -10,6 +10,7 @@ class SearchableDropdownField extends StatefulWidget {
   final ValueChanged<String?> onChanged;
   final bool enabled;
   final double height;
+  final Widget Function(String item)? leadingBuilder;
 
   const SearchableDropdownField({
     super.key,
@@ -19,6 +20,7 @@ class SearchableDropdownField extends StatefulWidget {
     this.hint = '— Select —',
     this.enabled = true,
     this.height = 34,
+    this.leadingBuilder,
   });
 
   @override
@@ -51,6 +53,7 @@ class _SearchableDropdownFieldState extends State<SearchableDropdownField> {
         current: widget.value,
         dropdownWidth: width,
         triggerHeight: widget.height,
+        leadingBuilder: widget.leadingBuilder,
         onDismiss: _close,
         onSelect: (item) {
           _close();
@@ -96,6 +99,10 @@ class _SearchableDropdownFieldState extends State<SearchableDropdownField> {
             ),
             child: Row(
               children: [
+                if (hasValue && widget.leadingBuilder != null) ...[
+                  widget.leadingBuilder!(widget.value!),
+                  const SizedBox(width: 6),
+                ],
                 Expanded(
                   child: Text(
                     hasValue ? widget.value! : widget.hint,
@@ -132,6 +139,7 @@ class _SearchDropdownOverlay extends StatefulWidget {
   final String? current;
   final double dropdownWidth;
   final double triggerHeight;
+  final Widget Function(String item)? leadingBuilder;
   final VoidCallback onDismiss;
   final ValueChanged<String> onSelect;
 
@@ -143,6 +151,7 @@ class _SearchDropdownOverlay extends StatefulWidget {
     required this.triggerHeight,
     required this.onDismiss,
     required this.onSelect,
+    this.leadingBuilder,
   });
 
   @override
@@ -316,6 +325,10 @@ class _SearchDropdownOverlayState extends State<_SearchDropdownOverlay> {
                                               : AppColors.textDim,
                                         ),
                                         const SizedBox(width: 8),
+                                        if (widget.leadingBuilder != null) ...[
+                                          widget.leadingBuilder!(item),
+                                          const SizedBox(width: 8),
+                                        ],
                                         Expanded(
                                           child: Text(
                                             item,

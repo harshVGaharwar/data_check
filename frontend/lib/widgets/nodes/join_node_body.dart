@@ -9,6 +9,7 @@ import '../../providers/pipeline_master_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/pipeline_service.dart';
 import '../mapping_preview_dialog.dart';
+import '../searchable_dropdown.dart';
 
 class JoinNodeBody extends StatelessWidget {
   final PipelineNode node;
@@ -17,6 +18,7 @@ class JoinNodeBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<PipelineController>();
+    final master = context.watch<PipelineMasterProvider>();
 
     // All source nodes connected to this JOIN
     final inEdges = ctrl.edges.where((e) => e.toNodeId == node.id).toList();
@@ -242,6 +244,18 @@ class JoinNodeBody extends StatelessWidget {
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            JoinVennIcon(
+                              joinLabel:
+                                  master.operations
+                                      .where(
+                                        (o) => o.operationName == m.joinType,
+                                      )
+                                      .map((o) => o.operationValue)
+                                      .firstOrNull ??
+                                  m.joinType,
+                              size: 22,
+                            ),
+                            const SizedBox(height: 4),
                             Container(
                               margin: const EdgeInsets.symmetric(horizontal: 4),
                               padding: const EdgeInsets.symmetric(
@@ -260,36 +274,36 @@ class JoinNodeBody extends StatelessWidget {
                               child: Text(
                                 m.joinType,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black,
                                   fontSize: 7,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                                color: AppColors.amber.withValues(alpha: 0.12),
-                                border: Border.all(
-                                  color: AppColors.amber.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Text(
-                                m.operationValue,
-                                style: const TextStyle(
-                                  color: AppColors.amber,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ),
+                            // Container(
+                            //   margin: const EdgeInsets.symmetric(horizontal: 4),
+                            //   padding: const EdgeInsets.symmetric(
+                            //     horizontal: 6,
+                            //     vertical: 2,
+                            //   ),
+                            //   decoration: BoxDecoration(
+                            //     borderRadius: BorderRadius.circular(4),
+                            //     color: AppColors.amber.withValues(alpha: 0.12),
+                            //     border: Border.all(
+                            //       color: AppColors.amber.withValues(alpha: 0.3),
+                            //     ),
+                            //   ),
+                            //   child: Text(
+                            //     m.operationValue,
+                            //     style: const TextStyle(
+                            //       color: AppColors.amber,
+                            //       fontSize: 9,
+                            //       fontWeight: FontWeight.w700,
+                            //       fontFamily: 'monospace',
+                            //     ),
+                            //   ),
+                            // ),
                           ],
                         ),
                         // Right: dep_source.column
@@ -1080,186 +1094,296 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
     return src.isNotEmpty ? src.first.cols : [];
   }
 
+  static String _fmtJoinType(String raw) {
+    final cleaned = raw.replaceFirst(RegExp(r'^\d+\s*-\s*'), '');
+    return cleaned
+        .split('_')
+        .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final leftCols = _colsFor(leftSourceId);
     final rightCols = _colsFor(rightSourceId);
 
+    const accentLeft = Color(0xFFA78BFA);
+    const accentRight = Color(0xFF93C5FD);
+    const labelStyle = TextStyle(
+      fontSize: 8,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textMuted,
+      letterSpacing: 0.3,
+    );
+
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.violet.withValues(alpha: 0.2)),
         color: AppColors.violet.withValues(alpha: 0.04),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'COLUMN MAPPING CONFIGURATION',
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textMuted,
-              letterSpacing: 0.5,
+          // ── Title ──
+          const Center(
+            child: Text(
+              'JOIN CONDITION',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          // ── Row 1: Source + Column (LEFT) ──
-          Row(
-            children: [
-              const Text(
-                'SOURCE',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFFA78BFA),
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _sourceDd(widget.connectedSources, leftSourceId, (id) {
-                  setState(() {
-                    leftSourceId = id;
-                    leftCol = null;
-                  });
-                }),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'COLUMN',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFFA78BFA),
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _dd(
-                  leftCols,
-                  leftCol,
-                  (v) => setState(() => leftCol = v),
-                  isMono: true,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 6),
-
-          // ── Row 2: Join type + Operation ──
+          // ── JOIN TYPE ──
           Consumer<PipelineMasterProvider>(
             builder: (_, master, __) {
               final ops = master.operations;
-              // API operationName drives join type options; fallback to static list
               final joinTypeItems = ops.isNotEmpty
                   ? ops.map((o) => o.operationName).toList()
                   : PipelineConfig.joinTypes;
-              // Keep joinType in sync when items load
               if (joinTypeItems.isNotEmpty &&
                   !joinTypeItems.contains(joinType)) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) setState(() => joinType = joinTypeItems.first);
                 });
               }
+              final fmtItems = joinTypeItems.map(_fmtJoinType).toList();
+              final fmtValue = joinTypeItems.contains(joinType)
+                  ? _fmtJoinType(joinType)
+                  : null;
               return Row(
                 children: [
                   const Text(
-                    '↕',
-                    style: TextStyle(color: AppColors.violet, fontSize: 16),
+                    'JOIN TYPE',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMuted,
+                      letterSpacing: 0.3,
+                    ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: _dd(
-                      joinTypeItems,
-                      joinType,
-                      (v) => setState(() => joinType = v ?? joinType),
-                      isRelation: true,
+                    child: SearchableDropdownField(
+                      items: fmtItems,
+                      value: fmtValue,
+                      hint: '— select type —',
+                      height: 30,
+                      leadingBuilder: (displayName) {
+                        final raw = joinTypeItems.firstWhere(
+                          (s) => _fmtJoinType(s) == displayName,
+                          orElse: () => displayName,
+                        );
+                        final opValue =
+                            ops
+                                .where((o) => o.operationName == raw)
+                                .map((o) => o.operationValue)
+                                .firstOrNull ??
+                            raw;
+                        return JoinVennIcon(joinLabel: opValue, size: 18);
+                      },
+                      onChanged: (displayName) {
+                        if (displayName == null) return;
+                        final raw = joinTypeItems.firstWhere(
+                          (s) => _fmtJoinType(s) == displayName,
+                          orElse: () => joinType,
+                        );
+                        setState(() => joinType = raw);
+                      },
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  // operationValue is always '=' per API — show as fixed badge
-                  Container(
-                    height: 30,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: AppColors.amber.withValues(alpha: 0.4),
-                      ),
-                      color: AppColors.amber.withValues(alpha: 0.08),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '=',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.amber,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    '↕',
-                    style: TextStyle(color: AppColors.violet, fontSize: 16),
                   ),
                 ],
               );
             },
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
 
-          // ── Row 3: Dependent Source + Column (RIGHT) ──
-          Row(
-            children: [
-              const Text(
-                'DEP SOURCE',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF93C5FD),
-                  letterSpacing: 0.3,
+          // ── LEFT card + ON= connector + RIGHT card ──
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // LEFT card
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: accentLeft.withValues(alpha: 0.25),
+                      ),
+                      color: accentLeft.withValues(alpha: 0.05),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'LEFT TABLE',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: accentLeft,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+
+                        const SizedBox(height: 3),
+                        SearchableDropdownField(
+                          items: widget.connectedSources
+                              .map((s) => s.name)
+                              .toList(),
+                          value: widget.connectedSources
+                              .where((s) => s.id == leftSourceId)
+                              .map((s) => s.name)
+                              .firstOrNull,
+                          hint: '— select —',
+                          height: 30,
+                          onChanged: (name) {
+                            final src = name != null
+                                ? widget.connectedSources
+                                      .where((s) => s.name == name)
+                                      .firstOrNull
+                                : null;
+                            setState(() {
+                              leftSourceId = src?.id;
+                              leftCol = null;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 6),
+                        const Text('JOIN KEY', style: labelStyle),
+                        const SizedBox(height: 3),
+                        SearchableDropdownField(
+                          items: leftCols,
+                          value: leftCols.contains(leftCol) ? leftCol : null,
+                          hint: '— select —',
+                          height: 30,
+                          onChanged: (v) => setState(() => leftCol = v),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: _sourceDd(widget.connectedSources, rightSourceId, (id) {
-                  setState(() {
-                    rightSourceId = id;
-                    rightCol = null;
-                  });
-                }),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'COLUMN',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF93C5FD),
-                  letterSpacing: 0.3,
+
+                // Center ON = connector
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          color: AppColors.amber.withValues(alpha: 0.1),
+                          border: Border.all(
+                            color: AppColors.amber.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: const Column(
+                          children: [
+                            Text(
+                              'ON',
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.amber,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              '=',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.amber,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: _dd(
-                  rightCols,
-                  rightCol,
-                  (v) => setState(() => rightCol = v),
-                  isMono: true,
+
+                // RIGHT card
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: accentRight.withValues(alpha: 0.25),
+                      ),
+                      color: accentRight.withValues(alpha: 0.05),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'RIGHT TABLE',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: accentRight,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+
+                        SearchableDropdownField(
+                          items: widget.connectedSources
+                              .map((s) => s.name)
+                              .toList(),
+                          value: widget.connectedSources
+                              .where((s) => s.id == rightSourceId)
+                              .map((s) => s.name)
+                              .firstOrNull,
+                          hint: '— select —',
+                          height: 30,
+                          onChanged: (name) {
+                            final src = name != null
+                                ? widget.connectedSources
+                                      .where((s) => s.name == name)
+                                      .firstOrNull
+                                : null;
+                            setState(() {
+                              rightSourceId = src?.id;
+                              rightCol = null;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 6),
+                        const Text('MATCH KEY', style: labelStyle),
+                        const SizedBox(height: 3),
+                        SearchableDropdownField(
+                          items: rightCols,
+                          value: rightCols.contains(rightCol) ? rightCol : null,
+                          hint: '— select —',
+                          height: 30,
+                          onChanged: (v) => setState(() => rightCol = v),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // ── Add button ──
           InkWell(
@@ -1282,7 +1406,9 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
                 ),
               );
               setState(() {
+                leftSourceId = null;
                 leftCol = null;
+                rightSourceId = null;
                 rightCol = null;
               });
             },
@@ -1315,113 +1441,6 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Source dropdown — uses node.id as value (unique), shows node.name as label
-  Widget _sourceDd(
-    List<PipelineNode> sources,
-    String? selectedId,
-    ValueChanged<String?> onChanged,
-  ) {
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.border2),
-        color: AppColors.surface2,
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          isDense: true,
-          value: sources.any((s) => s.id == selectedId) ? selectedId : null,
-          hint: const Text(
-            '-- select --',
-            style: TextStyle(fontSize: 9, color: AppColors.textDim),
-          ),
-          dropdownColor: AppColors.surface2,
-          style: const TextStyle(
-            fontSize: 10,
-            color: AppColors.text,
-            fontWeight: FontWeight.w600,
-          ),
-          icon: const Icon(
-            Icons.keyboard_arrow_down,
-            size: 14,
-            color: AppColors.textDim,
-          ),
-          items: sources
-              .map(
-                (s) => DropdownMenuItem<String>(
-                  value: s.id, // unique ID as value
-                  child: Text(
-                    s.name,
-                    overflow: TextOverflow.ellipsis,
-                  ), // name as display
-                ),
-              )
-              .toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  Widget _dd(
-    List<String> items,
-    String? value,
-    ValueChanged<String?> onChanged, {
-    bool isRelation = false,
-    bool isMono = false,
-  }) {
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: isRelation
-              ? AppColors.violet.withValues(alpha: 0.3)
-              : AppColors.border2,
-        ),
-        color: isRelation
-            ? AppColors.violet.withValues(alpha: 0.12)
-            : AppColors.surface2,
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          isDense: true,
-          value: items.contains(value) ? value : null,
-          hint: const Text(
-            '-- select --',
-            style: TextStyle(fontSize: 9, color: AppColors.textDim),
-          ),
-          dropdownColor: AppColors.surface2,
-          style: TextStyle(
-            fontSize: 10,
-            color: isRelation ? AppColors.violet : AppColors.text,
-            fontFamily: isMono ? 'monospace' : null,
-            fontWeight: FontWeight.w600,
-          ),
-          icon: Icon(
-            Icons.keyboard_arrow_down,
-            size: 14,
-            color: isRelation ? Colors.white54 : AppColors.textDim,
-          ),
-          items: items
-              .map(
-                (s) => DropdownMenuItem(
-                  value: s,
-                  child: Text(s, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: onChanged,
-        ),
       ),
     );
   }
@@ -1903,6 +1922,132 @@ class _AliasRowState extends State<_AliasRow> {
       ),
     );
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// JOIN VENN ICON
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+enum _JoinVennType { inner, left, right, full, cross }
+
+_JoinVennType _joinVennType(String label) {
+  switch (label.toLowerCase()) {
+    case 'left_join':
+      return _JoinVennType.left;
+    case 'inner_join':
+      return _JoinVennType.inner;
+    case 'right_join':
+      return _JoinVennType.right;
+    case 'union':
+      return _JoinVennType.full;
+  }
+  final l = label.toLowerCase();
+  if (l.contains('first') || l.contains('left')) return _JoinVennType.left;
+  if (l.contains('match') || l.contains('inner')) return _JoinVennType.inner;
+  if (l.contains('second') || l.contains('right')) return _JoinVennType.right;
+  if (l.contains('all') || l.contains('full') || l.contains('union')) {
+    return _JoinVennType.full;
+  }
+  if (l.contains('cross')) return _JoinVennType.cross;
+  return _JoinVennType.inner;
+}
+
+class JoinVennIcon extends StatelessWidget {
+  final String joinLabel;
+  final double size;
+  const JoinVennIcon({super.key, required this.joinLabel, this.size = 22});
+
+  static Color _colorFor(_JoinVennType t) {
+    switch (t) {
+      case _JoinVennType.inner:
+        return const Color(0xFFFF6B6B);
+      case _JoinVennType.left:
+        return const Color(0xFF60A5FA);
+      case _JoinVennType.right:
+        return const Color(0xFFA78BFA);
+      case _JoinVennType.full:
+        return const Color(0xFF34D399);
+      case _JoinVennType.cross:
+        return const Color(0xFFFBBF24);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final type = _joinVennType(joinLabel);
+    return CustomPaint(
+      size: Size(size * 1.5, size),
+      painter: _VennPainter(type: type, color: _colorFor(type)),
+    );
+  }
+}
+
+class _VennPainter extends CustomPainter {
+  final _JoinVennType type;
+  final Color color;
+  const _VennPainter({required this.type, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.height * 0.38;
+    final cy = size.height / 2;
+    final leftC = Offset(size.width * 0.35, cy);
+    final rightC = Offset(size.width * 0.65, cy);
+
+    final fill = Paint()
+      ..color = color.withValues(alpha: 0.9)
+      ..style = PaintingStyle.fill;
+    final dim = Paint()
+      ..color = color.withValues(alpha: 0.15)
+      ..style = PaintingStyle.fill;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+
+    switch (type) {
+      case _JoinVennType.inner:
+        canvas.drawCircle(leftC, r, dim);
+        canvas.drawCircle(rightC, r, dim);
+        canvas.save();
+        canvas.clipPath(
+          Path()..addOval(Rect.fromCircle(center: leftC, radius: r)),
+        );
+        canvas.drawCircle(rightC, r, fill);
+        canvas.restore();
+        canvas.drawCircle(leftC, r, stroke);
+        canvas.drawCircle(rightC, r, stroke);
+        break;
+      case _JoinVennType.left:
+        canvas.drawCircle(rightC, r, dim);
+        canvas.drawCircle(leftC, r, fill);
+        canvas.drawCircle(rightC, r, stroke);
+        canvas.drawCircle(leftC, r, stroke);
+        break;
+      case _JoinVennType.right:
+        canvas.drawCircle(leftC, r, dim);
+        canvas.drawCircle(rightC, r, fill);
+        canvas.drawCircle(leftC, r, stroke);
+        canvas.drawCircle(rightC, r, stroke);
+        break;
+      case _JoinVennType.full:
+        canvas.drawCircle(leftC, r, fill);
+        canvas.drawCircle(rightC, r, fill);
+        canvas.drawCircle(leftC, r, stroke);
+        canvas.drawCircle(rightC, r, stroke);
+        break;
+      case _JoinVennType.cross:
+        canvas.drawCircle(leftC, r, fill);
+        canvas.drawCircle(rightC, r, fill);
+        canvas.drawCircle(leftC, r, stroke);
+        canvas.drawCircle(rightC, r, stroke);
+        break;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VennPainter old) =>
+      old.type != type || old.color != color;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

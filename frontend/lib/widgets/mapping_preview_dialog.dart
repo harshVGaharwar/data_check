@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/pipeline_models.dart';
 import '../controllers/pipeline_controller.dart';
+import 'nodes/join_node_body.dart' show JoinVennIcon;
 
 // ── Source color palette ─────────────────────────────────────────────────────
 const _palette = [
@@ -914,44 +915,44 @@ class _JoinCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Source connector row ──
-        Row(
-          children: [
-            for (var i = 0; i < sourceNodes.length; i++) ...[
-              if (i > 0)
-                Expanded(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(height: 1.5, color: AppColors.border2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.violet.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: const Text(
-                          'JOIN',
-                          style: TextStyle(
-                            color: AppColors.violet,
-                            fontSize: 7,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              _sourceNode(sourceNodes[i], _srcColor(i)),
-            ],
-          ],
-        ),
+        // Row(
+        //   children: [
+        //     for (var i = 0; i < sourceNodes.length; i++) ...[
+        //       if (i > 0)
+        //         Expanded(
+        //           child: Stack(
+        //             alignment: Alignment.center,
+        //             children: [
+        //               Container(height: 1.5, color: AppColors.border2),
+        //               Container(
+        //                 padding: const EdgeInsets.symmetric(
+        //                   horizontal: 6,
+        //                   vertical: 3,
+        //                 ),
+        //                 decoration: BoxDecoration(
+        //                   color: AppColors.surface,
+        //                   borderRadius: BorderRadius.circular(6),
+        //                   border: Border.all(
+        //                     color: AppColors.violet.withValues(alpha: 0.35),
+        //                   ),
+        //                 ),
+        //                 child: const Text(
+        //                   'JOIN',
+        //                   style: TextStyle(
+        //                     color: AppColors.violet,
+        //                     fontSize: 7,
+        //                     fontWeight: FontWeight.w800,
+        //                     letterSpacing: 0.6,
+        //                   ),
+        //                 ),
+        //               ),
+        //             ],
+        //           ),
+        //         ),
+        //       _sourceNode(sourceNodes[i], _srcColor(i)),
+        //     ],
+        //   ],
+        // ),
 
         // ── Condition rows ──
         if (validMappings.isNotEmpty) ...[
@@ -1062,7 +1063,7 @@ class _MappingRow extends StatelessWidget {
     final rSrc = ctrl.findNode(mapping.rightSourceId);
     final lColor = _srcColor(srcIndex[lSrc?.id] ?? 0);
     final rColor = _srcColor(srcIndex[rSrc?.id] ?? 1);
-    final op = mapping.operationValue;
+    final op = mapping.joinType;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -1115,24 +1116,36 @@ class _MappingRow extends StatelessWidget {
             ),
           ),
 
-          // Operator badge
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              color: AppColors.violet.withValues(alpha: 0.10),
-              border: Border.all(
-                color: AppColors.violet.withValues(alpha: 0.30),
-              ),
-            ),
-            child: Text(
-              op,
-              style: const TextStyle(
-                color: AppColors.violet,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
+          // Join type Venn + operator badge
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                JoinVennIcon(joinLabel: mapping.joinType, size: 26),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color: AppColors.violet.withValues(alpha: 0.10),
+                    border: Border.all(
+                      color: AppColors.violet.withValues(alpha: 0.30),
+                    ),
+                  ),
+                  child: Text(
+                    op,
+                    style: const TextStyle(
+                      color: AppColors.violet,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
