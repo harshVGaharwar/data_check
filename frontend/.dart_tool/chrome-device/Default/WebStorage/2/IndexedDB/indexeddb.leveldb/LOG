@@ -1,2 +1,7 @@
-2026/04/21-10:25:17.656 3ae657 Creating DB /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.Daq5DO/flutter_tools_chrome_device.lzzrWk/Default/WebStorage/2/IndexedDB/indexeddb.leveldb since it was missing.
-2026/04/21-10:25:17.659 3ae657 Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.Daq5DO/flutter_tools_chrome_device.lzzrWk/Default/WebStorage/2/IndexedDB/indexeddb.leveldb/MANIFEST-000001
+2026/04/24-14:40:15.335 4e78ae Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.AM41b6/flutter_tools_chrome_device.D4kPKd/Default/WebStorage/2/IndexedDB/indexeddb.leveldb/MANIFEST-000001
+2026/04/24-14:40:15.335 4e78ae Recovering log #3
+2026/04/24-14:40:15.336 4e78ae Reusing old log /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.AM41b6/flutter_tools_chrome_device.D4kPKd/Default/WebStorage/2/IndexedDB/indexeddb.leveldb/000003.log 
+2026/04/24-14:40:15.340 4e789b Level-0 table #5: started
+2026/04/24-14:40:15.342 4e789b Level-0 table #5: 17195 bytes OK
+2026/04/24-14:40:15.343 4e789b Delete type=0 #3
+2026/04/24-14:40:15.344 4e789b Manual compaction at level-0 from '\x00\x02\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x03\x00\x00\x00' @ 0 : 0; will stop at (end)

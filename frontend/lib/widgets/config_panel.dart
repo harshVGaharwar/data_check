@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../models/pipeline_models.dart';
 import '../controllers/pipeline_controller.dart';
 import '../providers/pipeline_master_provider.dart';
+import 'searchable_dropdown.dart';
 
 class ConfigPanel extends StatefulWidget {
   const ConfigPanel({super.key});
@@ -144,7 +145,7 @@ class _ConfigPanelState extends State<ConfigPanel>
             _nameCtrl.text = newNode?.name ?? '';
             setState(() {
               _prevNodeId = newId;
-              _sepAcknowledged = false;
+              _sepAcknowledged = newNode?.separator.isNotEmpty ?? false;
             });
           }
         });
@@ -287,7 +288,13 @@ class _ConfigPanelState extends State<ConfigPanel>
               color: isLocked ? AppColors.textDim : AppColors.text,
               fontSize: 12.5,
             ),
-            decoration: _inputDecor(locked: isLocked),
+            decoration: _inputDecor(locked: isLocked).copyWith(
+              hintText: 'e.g. Customer_Data',
+              hintStyle: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+              ),
+            ),
           ),
           borderOnly: true,
         ),
@@ -300,50 +307,26 @@ class _ConfigPanelState extends State<ConfigPanel>
           _hl(
             1,
             step,
-            Opacity(
-              opacity: isLocked ? 0.5 : 1.0,
-              child: IgnorePointer(
-                ignoring: isLocked,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(7),
-                    border: Border.all(color: AppColors.border2),
-                    color: AppColors.surface2,
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _sepToLabel(node.separator, separators),
-                      dropdownColor: AppColors.surface2,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.text,
-                      ),
-                      items: separators
-                          .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
-                          )
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          final sep = v.contains(',')
-                              ? ','
-                              : v.contains('|')
-                              ? '|'
-                              : v.contains('\\t')
-                              ? '\t'
-                              : v.contains(';')
-                              ? ';'
-                              : ' ';
-                          ctrl.updateNodeSeparator(node.id, sep);
-                          setState(() => _sepAcknowledged = true);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
+            SearchableDropdownField(
+              value: _sepToLabel(node.separator, separators),
+              hint: '— Select Separator —',
+              items: separators,
+              enabled: !isLocked,
+              onChanged: (v) {
+                if (v != null) {
+                  final sep = v.contains(',')
+                      ? ','
+                      : v.contains('|')
+                      ? '|'
+                      : v.contains('\\t')
+                      ? '\t'
+                      : v.contains(';')
+                      ? ';'
+                      : ' ';
+                  ctrl.updateNodeSeparator(node.id, sep);
+                  setState(() => _sepAcknowledged = true);
+                }
+              },
             ),
             borderOnly: true,
           ),
@@ -589,8 +572,10 @@ class _ConfigPanelState extends State<ConfigPanel>
     return sqlKeywords.any((kw) => upper.startsWith(kw));
   }
 
-  /// Map separator char → display label for the dropdown value
-  String _sepToLabel(String sep, List<String> separators) {
+  /// Map separator char → display label for the dropdown value.
+  /// Returns null when sep is empty so the dropdown shows its hint text.
+  String? _sepToLabel(String sep, List<String> separators) {
+    if (sep.isEmpty) return null;
     const map = {
       ',': 'Comma (,)',
       '|': 'Pipe (|)',
@@ -598,8 +583,8 @@ class _ConfigPanelState extends State<ConfigPanel>
       ';': 'Semicolon (;)',
       ' ': 'Space ( )',
     };
-    final label = map[sep] ?? separators[0];
-    return separators.contains(label) ? label : separators[0];
+    final label = map[sep];
+    return (label != null && separators.contains(label)) ? label : null;
   }
 
   InputDecoration _inputDecor({bool locked = false}) {

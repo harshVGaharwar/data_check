@@ -353,24 +353,19 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 24),
-              _buildSelectionCard(),
-              if (_selectedTemplate != null) ...[
-                const SizedBox(height: 16),
-                _buildSourcesCard(),
-              ],
-              const SizedBox(height: 24),
-              _buildSaveButton(),
-            ],
-          ),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 24),
+          _buildSelectionCard(),
+          if (_selectedTemplate != null) ...[
+            const SizedBox(height: 16),
+            _buildSourcesCard(),
+          ],
+          const SizedBox(height: 24),
+          _buildSaveButton(),
+        ],
       ),
     );
   }
@@ -601,7 +596,12 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
             LayoutBuilder(
               builder: (ctx, constraints) {
                 const gap = 12.0;
-                final cardW = (constraints.maxWidth - gap) / 2;
+                final cols = count == 1
+                    ? 1
+                    : constraints.maxWidth > 900
+                    ? 3
+                    : 2;
+                final cardW = (constraints.maxWidth - gap * (cols - 1)) / cols;
                 return Wrap(
                   spacing: gap,
                   runSpacing: gap,

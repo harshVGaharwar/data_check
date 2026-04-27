@@ -10,6 +10,7 @@ import 'configuration_upload_page.dart';
 import 'source_configuration_page.dart';
 import 'manual_upload_page.dart';
 import 'checker_page.dart';
+import 'report_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -31,6 +32,7 @@ class _DashboardPageState extends State<DashboardPage> {
     'Source Configuration',
     'Manual Upload',
     'Checker',
+    'Reports',
   ];
 
   final _icons = const [
@@ -41,6 +43,7 @@ class _DashboardPageState extends State<DashboardPage> {
     Icons.storage_rounded,
     Icons.upload_file_rounded,
     Icons.fact_check_outlined,
+    Icons.bar_chart_rounded,
   ];
 
   @override
@@ -54,6 +57,7 @@ class _DashboardPageState extends State<DashboardPage> {
       const SourceConfigurationPage(),
       const ManualUploadPage(),
       const CheckerPage(),
+      const ReportPage(),
     ];
     _restorePageIndex();
   }
@@ -172,6 +176,34 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    Tooltip(
+                      message: 'Logout',
+                      child: InkWell(
+                        onTap: () async {
+                          final nav = Navigator.of(context);
+                          await context.read<AuthProvider>().logout();
+                          nav.pushReplacementNamed('/login');
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.red.withValues(alpha: 0.08),
+                            border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.logout_rounded,
+                            size: 16,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -230,25 +262,6 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 8),
           for (int i = 0; i < _titles.length; i++) _drawerItem(i),
           const Spacer(),
-          const Divider(color: AppColors.border, height: 1),
-          ListTile(
-            leading: const Icon(Icons.logout, size: 20, color: Colors.red),
-            title: const Text(
-              'Logout',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.red,
-              ),
-            ),
-            onTap: () async {
-              final nav = Navigator.of(context);
-              nav.pop();
-              await context.read<AuthProvider>().logout();
-              nav.pushReplacementNamed('/login');
-            },
-          ),
-          const SizedBox(height: 8),
         ],
       ),
     );

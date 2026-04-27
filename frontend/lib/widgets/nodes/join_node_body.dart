@@ -27,6 +27,10 @@ class JoinNodeBody extends StatelessWidget {
         .toList();
 
     final validMappings = node.mappings.where((m) => m.isValid).toList();
+    final isSingleSourceReady =
+        ctrl.requiredSourceCount == 1 &&
+        connectedSources.length == 1 &&
+        connectedSources[0].selectedCols.isNotEmpty;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -91,7 +95,7 @@ class JoinNodeBody extends StatelessWidget {
                 onTap: () => ctrl.deleteNode(node.id),
                 child: Icon(
                   Icons.delete_outline,
-                  color: AppColors.textDim.withValues(alpha: 0.6),
+                  color: AppColors.red.withValues(alpha: 0.6),
                   size: 16,
                 ),
               ),
@@ -151,6 +155,14 @@ class JoinNodeBody extends StatelessWidget {
                   }).toList(),
                 ),
                 const SizedBox(height: 10),
+
+                // ── Single-source output column selector ──
+                if (ctrl.requiredSourceCount == 1 &&
+                    connectedSources.length == 1 &&
+                    connectedSources[0].cols.isNotEmpty) ...[
+                  _SingleSourceColumnSelector(source: connectedSources[0]),
+                  const SizedBox(height: 10),
+                ],
               ] else ...[
                 Container(
                   width: double.infinity,
@@ -339,7 +351,7 @@ class JoinNodeBody extends StatelessWidget {
                 ),
 
               // ── Submit Mapping Button ──
-              if (validMappings.isNotEmpty) ...[
+              if (validMappings.isNotEmpty || isSingleSourceReady) ...[
                 const SizedBox(height: 10),
                 InkWell(
                   onTap: () => _submitMapping(context, ctrl, node),
@@ -651,6 +663,7 @@ class JoinNodeBody extends StatelessWidget {
     // Call API
     bool submitSuccess = false;
     String submitMessage = '';
+    int? submitTemplateId;
     try {
       final service = context.read<PipelineService>();
       final response = await service.submitMapping(
@@ -659,6 +672,7 @@ class JoinNodeBody extends StatelessWidget {
       );
       submitSuccess = response.success;
       submitMessage = response.message;
+      submitTemplateId = response.data?.templateId;
       debugPrint(
         '[SUBMIT MAPPING] Response: status=${response.success}, templateId=${response.data?.templateId}, configId=${response.data?.configId}',
       );
@@ -678,62 +692,262 @@ class JoinNodeBody extends StatelessWidget {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.green.withValues(alpha: 0.15),
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 340,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.green.withValues(alpha: 0.18),
+                  blurRadius: 48,
+                  offset: const Offset(0, 16),
                 ),
-                child: const Icon(
-                  Icons.check_circle_rounded,
-                  color: AppColors.green,
-                  size: 40,
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Success',
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  ctrl.clearCanvas();
-                },
-                child: Container(
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Top banner with icon ──
+                Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  padding: const EdgeInsets.symmetric(vertical: 28),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: AppColors.green,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'Done',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.green.withValues(alpha: 0.18),
+                        AppColors.green.withValues(alpha: 0.05),
+                      ],
                     ),
                   ),
+                  child: Column(
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 92,
+                            height: 92,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.green.withValues(alpha: 0.07),
+                            ),
+                          ),
+                          Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.green.withValues(alpha: 0.12),
+                            ),
+                          ),
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppColors.green,
+                                  AppColors.green.withValues(alpha: 0.7),
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.green.withValues(
+                                    alpha: 0.45,
+                                  ),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Mapping Submitted!',
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Pipeline configuration saved successfully.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textDim.withValues(alpha: 0.8),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+
+                // ── Body ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  child: Column(
+                    children: [
+                      if (submitTemplateId != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.green.withValues(alpha: 0.06),
+                            border: Border.all(
+                              color: AppColors.green.withValues(alpha: 0.22),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.green.withValues(
+                                    alpha: 0.14,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.tag_rounded,
+                                  color: AppColors.green,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Template Request ID',
+                                    style: TextStyle(
+                                      color: AppColors.textDim,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    submitTemplateId.toString(),
+                                    style: const TextStyle(
+                                      color: AppColors.green,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(6),
+                                  color: AppColors.green.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                ),
+                                child: const Text(
+                                  'SAVED',
+                                  style: TextStyle(
+                                    color: AppColors.green,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Done button
+                      InkWell(
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          ctrl.clearCanvas();
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.green,
+                                AppColors.green.withValues(alpha: 0.72),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.green.withValues(alpha: 0.38),
+                                blurRadius: 14,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Done',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -1208,6 +1422,484 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
               .toList(),
           onChanged: onChanged,
         ),
+      ),
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SINGLE-SOURCE OUTPUT COLUMN SELECTOR
+// Shown inside the join node when requiredSourceCount == 1 and the one source
+// is connected. Lets the user pick which columns go to the output before submit.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class _SingleSourceColumnSelector extends StatefulWidget {
+  final PipelineNode source;
+  const _SingleSourceColumnSelector({required this.source});
+
+  @override
+  State<_SingleSourceColumnSelector> createState() =>
+      _SingleSourceColumnSelectorState();
+}
+
+class _SingleSourceColumnSelectorState
+    extends State<_SingleSourceColumnSelector> {
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = context.watch<PipelineController>();
+    final src = ctrl.findNode(widget.source.id) ?? widget.source;
+    final query = _searchCtrl.text.toLowerCase();
+    final filtered = src.cols
+        .where((c) => query.isEmpty || c.toLowerCase().contains(query))
+        .toList();
+    final total = src.cols.length;
+    final selCount = src.selectedCols.length;
+    final progress = total > 0 ? selCount / total : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Divider + label
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(7),
+            color: AppColors.violet.withValues(alpha: 0.06),
+            border: Border.all(color: AppColors.violet.withValues(alpha: 0.18)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.edit, size: 12, color: AppColors.violet),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'DEFINE OUTPUT COLUMNS',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.violet,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: selCount > 0 ? AppColors.violet : AppColors.surface2,
+                ),
+                child: Text(
+                  '$selCount / $total',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: selCount > 0 ? Colors.white : AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Search + All / Clear
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 28,
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: (_) => setState(() {}),
+                  style: const TextStyle(color: AppColors.text, fontSize: 11),
+                  decoration: InputDecoration(
+                    hintText: 'Search columns…',
+                    hintStyle: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 10,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      size: 13,
+                      color: AppColors.textDim,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(color: AppColors.border2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(color: AppColors.border2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(
+                        color: AppColors.violet,
+                        width: 1.5,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.bg,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+            _ColToolBtn(
+              label: 'All',
+              icon: Icons.done_all_rounded,
+              color: AppColors.violet,
+              onTap: () {
+                for (final c in src.cols) {
+                  if (!src.selectedCols.contains(c)) {
+                    ctrl.toggleColumn(src.id, c);
+                  }
+                }
+              },
+            ),
+            const SizedBox(width: 3),
+            _ColToolBtn(
+              label: 'Clear',
+              icon: Icons.close_rounded,
+              color: AppColors.red,
+              onTap: () {
+                for (final c in List<String>.from(src.selectedCols)) {
+                  ctrl.toggleColumn(src.id, c);
+                }
+              },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 6),
+
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 4,
+            backgroundColor: AppColors.border,
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.violet),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Column chips
+        filtered.isEmpty
+            ? Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 10,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  color: AppColors.bg,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Center(
+                  child: Text(
+                    'No columns match',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 10),
+                  ),
+                ),
+              )
+            : Wrap(
+                spacing: 5,
+                runSpacing: 5,
+                children: filtered.map((col) {
+                  final sel = src.selectedCols.contains(col);
+                  return GestureDetector(
+                    onTap: () => ctrl.toggleColumn(src.id, col),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color: sel ? AppColors.violet : AppColors.bg,
+                        border: Border.all(
+                          color: sel ? AppColors.violet : AppColors.border2,
+                          width: sel ? 1.5 : 1,
+                        ),
+                        boxShadow: sel
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.violet.withValues(
+                                    alpha: 0.25,
+                                  ),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (sel) ...[
+                            const Icon(
+                              Icons.check_rounded,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 3),
+                          ],
+                          Text(
+                            col,
+                            style: TextStyle(
+                              color: sel ? Colors.white : AppColors.textDim,
+                              fontSize: 10,
+                              fontFamily: 'monospace',
+                              fontWeight: sel
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+        // Alias table
+        if (src.selectedCols.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(8),
+                    ),
+                    color: AppColors.bg,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppColors.violet.withValues(alpha: 0.2),
+                      ),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.drive_file_rename_outline_rounded,
+                        size: 11,
+                        color: AppColors.violet,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Source column',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      Spacer(),
+                      Text(
+                        'Output alias',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                    ],
+                  ),
+                ),
+                ...src.selectedCols.asMap().entries.map((e) {
+                  final i = e.key;
+                  final col = e.value;
+                  final isLast = i == src.selectedCols.length - 1;
+                  final initAlias = src.columnAliases[col] ?? '';
+                  return _AliasRow(
+                    sourceId: src.id,
+                    col: col,
+                    initialAlias: initAlias,
+                    isLast: isLast,
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ColToolBtn extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _ColToolBtn({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          color: color.withValues(alpha: 0.08),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AliasRow extends StatefulWidget {
+  final String sourceId;
+  final String col;
+  final String initialAlias;
+  final bool isLast;
+  const _AliasRow({
+    required this.sourceId,
+    required this.col,
+    required this.initialAlias,
+    required this.isLast,
+  });
+
+  @override
+  State<_AliasRow> createState() => _AliasRowState();
+}
+
+class _AliasRowState extends State<_AliasRow> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initialAlias);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: widget.isLast
+            ? const BorderRadius.vertical(bottom: Radius.circular(8))
+            : null,
+        border: widget.isLast
+            ? null
+            : const Border(
+                bottom: BorderSide(color: AppColors.border, width: 0.8),
+              ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              widget.col,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 10,
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: SizedBox(
+              height: 26,
+              child: TextField(
+                controller: _ctrl,
+                onChanged: (v) => context
+                    .read<PipelineController>()
+                    .setColumnAlias(widget.sourceId, widget.col, v),
+                style: const TextStyle(fontSize: 10, color: AppColors.text),
+                decoration: InputDecoration(
+                  hintText: widget.col,
+                  hintStyle: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 9.5,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 0,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5),
+                    borderSide: const BorderSide(color: AppColors.border2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5),
+                    borderSide: const BorderSide(color: AppColors.border2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5),
+                    borderSide: const BorderSide(
+                      color: AppColors.violet,
+                      width: 1.5,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.bg,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

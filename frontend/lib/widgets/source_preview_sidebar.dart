@@ -1,10 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../models/pipeline_models.dart';
 import '../controllers/pipeline_controller.dart';
-
 
 class SourcePreviewSidebar extends StatelessWidget {
   const SourcePreviewSidebar({super.key});
@@ -33,7 +31,9 @@ class SourcePreviewSidebar extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: allValid ? AppColors.green.withValues(alpha: 0.05) : AppColors.surface2,
+                  color: allValid
+                      ? AppColors.green.withValues(alpha: 0.05)
+                      : AppColors.surface2,
                   border: Border(bottom: BorderSide(color: AppColors.border)),
                 ),
                 child: Row(
@@ -41,21 +41,39 @@ class SourcePreviewSidebar extends StatelessWidget {
                     Icon(
                       allValid ? Icons.check_circle : Icons.preview_rounded,
                       size: 18,
-                      color: allValid ? AppColors.green : const Color(0xFF004C8F),
+                      color: allValid
+                          ? AppColors.green
+                          : const Color(0xFF004C8F),
                     ),
                     const SizedBox(width: 8),
                     const Expanded(
-                      child: Text('Sources Summary', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text)),
+                      child: Text(
+                        'Sources Summary',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        ),
+                      ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        color: allValid ? AppColors.green.withValues(alpha: 0.1) : AppColors.amber.withValues(alpha: 0.1),
+                        color: allValid
+                            ? AppColors.green.withValues(alpha: 0.1)
+                            : AppColors.amber.withValues(alpha: 0.1),
                       ),
                       child: Text(
                         '${sources.length}/${sources.length}',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: allValid ? AppColors.green : AppColors.amber),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: allValid ? AppColors.green : AppColors.amber,
+                        ),
                       ),
                     ),
                   ],
@@ -73,7 +91,6 @@ class SourcePreviewSidebar extends StatelessWidget {
                   },
                 ),
               ),
-
             ],
           ),
         );
@@ -163,10 +180,10 @@ class _SourceCard extends StatelessWidget {
 
   bool get _isComplete =>
       node.name.isNotEmpty &&
-          node.type.isSource &&
-          node.separator.isNotEmpty &&
-          node.fileName != null &&
-          node.fileName!.isNotEmpty;
+      node.type.isSource &&
+      node.separator.isNotEmpty &&
+      node.fileName != null &&
+      node.fileName!.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -177,8 +194,14 @@ class _SourceCard extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: _isComplete ? AppColors.green.withValues(alpha: 0.03) : AppColors.surface2,
-        border: Border.all(color: _isComplete ? AppColors.green.withValues(alpha: 0.2) : AppColors.border),
+        color: _isComplete
+            ? AppColors.green.withValues(alpha: 0.03)
+            : AppColors.surface2,
+        border: Border.all(
+          color: _isComplete
+              ? AppColors.green.withValues(alpha: 0.2)
+              : AppColors.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,13 +210,25 @@ class _SourceCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 24, height: 24,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), color: color.withValues(alpha: 0.12)),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  color: color.withValues(alpha: 0.12),
+                ),
                 child: Icon(node.type.icon, size: 12, color: color),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(node.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.text), overflow: TextOverflow.ellipsis),
+                child: Text(
+                  node.name,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               Icon(
                 _isComplete ? Icons.check_circle : Icons.warning_amber_rounded,
@@ -205,18 +240,42 @@ class _SourceCard extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Fields
-          _fieldRow('Source Type', node.sourceTypeName.isNotEmpty ? node.sourceTypeName : node.type.label, true),
-          _fieldRow('Separator', _separatorLabel(node.separator), node.separator.isNotEmpty),
+          _fieldRow(
+            'Source Type',
+            node.sourceTypeName.isNotEmpty
+                ? node.sourceTypeName
+                : node.type.label,
+            true,
+          ),
+          _fieldRow(
+            'Separator',
+            _separatorLabel(node.separator),
+            node.separator.isNotEmpty,
+          ),
           _fieldRow('Column File', node.fileName ?? '—', node.fileName != null),
-          _fieldRow('Query File', node.queryFileName ?? '(optional)', node.queryFileName != null),
+          _fieldRow(
+            'Query File',
+            node.queryFileName ?? '(optional)',
+            node.queryFileName != null,
+          ),
 
           // Columns count
           if (node.cols.isNotEmpty) ...[
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: color.withValues(alpha: 0.08)),
-              child: Text('${node.cols.length} columns loaded', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: color.withValues(alpha: 0.08),
+              ),
+              child: Text(
+                '${node.cols.length} columns loaded',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
             ),
           ],
         ],
@@ -231,12 +290,19 @@ class _SourceCard extends StatelessWidget {
         children: [
           SizedBox(
             width: 80,
-            child: Text(label, style: const TextStyle(fontSize: 9.5, color: AppColors.textDim)),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 9.5, color: AppColors.textDim),
+            ),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: filled ? AppColors.text : AppColors.red),
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                color: filled ? AppColors.text : AppColors.red,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -247,11 +313,16 @@ class _SourceCard extends StatelessWidget {
 
   String _separatorLabel(String sep) {
     switch (sep) {
-      case ',': return 'Comma (,)';
-      case '|': return 'Pipe (|)';
-      case '\t': return 'Tab (\\t)';
-      case ';': return 'Semicolon (;)';
-      default: return sep.isNotEmpty ? sep : '—';
+      case ',':
+        return 'Comma (,)';
+      case '|':
+        return 'Pipe (|)';
+      case '\t':
+        return 'Tab (\\t)';
+      case ';':
+        return 'Semicolon (;)';
+      default:
+        return sep.isNotEmpty ? sep : '—';
     }
   }
 }

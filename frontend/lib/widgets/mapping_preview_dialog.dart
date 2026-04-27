@@ -86,7 +86,7 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
 
     final confirmEnabled = sourceNodes
         .where((n) => n.cols.isNotEmpty)
-        .any((n) => n.columnAliases.values.any((v) => v.trim().isNotEmpty));
+        .any((n) => n.selectedCols.any((c) => n.columnAliases.containsKey(c)));
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -181,22 +181,24 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
 
                     const SizedBox(height: 16),
 
-                    // ── Join Operation section ──
-                    for (final j in joinNodes) ...[
-                      _SectionCard(
-                        title: 'Join Operation',
-                        icon: Icons.merge_type_rounded,
-                        accentColor: AppColors.violet,
-                        badge:
-                            '${j.mappings.where((m) => m.isValid).length} conditions',
-                        child: _JoinCard(
-                          joinNode: j,
-                          sourceNodes: sourceNodes,
-                          srcIndex: srcIndex,
-                          ctrl: ctrl,
+                    // ── Join Operation section (only when 2+ sources) ──
+                    if (sourceNodes.length > 1) ...[
+                      for (final j in joinNodes) ...[
+                        _SectionCard(
+                          title: 'Join Operation',
+                          icon: Icons.merge_type_rounded,
+                          accentColor: AppColors.violet,
+                          badge:
+                              '${j.mappings.where((m) => m.isValid).length} conditions',
+                          child: _JoinCard(
+                            joinNode: j,
+                            sourceNodes: sourceNodes,
+                            srcIndex: srcIndex,
+                            ctrl: ctrl,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
+                      ],
                     ],
                   ],
                 ),
@@ -495,8 +497,8 @@ class _StepTracker extends StatelessWidget {
       child: Row(
         children: List.generate(steps.length * 2 - 1, (i) {
           if (i.isOdd) {
-            // connector line
-            final done = i < 6; // steps 0-2 done
+            // connector line — all connectors green since we're at the last step
+            final done = true;
             return Expanded(
               child: Container(
                 height: 2,

@@ -44,6 +44,9 @@ class ApiConfig {
       'template/UploadManualDataChecker';
   static const String downloadFileEndpoint = 'template/DownloadFile';
 
+  // report page
+  static const String reportListEndpoint = 'template/GetReportList';
+
   // // Timeouts
   // static const Duration connectTimeout = Duration(seconds: 30);
   // static const Duration receiveTimeout = Duration(seconds: 30);

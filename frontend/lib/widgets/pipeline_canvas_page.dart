@@ -10,7 +10,6 @@ import 'nodes/join_node_body.dart';
 import 'top_bar.dart';
 import 'sidebar.dart';
 import 'config_panel.dart';
-import 'source_preview_sidebar.dart';
 import 'status_bar.dart';
 
 class PipelineCanvasPage extends StatefulWidget {
@@ -34,9 +33,10 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.25, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 0.25,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -50,7 +50,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const TopBar(),
+        // const TopBar(),
         Expanded(
           child: Row(
             children: [
@@ -61,7 +61,6 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                     ? const Flexible(flex: 0, child: ConfigPanel())
                     : const SizedBox.shrink(),
               ),
-              const Flexible(flex: 0, child: SourcePreviewSidebar()),
             ],
           ),
         ),
@@ -81,7 +80,9 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
             // ── 1. Canvas ──
             DragTarget<DragNodeData>(
               onWillAcceptWithDetails: (details) {
-                debugPrint('[CANVAS] DragTarget: node hovering → type=${details.data.type} name=${details.data.sourceName}');
+                debugPrint(
+                  '[CANVAS] DragTarget: node hovering → type=${details.data.type} name=${details.data.sourceName}',
+                );
                 return true;
               },
               onAcceptWithDetails: (details) {
@@ -89,7 +90,9 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                 final localPos = box.globalToLocal(details.offset);
                 final inv = Matrix4.inverted(_transformCtrl.value);
                 final canvasPos = MatrixUtils.transformPoint(inv, localPos);
-                debugPrint('[CANVAS] DROP accepted → type=${details.data.type} name=${details.data.sourceName} screenPos=$localPos canvasPos=$canvasPos');
+                debugPrint(
+                  '[CANVAS] DROP accepted → type=${details.data.type} name=${details.data.sourceName} screenPos=$localPos canvasPos=$canvasPos',
+                );
                 ctrl.addNode(
                   details.data.type,
                   canvasPos,
@@ -98,9 +101,12 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                   sourceTypeName: details.data.sourceName,
                   name: '',
                 );
-                debugPrint('[CANVAS] Node added → total nodes=${ctrl.nodes.length}');
+                debugPrint(
+                  '[CANVAS] Node added → total nodes=${ctrl.nodes.length}',
+                );
               },
-              onLeave: (_) => debugPrint('[CANVAS] DragTarget: node left canvas area'),
+              onLeave: (_) =>
+                  debugPrint('[CANVAS] DragTarget: node left canvas area'),
               builder: (ctx2, _, __) {
                 return GestureDetector(
                   onTapDown: isConnecting
@@ -112,10 +118,14 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                             Matrix4.inverted(_transformCtrl.value),
                             lp,
                           );
-                          debugPrint('[CANVAS] Tap → screenPos=$lp canvasPos=$cp');
+                          debugPrint(
+                            '[CANVAS] Tap → screenPos=$lp canvasPos=$cp',
+                          );
                           final did = edgePainter.hitTestDisconnect(cp);
                           if (did != null) {
-                            debugPrint('[CANVAS] Tap hit DISCONNECT button → edgeId=$did');
+                            debugPrint(
+                              '[CANVAS] Tap hit DISCONNECT button → edgeId=$did',
+                            );
                             ctrl.removeEdge(did);
                             return;
                           }
@@ -125,7 +135,9 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                             ctrl.selectEdge(eid);
                             return;
                           }
-                          debugPrint('[CANVAS] Tap hit empty canvas → deselectAll');
+                          debugPrint(
+                            '[CANVAS] Tap hit empty canvas → deselectAll',
+                          );
                           ctrl.deselectAll();
                         },
                   child: Container(
@@ -153,10 +165,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                               painter: edgePainter,
                             ),
                             ...ctrl.nodes.map(
-                              (n) => _CanvasNode(
-                                key: ValueKey(n.id),
-                                node: n,
-                              ),
+                              (n) => _CanvasNode(key: ValueKey(n.id), node: n),
                             ),
                           ],
                         ),
@@ -171,9 +180,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
             // Rebuilt only when _transformCtrl changes, NOT the InteractiveViewer
             AnimatedBuilder(
               animation: _transformCtrl,
-              builder: (_, __) => Stack(
-                children: _buildPortOverlay(ctrl),
-              ),
+              builder: (_, __) => Stack(children: _buildPortOverlay(ctrl)),
             ),
 
             // ── 3. Connection banner ──
@@ -261,12 +268,11 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
       {
         final sp = MatrixUtils.transformPoint(matrix, node.outPortCenter);
         final isActive = ctrl.portDragFromNodeId == node.id;
-        final alreadyConnected =
-            ctrl.edges.any((e) => e.fromNodeId == node.id);
-        final shouldGlow = !isActive &&
+        final alreadyConnected = ctrl.edges.any((e) => e.fromNodeId == node.id);
+        final shouldGlow =
+            !isActive &&
             hasJoinNode &&
             node.type.isSource &&
-            node.confirmState == NodeConfirmState.confirmed &&
             !alreadyConnected;
 
         dots.add(
@@ -300,17 +306,21 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                                 shape: BoxShape.circle,
                                 color: AppColors.blue,
                                 border: Border.all(
-                                    color: AppColors.bg, width: 2),
+                                  color: AppColors.bg,
+                                  width: 2,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.blue
-                                        .withValues(alpha: glow * 0.8),
+                                    color: AppColors.blue.withValues(
+                                      alpha: glow * 0.8,
+                                    ),
                                     blurRadius: 10 + glow * 10,
                                     spreadRadius: 2 + glow * 4,
                                   ),
                                   BoxShadow(
-                                    color: AppColors.blue
-                                        .withValues(alpha: glow * 0.4),
+                                    color: AppColors.blue.withValues(
+                                      alpha: glow * 0.4,
+                                    ),
                                     blurRadius: 20 + glow * 16,
                                     spreadRadius: glow * 6,
                                   ),
@@ -329,8 +339,9 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                             boxShadow: isActive
                                 ? [
                                     BoxShadow(
-                                      color: AppColors.amber
-                                          .withValues(alpha: 0.7),
+                                      color: AppColors.amber.withValues(
+                                        alpha: 0.7,
+                                      ),
                                       blurRadius: 12,
                                       spreadRadius: 3,
                                     ),
@@ -450,9 +461,10 @@ class _CanvasNodeState extends State<_CanvasNode>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    _pulseAnim = Tween<double>(begin: 0.15, end: 0.55).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 0.15,
+      end: 0.55,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     _maybeStartPulse();
   }
 
@@ -511,19 +523,25 @@ class _CanvasNodeState extends State<_CanvasNode>
         onPanStart: ctrl.portDragFromNodeId == null
             ? (_) {
                 nodeDragged = false;
-                debugPrint('[NODE-DRAG] START → id=${node.id} name=${node.name} pos=${node.position}');
+                debugPrint(
+                  '[NODE-DRAG] START → id=${node.id} name=${node.name} pos=${node.position}',
+                );
               }
             : null,
         onPanUpdate: ctrl.portDragFromNodeId == null
             ? (d) {
                 nodeDragged = true;
                 ctrl.moveNode(node.id, d.delta);
-                debugPrint('[NODE-DRAG] UPDATE → id=${node.id} delta=${d.delta} newPos=${node.position}');
+                debugPrint(
+                  '[NODE-DRAG] UPDATE → id=${node.id} delta=${d.delta} newPos=${node.position}',
+                );
               }
             : null,
         onPanEnd: ctrl.portDragFromNodeId == null
             ? (_) {
-                debugPrint('[NODE-DRAG] END → id=${node.id} finalPos=${node.position}');
+                debugPrint(
+                  '[NODE-DRAG] END → id=${node.id} finalPos=${node.position}',
+                );
                 Future.delayed(
                   const Duration(milliseconds: 100),
                   () => nodeDragged = false,
@@ -533,8 +551,9 @@ class _CanvasNodeState extends State<_CanvasNode>
         child: AnimatedBuilder(
           animation: _pulseAnim,
           builder: (context, child) {
-            final glowAlpha =
-                isEditing ? _pulseAnim.value : (isSelected || isConfirmed ? 0.2 : 0.0);
+            final glowAlpha = isEditing
+                ? _pulseAnim.value
+                : (isSelected || isConfirmed ? 0.2 : 0.0);
             final borderColor = isEditing
                 ? AppColors.amber.withValues(
                     alpha: 0.5 + _pulseAnim.value * 0.9,
@@ -547,10 +566,14 @@ class _CanvasNodeState extends State<_CanvasNode>
                 GestureDetector(
                   onTap: () {
                     if (!nodeDragged && node.type != NodeType.join) {
-                      debugPrint('[NODE] TAP → id=${node.id} name=${node.name} type=${node.type}');
+                      debugPrint(
+                        '[NODE] TAP → id=${node.id} name=${node.name} type=${node.type}',
+                      );
                       ctrl.selectNode(node.id);
                     } else {
-                      debugPrint('[NODE] TAP ignored → dragged=$nodeDragged type=${node.type}');
+                      debugPrint(
+                        '[NODE] TAP ignored → dragged=$nodeDragged type=${node.type}',
+                      );
                     }
                   },
                   child: Container(
@@ -594,8 +617,7 @@ class _CanvasNodeState extends State<_CanvasNode>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.green,
-                        border:
-                            Border.all(color: AppColors.surface, width: 2),
+                        border: Border.all(color: AppColors.surface, width: 2),
                       ),
                       child: const Icon(
                         Icons.check_rounded,

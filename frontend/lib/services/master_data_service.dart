@@ -212,6 +212,23 @@ class MasterDataService {
     return [];
   }
 
+  /// Fetch report list for a given template + department
+  Future<List<Map<String, dynamic>>> getReportList({
+    required String templateId,
+    required String departmentId,
+  }) async {
+    try {
+      final body = {'template_id': templateId, 'department_id': departmentId};
+      final data = await _api.postRawData(ApiConfig.reportListEndpoint, body);
+      if (data is List) {
+        return data.whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getReportList error: $e');
+    }
+    return [];
+  }
+
   /// Download a checker file by filename + template_id
   Future<({bool success, String message, List<int> bytes})>
   downloadCheckerFile({

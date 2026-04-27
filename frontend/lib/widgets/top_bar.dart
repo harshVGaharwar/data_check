@@ -16,38 +16,65 @@ class TopBar extends StatelessWidget {
         children: [
           // Logo
           Container(
-            width: 28, height: 28,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(7),
-              gradient: const LinearGradient(colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+              ),
             ),
-            child: const Center(child: Text('🏦', style: TextStyle(fontSize: 14))),
+            child: const Center(
+              child: Text('🏦', style: TextStyle(fontSize: 14)),
+            ),
           ),
           const SizedBox(width: 8),
-          const Text('DataFlow Builder', style: AppTextStyles.topBarTitle),
+          Text(
+            'DataFlow Builder',
+            style: AppTextStyles.topBarTitle,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(width: 12),
           Container(width: 1, height: 24, color: AppColors.border2),
-          const Spacer(),
-          _btn('🗑 Clear', () => context.read<PipelineController>().clearCanvas()),
+
+          _btn(
+            '🗑 Clear',
+            () => context.read<PipelineController>().clearCanvas(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _btn(String label, VoidCallback onTap, {bool primary = false, bool green = false}) {
+  Widget _btn(
+    String label,
+    VoidCallback onTap, {
+    bool primary = false,
+    bool green = false,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(7),
-          color: green ? AppColors.green : primary ? AppColors.blue : Colors.transparent,
-          border: (!primary && !green) ? Border.all(color: AppColors.border2) : null,
+          color: green
+              ? AppColors.green
+              : primary
+              ? AppColors.blue
+              : Colors.transparent,
+          border: (!primary && !green)
+              ? Border.all(color: AppColors.border2)
+              : null,
         ),
-        child: Text(label, style: TextStyle(
-          color: (primary || green) ? Colors.white : AppColors.textDim,
-          fontSize: 12.5, fontWeight: FontWeight.w600,
-        )),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: (primary || green) ? Colors.white : AppColors.textDim,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

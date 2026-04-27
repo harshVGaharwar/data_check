@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/pipeline_models.dart';
 import '../../controllers/pipeline_controller.dart';
+import '../shimmer_button.dart';
 
 class SourceNodeBody extends StatelessWidget {
   final PipelineNode node;
@@ -20,7 +21,7 @@ class SourceNodeBody extends StatelessWidget {
       children: [
         // Header
         Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           decoration: const BoxDecoration(
             border: Border(bottom: BorderSide(color: AppColors.border)),
             borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
@@ -41,21 +42,21 @@ class SourceNodeBody extends StatelessWidget {
               Expanded(
                 child: Text(
                   node.sourceTypeName.isNotEmpty
-                      ? node.sourceTypeName
-                      : node.type.label,
+                      ? node.sourceTypeName.toUpperCase()
+                      : node.type.label.toUpperCase(),
                   style: AppTextStyles.nodeName,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // InkWell(
-              //   onTap: () =>
-              //       context.read<PipelineController>().selectNode(node.id),
-              //   child: const Icon(
-              //     Icons.settings,
-              //     color: AppColors.textDim,
-              //     size: 16,
-              //   ),
-              // ),
+              InkWell(
+                onTap: () =>
+                    context.read<PipelineController>().deleteNode(node.id),
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.red,
+                  size: 16,
+                ),
+              ),
             ],
           ),
         ),
@@ -72,59 +73,43 @@ class SourceNodeBody extends StatelessWidget {
                   hasCols
                       ? '${node.cols.length} cols'
                       : isManual
-                          ? 'No data'
-                          : 'No file',
+                      ? 'No data'
+                      : 'No file',
                   hasCols ? AppColors.blue : AppColors.amber,
                 ),
-                if (node.rows.isNotEmpty) _statRow('Rows', '${node.rows.length}'),
+                if (node.rows.isNotEmpty)
+                  _statRow('Rows', '${node.rows.length}'),
               ],
             ),
           )
         else
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
-                    color: AppColors.blue.withValues(alpha: 0.08),
-                    border: Border.all(color: AppColors.blue.withValues(alpha: 0.3)),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.settings_outlined, color: AppColors.blue, size: 12),
-                      SizedBox(width: 5),
-                      Text(
-                        'Click to configure',
-                        style: TextStyle(
-                          color: AppColors.blue,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: ShimmerButton(
+              label: 'Click to configure',
+              icon: Icons.settings_outlined,
+              animating:
+                  context.watch<PipelineController>().selectedNodeId != node.id,
+            ),
           ),
 
         // Footer — delete only
-        Container(
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AppColors.border)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              InkWell(
-                onTap: () =>
-                    context.read<PipelineController>().deleteNode(node.id),
-                child: const Text('🗑', style: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
-        ),
+        // Container(
+        //   padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+        //   decoration: const BoxDecoration(
+        //     border: Border(top: BorderSide(color: AppColors.border)),
+        //   ),
+        //   child: Row(
+        //     mainAxisAlignment: MainAxisAlignment.end,
+        //     children: [
+        //       InkWell(
+        //         onTap: () =>
+        //             context.read<PipelineController>().deleteNode(node.id),
+        //         child: const Icon(Icons.delete_outline, color: Colors.red),
+        //       ),
+        //     ],
+        //   ),
+        // ),
       ],
     );
   }

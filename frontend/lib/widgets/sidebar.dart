@@ -8,6 +8,7 @@ import '../models/template_info.dart';
 import '../controllers/pipeline_controller.dart';
 import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
+import 'searchable_dropdown.dart';
 
 class Sidebar extends StatefulWidget {
   const Sidebar({super.key});
@@ -217,10 +218,6 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                 child: ListView(
                   padding: const EdgeInsets.all(10),
                   children: [
-                    const Text(
-                      'TEMPLATE SELECTION',
-                      style: AppTextStyles.sectionLabel,
-                    ),
                     const SizedBox(height: 6),
 
                     // Department
@@ -237,7 +234,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                           const SizedBox(height: 4),
                           _deptLoading
                               ? _loadingField()
-                              : _sidebarDropdown(
+                              : SearchableDropdownField(
                                   value: ctrl.sidebarDept.isEmpty
                                       ? null
                                       : ctrl.sidebarDept,
@@ -267,7 +264,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                           const SizedBox(height: 4),
                           _templateLoading
                               ? _loadingField()
-                              : _sidebarDropdown(
+                              : SearchableDropdownField(
                                   value:
                                       templateNames.contains(
                                         ctrl.sidebarTemplate,
@@ -278,6 +275,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                       ? '— Select Dept first —'
                                       : '— Select Template —',
                                   items: templateNames,
+                                  enabled: ctrl.sidebarDept.isNotEmpty,
                                   onChanged: (v) {
                                     if (v == null) return;
                                     final info = _templates.firstWhere(
@@ -599,38 +597,6 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
             style: TextStyle(fontSize: 11, color: AppColors.textMuted),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _sidebarDropdown({
-    String? value,
-    required String hint,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.border2),
-        color: AppColors.surface2,
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: items.contains(value) ? value : null,
-          hint: Text(
-            hint,
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-          dropdownColor: AppColors.surface2,
-          style: const TextStyle(fontSize: 12, color: AppColors.text),
-          items: items
-              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-              .toList(),
-          onChanged: onChanged,
-        ),
       ),
     );
   }
