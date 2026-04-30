@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 // ENUMS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-enum NodeType { db, manual, fc, laser, join, output }
+enum NodeType { db, manual, fc, laser, join }
 
 enum NodeConfirmState { notConfigured, confirmed, editing }
 
@@ -13,68 +13,94 @@ enum NodeConfirmState { notConfigured, confirmed, editing }
 class DragNodeData {
   final NodeType type;
   final String sourceValue; // empty for non-source nodes (join etc.)
-  final String sourceName;  // display name from API (e.g. "Database")
-  final int sourceTypeId;   // id from API source type list
-  const DragNodeData(this.type, {this.sourceValue = '', this.sourceName = '', this.sourceTypeId = 0});
+  final String sourceName; // display name from API (e.g. "Database")
+  final int sourceTypeId; // id from API source type list
+  const DragNodeData(
+    this.type, {
+    this.sourceValue = '',
+    this.sourceName = '',
+    this.sourceTypeId = 0,
+  });
 }
 
 extension NodeTypeExt on NodeType {
-  bool get isSource => this != NodeType.join && this != NodeType.output;
+  bool get isSource => this != NodeType.join;
 
   String get label {
     switch (this) {
-      case NodeType.db:     return 'Database';
-      case NodeType.manual: return 'Manual Upload';
-      case NodeType.fc:     return 'Finacle Core';
-      case NodeType.laser:  return 'Laser Banking';
-      case NodeType.join:   return 'Join Operation';
-      case NodeType.output: return 'Output';
+      case NodeType.db:
+        return 'Database';
+      case NodeType.manual:
+        return 'Manual Upload';
+      case NodeType.fc:
+        return 'Finacle Core';
+      case NodeType.laser:
+        return 'Laser Banking';
+      case NodeType.join:
+        return 'Join Operation';
     }
   }
 
   String get subtitle {
     switch (this) {
-      case NodeType.db:     return 'DB';
-      case NodeType.manual: return 'CSV / Excel';
-      case NodeType.fc:     return 'FC';
-      case NodeType.laser:  return 'LASER';
-      case NodeType.join:   return 'LEFT / INNER / RIGHT';
-      case NodeType.output: return 'CSV / Excel / JSON';
+      case NodeType.db:
+        return 'DB';
+      case NodeType.manual:
+        return 'CSV / Excel';
+      case NodeType.fc:
+        return 'FC';
+      case NodeType.laser:
+        return 'LASER';
+      case NodeType.join:
+        return 'LEFT / INNER / RIGHT';
     }
   }
 
   IconData get icon {
     switch (this) {
-      case NodeType.db:     return Icons.storage_rounded;
-      case NodeType.manual: return Icons.upload_file_rounded;
-      case NodeType.fc:     return Icons.bar_chart_rounded;
-      case NodeType.laser:  return Icons.flash_on_rounded;
-      case NodeType.join:   return Icons.link_rounded;
-      case NodeType.output: return Icons.output_rounded;
+      case NodeType.db:
+        return Icons.storage_rounded;
+      case NodeType.manual:
+        return Icons.upload_file_rounded;
+      case NodeType.fc:
+        return Icons.bar_chart_rounded;
+      case NodeType.laser:
+        return Icons.flash_on_rounded;
+      case NodeType.join:
+        return Icons.link_rounded;
     }
   }
 
   Color get color {
     switch (this) {
-      case NodeType.db:     return AppColors.blue;
-      case NodeType.manual: return AppColors.amber;
-      case NodeType.fc:     return AppColors.blue;
-      case NodeType.laser:  return AppColors.green;
-      case NodeType.join:   return AppColors.violet;
-      case NodeType.output: return AppColors.green;
+      case NodeType.db:
+        return AppColors.blue;
+      case NodeType.manual:
+        return AppColors.amber;
+      case NodeType.fc:
+        return AppColors.blue;
+      case NodeType.laser:
+        return AppColors.green;
+      case NodeType.join:
+        return AppColors.violet;
     }
   }
 
   /// Parse from string (Flutter savedRow 'type' field)
   static NodeType fromString(String s) {
     switch (s.toLowerCase()) {
-      case 'db':     return NodeType.db;
-      case 'manual': return NodeType.manual;
-      case 'fc':     return NodeType.fc;
-      case 'laser':  return NodeType.laser;
-      case 'join':   return NodeType.join;
-      case 'output': return NodeType.output;
-      default:       return NodeType.db;
+      case 'db':
+        return NodeType.db;
+      case 'manual':
+        return NodeType.manual;
+      case 'fc':
+        return NodeType.fc;
+      case 'laser':
+        return NodeType.laser;
+      case 'join':
+        return NodeType.join;
+      default:
+        return NodeType.db;
     }
   }
 }
@@ -84,12 +110,12 @@ extension NodeTypeExt on NodeType {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 class ColumnMapping {
-  String leftSourceId;   // Source node ID
-  String leftCol;        // Column from that source
-  String joinType;       // Relation type
+  String leftSourceId; // Source node ID
+  String leftCol; // Column from that source
+  String joinType; // Relation type
   String operationValue; // Operation (=, !=, >, <, etc.)
-  String rightSourceId;  // Dependent source node ID
-  String rightCol;       // Column from dependent source
+  String rightSourceId; // Dependent source node ID
+  String rightCol; // Column from dependent source
 
   ColumnMapping({
     this.leftSourceId = '',
@@ -100,7 +126,11 @@ class ColumnMapping {
     this.rightCol = '',
   });
 
-  bool get isValid => leftSourceId.isNotEmpty && leftCol.isNotEmpty && rightSourceId.isNotEmpty && rightCol.isNotEmpty;
+  bool get isValid =>
+      leftSourceId.isNotEmpty &&
+      leftCol.isNotEmpty &&
+      rightSourceId.isNotEmpty &&
+      rightCol.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
     'leftSourceId': leftSourceId,
@@ -110,49 +140,6 @@ class ColumnMapping {
     'rightSourceId': rightSourceId,
     'rightCol': rightCol,
   };
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// OUTPUT FILTER
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-class OutputFilter {
-  String column;
-  String operator;
-  String value;
-
-  OutputFilter({this.column = '', this.operator = '=', this.value = ''});
-
-  bool get isValid => column.isNotEmpty && value.isNotEmpty;
-
-  bool matches(Map<String, dynamic> row) {
-    if (!isValid) return true;
-    final cellVal = '${row[column] ?? ''}';
-    switch (operator) {
-      case '=':  return cellVal == value;
-      case '!=': return cellVal != value;
-      case '>':  return (double.tryParse(cellVal) ?? 0) > (double.tryParse(value) ?? 0);
-      case '<':  return (double.tryParse(cellVal) ?? 0) < (double.tryParse(value) ?? 0);
-      case '>=': return (double.tryParse(cellVal) ?? 0) >= (double.tryParse(value) ?? 0);
-      case '<=': return (double.tryParse(cellVal) ?? 0) <= (double.tryParse(value) ?? 0);
-      case 'contains': return cellVal.toLowerCase().contains(value.toLowerCase());
-      case 'starts with': return cellVal.toLowerCase().startsWith(value.toLowerCase());
-      default: return true;
-    }
-  }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// OUTPUT SORT
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-class OutputSort {
-  String column;
-  bool ascending;
-
-  OutputSort({this.column = '', this.ascending = true});
-
-  bool get isValid => column.isNotEmpty;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -169,8 +156,10 @@ class PipelineNode {
 
   /// Column names extracted from uploaded file
   List<String> cols;
+
   /// Columns user has selected/toggled on
   List<String> selectedCols;
+
   /// Actual data rows (list of {colName: value} maps)
   List<Map<String, dynamic>> rows;
 
@@ -180,16 +169,8 @@ class PipelineNode {
   String? rightSrcId;
   String joinType;
 
-  /// OUTPUT-specific
-  String outputFormat;
-  /// Output column selection (which cols to include in final report)
-  List<String> outputSelectedCols;
-  /// Column aliases {originalName: aliasName}
+  /// Column aliases {originalName: aliasName} — used in join output column renaming
   Map<String, String> columnAliases;
-  /// Filters [{column, operator, value}]
-  List<OutputFilter> filters;
-  /// Sort config [{column, direction}]
-  List<OutputSort> sortRules;
 
   /// Source type selected from API (sourceValue, e.g. 'DB', 'API')
   String sourceTypeValue;
@@ -229,11 +210,7 @@ class PipelineNode {
     this.leftSrcId,
     this.rightSrcId,
     this.joinType = 'LEFT JOIN',
-    this.outputFormat = 'csv',
-    List<String>? outputSelectedCols,
     Map<String, String>? columnAliases,
-    List<OutputFilter>? filters,
-    List<OutputSort>? sortRules,
     this.sourceTypeValue = '',
     this.sourceTypeId = 0,
     this.sourceTypeName = '',
@@ -244,22 +221,20 @@ class PipelineNode {
     this.queryFileBytes,
     this.confirmState = NodeConfirmState.notConfigured,
     this.sourceId,
-  })  : cols = cols ?? [],
-        selectedCols = selectedCols ?? [],
-        rows = rows ?? [],
-        mappings = mappings ?? [],
-        outputSelectedCols = outputSelectedCols ?? [],
-        columnAliases = columnAliases ?? {},
-        filters = filters ?? [],
-        sortRules = sortRules ?? [];
+  }) : cols = cols ?? [],
+       selectedCols = selectedCols ?? [],
+       rows = rows ?? [],
+       mappings = mappings ?? [],
+       columnAliases = columnAliases ?? {};
 
   // ── Layout dimensions (matches HTML CSS) ──
 
   double get nodeWidth {
     switch (type) {
-      case NodeType.join:   return 340;
-      case NodeType.output: return 320;
-      default:              return 200;
+      case NodeType.join:
+        return 340;
+      default:
+        return 200;
     }
   }
 
@@ -267,15 +242,16 @@ class PipelineNode {
     switch (type) {
       case NodeType.join:
         final validCount = mappings.where((m) => m.isValid).length;
-        return 140 + (validCount * 28) + 50; // header+badges+mappings+inputRow
-      case NodeType.output: return 200;
-      default:              return 150;
+        return 140 + (validCount * 28) + 50;
+      default:
+        return 150;
     }
   }
 
   /// Port positions (relative to node top-left, same as HTML getPortPos)
-  Offset get outPortCenter => Offset(position.dx + nodeWidth, position.dy + nodeHeight / 2);
-  Offset get inPortCenter  => Offset(position.dx, position.dy + nodeHeight / 2);
+  Offset get outPortCenter =>
+      Offset(position.dx + nodeWidth, position.dy + nodeHeight / 2);
+  Offset get inPortCenter => Offset(position.dx, position.dy + nodeHeight / 2);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

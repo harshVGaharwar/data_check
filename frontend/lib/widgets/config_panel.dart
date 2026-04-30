@@ -350,6 +350,7 @@ class _ConfigPanelState extends State<ConfigPanel>
               onTap: isLocked
                   ? null
                   : () async {
+                      final messenger = ScaffoldMessenger.of(context);
                       final result = await FilePicker.platform.pickFiles(
                         type: FileType.custom,
                         allowedExtensions: ['txt'],
@@ -363,16 +364,14 @@ class _ConfigPanelState extends State<ConfigPanel>
                           allowMalformed: true,
                         );
                         if (!_isValidQueryFile(queryText)) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Invalid file: the query file must contain a valid SQL query (e.g. starting with SELECT, WITH, INSERT, etc.). Column/CSV files are not allowed here.',
-                                ),
-                                backgroundColor: Colors.red,
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Invalid file: the query file must contain a valid SQL query (e.g. starting with SELECT, WITH, INSERT, etc.). Column/CSV files are not allowed here.',
                               ),
-                            );
-                          }
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                           return;
                         }
                         ctrl.setQueryFile(
@@ -380,14 +379,12 @@ class _ConfigPanelState extends State<ConfigPanel>
                           fileName,
                           bytes: queryBytes.toList(),
                         );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Query file loaded: $fileName'),
-                              backgroundColor: AppColors.green,
-                            ),
-                          );
-                        }
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Query file loaded: $fileName'),
+                            backgroundColor: AppColors.green,
+                          ),
+                        );
                       }
                     },
             ),
@@ -419,6 +416,7 @@ class _ConfigPanelState extends State<ConfigPanel>
                 onTap: isLocked
                     ? null
                     : () async {
+                        final messenger = ScaffoldMessenger.of(context);
                         final result = await FilePicker.platform.pickFiles(
                           type: FileType.custom,
                           allowedExtensions: ['csv', 'txt'],
@@ -452,29 +450,25 @@ class _ConfigPanelState extends State<ConfigPanel>
                         if (cols.isEmpty) return;
                         // Reject if the file is actually a SQL query file
                         if (_isValidQueryFile(text)) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Invalid file: this looks like a SQL query file. Please upload a column file (.csv / .txt with column headers).',
-                                ),
-                                backgroundColor: Colors.red,
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Invalid file: this looks like a SQL query file. Please upload a column file (.csv / .txt with column headers).',
                               ),
-                            );
-                          }
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                           return;
                         }
                         if (!_isValidColumnHeaders(cols)) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Invalid file: the first row must contain column headers, not raw data or unstructured text.',
-                                ),
-                                backgroundColor: Colors.red,
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Invalid file: the first row must contain column headers, not raw data or unstructured text.',
                               ),
-                            );
-                          }
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                           return;
                         }
                         final rows = <Map<String, dynamic>>[];
@@ -497,16 +491,14 @@ class _ConfigPanelState extends State<ConfigPanel>
                           bytes: bytes.toList(),
                         );
                         ctrl.updateNodeSeparator(node.id, sep);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '${cols.length} columns, ${rows.length} rows extracted from $fileName',
-                              ),
-                              backgroundColor: AppColors.green,
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '${cols.length} columns, ${rows.length} rows extracted from $fileName',
                             ),
-                          );
-                        }
+                            backgroundColor: AppColors.green,
+                          ),
+                        );
                       },
               ),
               borderOnly: true,

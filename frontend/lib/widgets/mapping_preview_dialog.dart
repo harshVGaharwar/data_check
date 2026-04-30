@@ -1386,7 +1386,7 @@ class _OutputFormatCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                _CountBadge(node: node),
+                _CountBadge(node: node, ctrl: ctrl),
               ],
             ),
           ),
@@ -1401,14 +1401,34 @@ class _OutputFormatCard extends StatelessWidget {
   }
 }
 
-class _CountBadge extends StatelessWidget {
+class _CountBadge extends StatefulWidget {
   final PipelineNode node;
-  const _CountBadge({required this.node});
+  final PipelineController ctrl;
+  const _CountBadge({required this.node, required this.ctrl});
+
+  @override
+  State<_CountBadge> createState() => _CountBadgeState();
+}
+
+class _CountBadgeState extends State<_CountBadge> {
+  @override
+  void initState() {
+    super.initState();
+    widget.ctrl.addListener(_rebuild);
+  }
+
+  void _rebuild() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.ctrl.removeListener(_rebuild);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final sel = node.selectedCols.length;
-    final total = node.cols.length;
+    final sel = widget.node.selectedCols.length;
+    final total = widget.node.cols.length;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(

@@ -47,6 +47,11 @@ class ApiConfig {
   // report page
   static const String reportListEndpoint = 'template/GetReportList';
 
+  // Edit Template Configuration
+  static const String approvedTemplatesEndpoint =
+      'template/GetApprovedTemplates';
+  static const String templateConfigEndpoint = 'template/GetTemplateConfig';
+
   // // Timeouts
   // static const Duration connectTimeout = Duration(seconds: 30);
   // static const Duration receiveTimeout = Duration(seconds: 30);

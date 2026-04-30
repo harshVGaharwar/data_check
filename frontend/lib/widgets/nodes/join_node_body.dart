@@ -630,6 +630,7 @@ class JoinNodeBody extends StatelessWidget {
     final payload = {
       'TemplateId': templateId,
       'createdBy': userName,
+      'templateMode': ctrl.templateMode,
       'Sources': sources,
       'JoinMappings': joinMappings,
       'Edges': edgeList,

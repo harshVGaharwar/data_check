@@ -11,6 +11,7 @@ import 'source_configuration_page.dart';
 import 'manual_upload_page.dart';
 import 'checker_page.dart';
 import 'report_page.dart';
+import 'edit_template_configuration_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -28,6 +29,7 @@ class _DashboardPageState extends State<DashboardPage> {
     'Home',
     'Template Creation',
     'Template Configuration',
+    'Edit Configuration',
     // 'Configuration Upload',
     'Source Configuration',
     'Manual Upload',
@@ -39,6 +41,7 @@ class _DashboardPageState extends State<DashboardPage> {
     Icons.home_outlined,
     Icons.add_circle_outline,
     Icons.settings_applications_outlined,
+    Icons.edit_note_rounded,
     // Icons.cloud_upload_outlined,
     Icons.storage_rounded,
     Icons.upload_file_rounded,
@@ -53,6 +56,7 @@ class _DashboardPageState extends State<DashboardPage> {
       WelcomePage(onNavigate: (i) => _navigate(i)),
       const TemplateCreationPage(),
       const TemplateConfigurationPage(),
+      const EditTemplateConfigurationPage(),
       // const ConfigurationUploadPage(),
       const SourceConfigurationPage(),
       const ManualUploadPage(),

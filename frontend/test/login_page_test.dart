@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:vizualizer/pages/login_page.dart';
 import 'package:vizualizer/providers/auth_provider.dart';
 import 'package:vizualizer/models/login_response.dart';
+import 'package:vizualizer/services/storage_service.dart';
 
 // ── Manual mock for AuthProvider ──────────────────────────────────────────────
 
@@ -61,15 +62,33 @@ class MockAuthProvider extends ChangeNotifier implements AuthProvider {
   Future<void> _tryAutoLogin() async {}
 }
 
+// ── Mock StorageService ───────────────────────────────────────────────────────
+
+class MockStorageService extends StorageService {
+  int _savedIndex = 0;
+  int get savedIndex => _savedIndex;
+
+  @override
+  Future<void> savePageIndex(int index) async {
+    _savedIndex = index;
+  }
+
+  @override
+  Future<int> loadPageIndex() async => _savedIndex;
+}
+
 // ── Test helpers ──────────────────────────────────────────────────────────────
 
-Widget buildLoginPage(AuthProvider authProvider) {
+Widget buildLoginPage(AuthProvider authProvider, {StorageService? storage}) {
   return MaterialApp(
     routes: {
       '/dashboard': (_) => const Scaffold(body: Text('Dashboard')),
     },
-    home: ChangeNotifierProvider<AuthProvider>.value(
-      value: authProvider,
+    home: MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+        Provider<StorageService>.value(value: storage ?? MockStorageService()),
+      ],
       child: const LoginPage(),
     ),
   );
@@ -93,10 +112,10 @@ void main() {
       expect(find.text('Enter password'), findsOneWidget);
     });
 
-    testWidgets('renders HDFC Pipeline Builder heading', (tester) async {
+    testWidgets('renders Data Fusion heading', (tester) async {
       await tester.pumpWidget(buildLoginPage(MockAuthProvider()));
 
-      expect(find.text('HDFC Pipeline Builder'), findsOneWidget);
+      expect(find.text('Data Fusion'), findsOneWidget);
     });
 
     testWidgets('renders subtitle text', (tester) async {
@@ -135,10 +154,10 @@ void main() {
       expect(passwordField.obscureText, isTrue);
     });
 
-    testWidgets('shows logo with letter H', (tester) async {
+    testWidgets('shows HDFC bank logo image', (tester) async {
       await tester.pumpWidget(buildLoginPage(MockAuthProvider()));
 
-      expect(find.text('H'), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
     });
 
     testWidgets('shows version footer text', (tester) async {
