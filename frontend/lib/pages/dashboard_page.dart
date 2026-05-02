@@ -276,8 +276,16 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 8),
-          for (int i = 0; i < _titles.length; i++) _drawerItem(i),
-          const Spacer(),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (int i = 0; i < _titles.length; i++) _drawerItem(i),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

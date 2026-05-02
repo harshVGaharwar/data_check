@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
+import 'template_creation_view_page.dart';
 
 class TemplateCreationListPage extends StatefulWidget {
   const TemplateCreationListPage({super.key});
@@ -26,13 +28,12 @@ class _TemplateCreationListPageState extends State<TemplateCreationListPage> {
 
   static const _columns = [
     '#',
-    'Template ID',
-    'Template Name',
+    'Request ID',
     'Department',
-    'Frequency',
-    'Sources',
-    'Outputs',
-    'Priority',
+    'Template',
+    'Created By',
+    'Created Date',
+    'View',
   ];
 
   @override
@@ -200,19 +201,17 @@ class _TemplateCreationListPageState extends State<TemplateCreationListPage> {
         ? _results
         : _results.where((item) {
             final q = _searchQuery.toLowerCase();
-            return (item['templateId']?.toString().toLowerCase().contains(q) ??
+            return (item['requestId']?.toString().toLowerCase().contains(q) ??
                     false) ||
-                (item['templateName']
-                        ?.toString()
-                        .toLowerCase()
-                        .contains(q) ??
+                (item['departmentName']?.toString().toLowerCase().contains(q) ??
                     false) ||
-                (item['department']?.toString().toLowerCase().contains(q) ??
+                (item['templateName']?.toString().toLowerCase().contains(q) ??
                     false) ||
-                (item['frequency']?.toString().toLowerCase().contains(q) ??
+                (item['makerBy']?.toString().toLowerCase().contains(q) ??
                     false) ||
-                (item['priority']?.toString().toLowerCase().contains(q) ??
-                    false);
+                _formatDate(
+                  item['makerDate']?.toString(),
+                ).toLowerCase().contains(q);
           }).toList();
 
     final totalPages = max(1, (filtered.length / _rowsPerPage).ceil());
@@ -300,13 +299,12 @@ class _TemplateCreationListPageState extends State<TemplateCreationListPage> {
                 ),
                 columnWidths: const {
                   0: FixedColumnWidth(44),
-                  1: FixedColumnWidth(100),
-                  2: FlexColumnWidth(2.4),
-                  3: FlexColumnWidth(1.6),
+                  1: FlexColumnWidth(1.6),
+                  2: FlexColumnWidth(2),
+                  3: FlexColumnWidth(2),
                   4: FlexColumnWidth(1.3),
-                  5: FixedColumnWidth(80),
-                  6: FixedColumnWidth(80),
-                  7: FlexColumnWidth(1.2),
+                  5: FlexColumnWidth(1.7),
+                  6: FixedColumnWidth(96),
                 },
                 children: [
                   _buildHeaderRow(_matchedColumns(_searchQuery)),
@@ -335,20 +333,21 @@ class _TemplateCreationListPageState extends State<TemplateCreationListPage> {
     final q = query.toLowerCase();
     final matched = <String>{};
     for (final item in _results) {
-      if (item['templateId']?.toString().toLowerCase().contains(q) ?? false) {
-        matched.add('Template ID');
+      if (item['requestId']?.toString().toLowerCase().contains(q) ?? false) {
+        matched.add('Request ID');
       }
-      if (item['templateName']?.toString().toLowerCase().contains(q) ?? false) {
-        matched.add('Template Name');
-      }
-      if (item['department']?.toString().toLowerCase().contains(q) ?? false) {
+      if (item['departmentName']?.toString().toLowerCase().contains(q) ??
+          false) {
         matched.add('Department');
       }
-      if (item['frequency']?.toString().toLowerCase().contains(q) ?? false) {
-        matched.add('Frequency');
+      if (item['templateName']?.toString().toLowerCase().contains(q) ?? false) {
+        matched.add('Template');
       }
-      if (item['priority']?.toString().toLowerCase().contains(q) ?? false) {
-        matched.add('Priority');
+      if (item['makerBy']?.toString().toLowerCase().contains(q) ?? false) {
+        matched.add('Created By');
+      }
+      if (_formatDate(item['makerDate']?.toString()).toLowerCase().contains(q)) {
+        matched.add('Created Date');
       }
     }
     return matched;
@@ -406,13 +405,11 @@ class _TemplateCreationListPageState extends State<TemplateCreationListPage> {
   }
 
   TableRow _buildTableRow(Map<String, dynamic> item, int index) {
-    final tid = item['templateId']?.toString() ?? '—';
-    final name = item['templateName']?.toString() ?? '—';
-    final dept = item['department']?.toString() ?? '—';
-    final freq = item['frequency']?.toString() ?? '—';
-    final sources = item['sourceCount']?.toString() ?? '0';
-    final outputs = item['numberOfOutputs']?.toString() ?? '0';
-    final priority = item['priority']?.toString() ?? '—';
+    final makerBy = item['makerBy']?.toString() ?? '—';
+    final makerDate = _formatDate(item['makerDate']?.toString());
+    final requestId = item['requestId']?.toString() ?? '—';
+    final templateName = item['templateName']?.toString() ?? '—';
+    final deptName = item['departmentName']?.toString() ?? '—';
     final bg = index.isEven ? Colors.white : const Color(0xFFF9FAFC);
 
     return TableRow(
@@ -430,106 +427,202 @@ class _TemplateCreationListPageState extends State<TemplateCreationListPage> {
           ),
         ),
         _tdCell(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: AppColors.blue.withValues(alpha: 0.09),
-            ),
-            child: Text(
-              tid,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.blue,
+          child: Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.blue.withValues(alpha: 0.09),
+                ),
+                child: Text(
+                  requestId,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.blue,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
+            ],
           ),
         ),
         _tdCell(
           child: Text(
-            name,
+            deptName,
             style: const TextStyle(
               fontSize: 12,
               color: AppColors.text,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
         _tdCell(
           child: Text(
-            dept,
+            templateName,
             style: const TextStyle(fontSize: 12, color: AppColors.textDim),
             overflow: TextOverflow.ellipsis,
           ),
         ),
         _tdCell(
-          child: Text(
-            freq,
-            style: const TextStyle(fontSize: 12, color: AppColors.textDim),
-            overflow: TextOverflow.ellipsis,
+          child: Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.blue.withValues(alpha: 0.1),
+                ),
+                child: Center(
+                  child: Text(
+                    makerBy.isNotEmpty ? makerBy[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  makerBy,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDim,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
         _tdCell(
           child: Text(
-            sources,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.text,
-              fontWeight: FontWeight.w600,
-            ),
+            makerDate,
+            style: const TextStyle(fontSize: 11, color: AppColors.textDim),
           ),
         ),
         _tdCell(
-          child: Text(
-            outputs,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.text,
-              fontWeight: FontWeight.w600,
+          child: Tooltip(
+            message: _canViewItem(item)
+                ? 'View template details'
+                : 'Details unavailable',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _viewTemplate(item),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: _canViewItem(item)
+                      ? AppColors.blue.withValues(alpha: 0.08)
+                      : AppColors.textMuted.withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: _canViewItem(item)
+                        ? AppColors.blue.withValues(alpha: 0.18)
+                        : AppColors.border2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.visibility_rounded,
+                      size: 13,
+                      color: _canViewItem(item)
+                          ? AppColors.blue
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'View',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _canViewItem(item)
+                            ? AppColors.blue
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-        _tdCell(child: _priorityChip(priority)),
       ],
     );
   }
 
-  Widget _priorityChip(String priority) {
-    final p = priority.toLowerCase();
-    Color color;
-    switch (p) {
-      case 'high':
-      case 'critical':
-        color = AppColors.red;
-        break;
-      case 'medium':
-        color = AppColors.amber;
-        break;
-      case 'low':
-        color = AppColors.green;
-        break;
-      default:
-        color = AppColors.textDim;
+  bool _canViewItem(Map<String, dynamic> item) {
+    final responseData = item['responseData'];
+    final payload = item['payload'];
+    final payloadJson = item['payloadJson'];
+    final hasResponseData = responseData is Map
+        ? responseData.isNotEmpty
+        : (responseData?.toString().trim().isNotEmpty ?? false);
+    return hasResponseData ||
+        payload != null ||
+        (payloadJson?.toString().trim().isNotEmpty ?? false);
+  }
+
+  Map<String, dynamic>? _extractPayload(Map<String, dynamic> item) {
+    final responseData = item['responseData'];
+    if (responseData is Map<String, dynamic>) return responseData;
+    if (responseData is Map) {
+      return responseData.map((k, v) => MapEntry(k.toString(), v));
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: color.withValues(alpha: 0.1),
+
+    final payload = item['payload'];
+    if (payload is Map<String, dynamic>) return payload;
+    if (payload is Map) {
+      return payload.map((k, v) => MapEntry(k.toString(), v));
+    }
+
+    final payloadJson = item['payloadJson']?.toString().trim() ?? '';
+    if (payloadJson.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(payloadJson);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((k, v) => MapEntry(k.toString(), v));
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  Future<void> _viewTemplate(Map<String, dynamic> item) async {
+    final payload = _extractPayload(item);
+    if (payload == null) {
+      _snack('Details unavailable for this template.', isError: true);
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TemplateCreationViewPage(data: payload),
       ),
-      child: Text(
-        priority,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
-        overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  void _snack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? AppColors.red : AppColors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -700,6 +793,18 @@ class _TemplateCreationListPageState extends State<TemplateCreationListPage> {
         ),
       ],
     );
+  }
+
+  String _formatDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    try {
+      final dt = DateTime.parse(raw);
+      final dd = dt.day.toString().padLeft(2, '0');
+      final mm = dt.month.toString().padLeft(2, '0');
+      return '$dd/$mm/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return raw;
+    }
   }
 
   InputDecoration _inputDecoration(
