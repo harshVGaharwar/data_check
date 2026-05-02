@@ -5,6 +5,11 @@ import '../models/pipeline_config.dart';
 import '../utils/join_engine.dart';
 
 class PipelineController extends ChangeNotifier {
+  PipelineController({this.templateMode = 'configure'});
+
+  /// 'configure' for new template configuration, 'edit' for editing existing.
+  final String templateMode;
+
   // ── Core state (same as HTML) ──
   final List<PipelineNode> nodes = [];
   final List<PipelineEdge> edges = [];
@@ -13,9 +18,12 @@ class PipelineController extends ChangeNotifier {
   String? selectedNodeId;
   String? selectedEdgeId;
 
-  /// Increments every time clearCanvas() is called.
-  /// Widgets watch this to reset their local animation/state.
+  /// Increments every time clearCanvas() or loadConfiguration() is called.
   int canvasVersion = 0;
+
+  /// Increments ONLY when clearCanvas() is called.
+  /// Sidebar watches this to reset dept/template/source-type state.
+  int clearVersion = 0;
 
   // ── Sidebar state (same as HTML sidebar dept/template/count) ──
   String sidebarDept = '';
@@ -145,12 +153,16 @@ class PipelineController extends ChangeNotifier {
   void deleteNode(String nodeId) {
     nodes.removeWhere((n) => n.id == nodeId);
     edges.removeWhere((e) => e.fromNodeId == nodeId || e.toNodeId == nodeId);
-    // Clean JOIN references
+    // Clean JOIN references and remove stale mappings
     for (final n in nodes.where((n) => n.type == NodeType.join)) {
       if (n.leftSrcId == nodeId) n.leftSrcId = null;
       if (n.rightSrcId == nodeId) n.rightSrcId = null;
+      n.mappings.removeWhere(
+        (m) => m.leftSourceId == nodeId || m.rightSourceId == nodeId,
+      );
     }
     if (selectedNodeId == nodeId) selectedNodeId = null;
+    if (portDragFromNodeId == nodeId) portDragFromNodeId = null;
     notifyListeners();
   }
 
@@ -167,7 +179,176 @@ class PipelineController extends ChangeNotifier {
     sidebarDeptId = '';
     requiredSourceCount = 0;
     canvasVersion++;
+    clearVersion++;
     notifyListeners();
+  }
+
+  /// Hydrate the canvas from a saved GetTemplateConfig API response.
+  /// Positions nodes automatically: sources on the left, join in the middle,
+  /// output on the right.
+  void loadConfiguration(Map<String, dynamic> config) {
+    nodes.clear();
+    edges.clear();
+    selectedNodeId = null;
+    selectedEdgeId = null;
+    _nodeIdSeq = 0;
+
+    final rawSources = config['Sources'];
+    final rawJoins = config['JoinMappings'];
+
+    final sources = (rawSources is List)
+        ? rawSources.whereType<Map<String, dynamic>>().toList()
+        : <Map<String, dynamic>>[];
+    final joinMappings = (rawJoins is List)
+        ? rawJoins.whereType<Map<String, dynamic>>().toList()
+        : <Map<String, dynamic>>[];
+
+    // ── 1. Source nodes ──
+    final nameToNewId = <String, String>{}; // SourceName → new node ID
+    const double srcX = 150;
+    const double srcGap = 280;
+    double srcY = 80;
+
+    for (final src in sources) {
+      final srcName = src['SourceName']?.toString() ?? '';
+      final cols = (src['Columns']?.toString() ?? '')
+          .split(',')
+          .where((c) => c.isNotEmpty)
+          .toList();
+      final selCols = (src['SelectedColumns']?.toString() ?? '')
+          .split(',')
+          .where((c) => c.isNotEmpty)
+          .toList();
+      final srcTypeStr = src['SourceType']?.toString() ?? '';
+      final srcTypeId = int.tryParse(srcTypeStr) ?? 0;
+      final qFile = src['QueryFile']?.toString() ?? '';
+      final nodeType = _nodeTypeFromSourceTypeId(srcTypeId);
+
+      final nodeId = _nextId();
+      nameToNewId[srcName] = nodeId;
+
+      nodes.add(
+        PipelineNode(
+          id: nodeId,
+          type: nodeType,
+          name: srcName,
+          position: Offset(srcX, srcY),
+          department: sidebarDept,
+          template: sidebarTemplate,
+          cols: cols,
+          selectedCols: selCols,
+          separator: src['Separator']?.toString() ?? ',',
+          fileName: src['ColumnFile']?.toString(),
+          queryFileName: qFile.isEmpty ? null : qFile,
+          sourceTypeValue: _sourceLabelFromTypeId(srcTypeId),
+          sourceTypeId: srcTypeId,
+          sourceTypeName: _sourceLabelFromTypeId(srcTypeId),
+          confirmState: NodeConfirmState.confirmed,
+          sourceId: int.tryParse(src['SourceId']?.toString() ?? ''),
+        ),
+      );
+
+      srcY += srcGap;
+    }
+
+    // ── 2. Join node ──
+    final joinCenterY = (srcY - srcGap) / 2 + 80;
+    final joinId = _nextId();
+    final joinMappingObjs = <ColumnMapping>[];
+    for (final jm in joinMappings) {
+      final ln = jm['LeftSourceName']?.toString() ?? '';
+      final rn = jm['RightSourceName']?.toString() ?? '';
+      joinMappingObjs.add(
+        ColumnMapping(
+          leftSourceId: nameToNewId[ln] ?? '',
+          leftCol: jm['LeftColumn']?.toString() ?? '',
+          joinType: _normaliseJoinType(jm['JoinType']?.toString() ?? ''),
+          operationValue: '=',
+          rightSourceId: nameToNewId[rn] ?? '',
+          rightCol: jm['RightColumn']?.toString() ?? '',
+        ),
+      );
+    }
+
+    nodes.add(
+      PipelineNode(
+        id: joinId,
+        type: NodeType.join,
+        name: 'Join Operation',
+        position: Offset(440, joinCenterY - 70),
+        department: sidebarDept,
+        template: sidebarTemplate,
+        mappings: joinMappingObjs,
+        confirmState: joinMappingObjs.isNotEmpty
+            ? NodeConfirmState.confirmed
+            : NodeConfirmState.notConfigured,
+      ),
+    );
+
+    // Edges: every source → join
+    for (final srcName in nameToNewId.keys) {
+      edges.add(
+        PipelineEdge(
+          id: _nextEdgeId(),
+          fromNodeId: nameToNewId[srcName]!,
+          toNodeId: joinId,
+        ),
+      );
+    }
+
+    // columnAliases intentionally not restored — user re-enters aliases when editing.
+
+    canvasVersion++;
+    notifyListeners();
+  }
+
+  /// Sets only the column file bytes on a node (used after downloading existing
+  /// files when loading a saved configuration).
+  void setNodeColumnFileBytes(String nodeId, List<int> bytes) {
+    final node = findNode(nodeId);
+    if (node == null) return;
+    node.columnFileBytes = bytes;
+    notifyListeners();
+  }
+
+  static NodeType _nodeTypeFromSourceTypeId(int id) {
+    switch (id) {
+      case 1:
+        return NodeType.manual;
+      case 3:
+        return NodeType.fc;
+      default:
+        return NodeType.db;
+    }
+  }
+
+  static String _sourceLabelFromTypeId(int id) {
+    switch (id) {
+      case 1:
+        return 'Manual';
+      case 2:
+        return 'QRS';
+      case 3:
+        return 'FC';
+      default:
+        return 'Database';
+    }
+  }
+
+  static String _normaliseJoinType(String raw) {
+    switch (raw.toLowerCase().replaceAll('_', ' ').trim()) {
+      case 'left join':
+      case 'left_join':
+        return 'LEFT JOIN';
+      case 'right join':
+      case 'right_join':
+        return 'RIGHT JOIN';
+      case 'inner join':
+      case 'inner_join':
+        return 'INNER JOIN';
+      default:
+        return raw.toUpperCase();
+    }
   }
 
   /// Move node by delta (drag handler)
@@ -322,7 +503,7 @@ class PipelineController extends ChangeNotifier {
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // JOIN RESULT (same as HTML getNodeRows / getOutputResult — recursive)
+  // JOIN RESULT (same as HTML getNodeRows — recursive)
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /// Recursive — handles chained joins (join1 → join2 → output)
@@ -352,141 +533,6 @@ class PipelineController extends ChangeNotifier {
         mappings: node.mappings,
         joinType: firstMap.joinType,
       );
-    }
-
-    return null;
-  }
-
-  /// Get final result for an OUTPUT node
-  /// Returns {cols: List<String>, rows: List<Map>} or null
-  Map<String, dynamic>? getOutputResult(String outputNodeId) {
-    final outNode = findNode(outputNodeId);
-    final inEdge = edges.where((e) => e.toNodeId == outputNodeId).toList();
-    if (inEdge.isEmpty || outNode == null) return null;
-
-    var rows = getNodeRows(inEdge.first.fromNodeId);
-    if (rows == null || rows.isEmpty) return null;
-
-    // Deduplicate all available columns
-    final allCols = <String>[];
-    final seen = <String>{};
-    for (final r in rows) {
-      for (final k in r.keys) {
-        if (seen.add(k)) allCols.add(k);
-      }
-    }
-
-    // Auto-populate outputSelectedCols if empty (first time)
-    if (outNode.outputSelectedCols.isEmpty) {
-      outNode.outputSelectedCols = List<String>.from(allCols);
-    }
-
-    // ── 1. Apply Filters (WHERE) ──
-    final validFilters = outNode.filters.where((f) => f.isValid).toList();
-    if (validFilters.isNotEmpty) {
-      rows = rows
-          .where((row) => validFilters.every((f) => f.matches(row)))
-          .toList();
-    }
-
-    // ── 2. Apply Sorting (ORDER BY) ──
-    final validSorts = outNode.sortRules.where((s) => s.isValid).toList();
-    if (validSorts.isNotEmpty) {
-      rows = List<Map<String, dynamic>>.from(rows);
-      rows.sort((a, b) {
-        for (final s in validSorts) {
-          final va = '${a[s.column] ?? ''}';
-          final vb = '${b[s.column] ?? ''}';
-          final na = double.tryParse(va);
-          final nb = double.tryParse(vb);
-          int cmp;
-          if (na != null && nb != null) {
-            cmp = na.compareTo(nb);
-          } else {
-            cmp = va.compareTo(vb);
-          }
-          if (!s.ascending) cmp = -cmp;
-          if (cmp != 0) return cmp;
-        }
-        return 0;
-      });
-    }
-
-    // ── 3. Select columns ──
-    final selectedCols = outNode.outputSelectedCols
-        .where((c) => allCols.contains(c))
-        .toList();
-    final finalCols = selectedCols.isNotEmpty ? selectedCols : allCols;
-
-    // ── 4. Apply aliases ──
-    final displayCols = finalCols
-        .map((c) => outNode.columnAliases[c] ?? c)
-        .toList();
-
-    // Rebuild rows with only selected cols (using alias as key)
-    final finalRows = rows.map((r) {
-      final nr = <String, dynamic>{};
-      for (int i = 0; i < finalCols.length; i++) {
-        nr[displayCols[i]] = r[finalCols[i]] ?? '—';
-      }
-      return nr;
-    }).toList();
-
-    return {
-      'cols': displayCols,
-      'rows': finalRows,
-      'allCols': allCols,
-      'totalBeforeFilter': rows.length,
-    };
-  }
-
-  /// Diagnose why output has no result (for status messages)
-  String? diagnoseOutputIssue(String outputNodeId) {
-    final inEdge = edges.where((e) => e.toNodeId == outputNodeId).toList();
-    if (inEdge.isEmpty) return null;
-
-    final fromNode = findNode(inEdge.first.fromNodeId);
-    if (fromNode == null) return null;
-
-    if (fromNode.type == NodeType.join) {
-      // Check connected sources via edges
-      final joinInEdges = edges
-          .where((e) => e.toNodeId == fromNode.id)
-          .toList();
-      if (joinInEdges.length < 2) return 'Connect at least 2 sources to JOIN';
-
-      // Check if mappings exist
-      final validMappings = fromNode.mappings.where((m) => m.isValid).toList();
-      if (validMappings.isEmpty) return 'Add column mapping in JOIN node';
-
-      // Check if source rows are available (from mapping source IDs)
-      final firstMap = validMappings.first;
-      final leftNode = findNode(firstMap.leftSourceId);
-      final rightNode = findNode(firstMap.rightSourceId);
-
-      if (leftNode == null || rightNode == null) {
-        return 'Mapping sources are not connected';
-      }
-
-      if (leftNode.rows.isEmpty && rightNode.rows.isEmpty) {
-        return 'Upload data rows in both sources (CSV with header + data)';
-      }
-      if (leftNode.rows.isEmpty) return 'Upload data rows in ${leftNode.name}';
-      if (rightNode.rows.isEmpty) {
-        return 'Upload data rows in ${rightNode.name}';
-      }
-
-      // Try executing join
-      final result = getNodeRows(fromNode.id);
-      if (result == null || result.isEmpty) {
-        return 'No matching rows — check column mapping';
-      }
-
-      return null; // should not reach here if getOutputResult works
-    }
-
-    if (fromNode.type.isSource && fromNode.rows.isEmpty) {
-      return 'Upload data in source (CSV with header + data rows)';
     }
 
     return null;
@@ -688,28 +734,6 @@ class PipelineController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Output format ──
-  void setOutputFormat(String nodeId, String format) {
-    final node = findNode(nodeId);
-    if (node != null) {
-      node.outputFormat = format;
-      notifyListeners();
-    }
-  }
-
-  // ── Output column toggle ──
-  void toggleOutputColumn(String nodeId, String col) {
-    final node = findNode(nodeId);
-    if (node == null) return;
-    if (node.outputSelectedCols.contains(col)) {
-      node.outputSelectedCols.remove(col);
-    } else {
-      node.outputSelectedCols.add(col);
-    }
-    notifyListeners();
-  }
-
-  // ── Column alias ──
   void setColumnAlias(String nodeId, String col, String alias) {
     final node = findNode(nodeId);
     if (node == null) return;
@@ -718,64 +742,6 @@ class PipelineController extends ChangeNotifier {
     } else {
       node.columnAliases[col] = alias.trim();
     }
-    notifyListeners();
-  }
-
-  // ── Filters ──
-  void addOutputFilter(String nodeId) {
-    final node = findNode(nodeId);
-    if (node == null) return;
-    node.filters.add(OutputFilter());
-    notifyListeners();
-  }
-
-  void updateOutputFilter(
-    String nodeId,
-    int idx, {
-    String? column,
-    String? operator,
-    String? value,
-  }) {
-    final node = findNode(nodeId);
-    if (node == null || idx >= node.filters.length) return;
-    if (column != null) node.filters[idx].column = column;
-    if (operator != null) node.filters[idx].operator = operator;
-    if (value != null) node.filters[idx].value = value;
-    notifyListeners();
-  }
-
-  void removeOutputFilter(String nodeId, int idx) {
-    final node = findNode(nodeId);
-    if (node == null || idx >= node.filters.length) return;
-    node.filters.removeAt(idx);
-    notifyListeners();
-  }
-
-  // ── Sorting ──
-  void addOutputSort(String nodeId) {
-    final node = findNode(nodeId);
-    if (node == null) return;
-    node.sortRules.add(OutputSort());
-    notifyListeners();
-  }
-
-  void updateOutputSort(
-    String nodeId,
-    int idx, {
-    String? column,
-    bool? ascending,
-  }) {
-    final node = findNode(nodeId);
-    if (node == null || idx >= node.sortRules.length) return;
-    if (column != null) node.sortRules[idx].column = column;
-    if (ascending != null) node.sortRules[idx].ascending = ascending;
-    notifyListeners();
-  }
-
-  void removeOutputSort(String nodeId, int idx) {
-    final node = findNode(nodeId);
-    if (node == null || idx >= node.sortRules.length) return;
-    node.sortRules.removeAt(idx);
     notifyListeners();
   }
 }

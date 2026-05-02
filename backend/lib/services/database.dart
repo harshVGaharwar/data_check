@@ -695,7 +695,176 @@ class Database {
   final Map<String, PipelineConfig> pipelineConfigs = {};
 
   // ── Source Configs ──
-  final Map<String, Map<String, dynamic>> sourceConfigs = {};
+  // Keyed by "templateId_deptId". Pre-seeded for dev-mode testing.
+  final Map<String, Map<String, dynamic>> sourceConfigs = {
+    // ── P&L Report (templateId=2, dept Finance=1) — 2 sources, join, output ──
+    '2_1': {
+      'TemplateId': 2,
+      'createdBy': 'ADM001',
+     
+      'Sources': [
+        {
+          'TemplateId': 2,
+          'SourceId': '10',
+          'SourceName': 'S1',
+          'SourceType': '1',
+          'Department': '1',
+          'Template': 'P&L Report',
+          'Separator': ',',
+          'ColumnFile': 'dummy_data.csv',
+          'QueryFile': '',
+          'Columns':
+              'id,template_name,department,source_type,operation,'
+              'approval_status,config_file,pipeline_format,token,'
+              'created_at,updated_at',
+          'SelectedColumns': 'approval_status',
+          'SourceSeqNo': null,
+        },
+        {
+          'TemplateId': 2,
+          'SourceId': '13',
+          'SourceName': 'S2',
+          'SourceType': '2',
+          'Department': '1',
+          'Template': 'P&L Report',
+          'Separator': ',',
+          'ColumnFile': 'dummy_data.csv',
+          'QueryFile': 'valid_query_with.txt',
+          'Columns':
+              'id,template_name,department,source_type,operation,'
+              'approval_status,config_file,pipeline_format,token,'
+              'created_at,updated_at',
+          'SelectedColumns': 'created_at',
+          'SourceSeqNo': null,
+        },
+      ],
+      'JoinMappings': [
+        {
+          'Id': 0,
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'LeftSourceId': 'n1',
+          'LeftSourceName': 'S1',
+          'LeftColumn': 'template_name',
+          'JoinType': 'left_join',
+          'RightSourceId': 'n3',
+          'RightSourceName': 'S2',
+          'RightColumn': 'template_name',
+          'CreatedOn': '2026-04-29T00:00:00',
+        },
+        {
+          'Id': 1,
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'LeftSourceId': 'n3',
+          'LeftSourceName': 'S2',
+          'LeftColumn': 'template_name',
+          'JoinType': 'left_join',
+          'RightSourceId': 'n1',
+          'RightSourceName': 'S1',
+          'RightColumn': 'template_name',
+          'CreatedOn': '2026-04-29T00:00:00',
+        },
+      ],
+      'Edges': [
+        {'template_id': 2, 'department': '1', 'From': 'n1', 'To': 'n4'},
+        {'template_id': 2, 'department': '1', 'From': 'n3', 'To': 'n4'},
+      ],
+      'connectedSources': [
+        {'TemplateId': 2, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n1'},
+        {'TemplateId': 2, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n3'},
+      ],
+      'outputColumns': [
+        {
+          'template_id': 2,
+          'department': '1',
+          'sourceid': '1',
+          'sourceName': 'S1',
+          'SourceColName': 'approval_status',
+          'ColumnName': 'ASD',
+        },
+        {
+          'template_id': 2,
+          'department': '1',
+          'sourceid': '2',
+          'sourceName': 'S2',
+          'SourceColName': 'created_at',
+          'ColumnName': 'ASD',
+        },
+      ],
+    },
+    // ── Budget Variance (templateId=3, dept Finance=1) — 2 sources ──
+    '3_1': {
+      'TemplateId': 3,
+      'createdBy': 'ADM001',
+      'Sources': [
+        {
+          'TemplateId': 3,
+          'SourceId': '10',
+          'SourceName': 'BudgetSrc',
+          'SourceType': '1',
+          'Department': '1',
+          'Template': 'Budget Variance',
+          'Separator': ',',
+          'ColumnFile': 'budget.csv',
+          'QueryFile': '',
+          'Columns': 'id,period,budget_amount,actual_amount,variance,dept',
+          'SelectedColumns': 'variance',
+          'SourceSeqNo': null,
+        },
+        {
+          'TemplateId': 3,
+          'SourceId': '13',
+          'SourceName': 'ActualSrc',
+          'SourceType': '2',
+          'Department': '1',
+          'Template': 'Budget Variance',
+          'Separator': ',',
+          'ColumnFile': 'actuals.csv',
+          'QueryFile': '',
+          'Columns': 'id,period,budget_amount,actual_amount,variance,dept',
+          'SelectedColumns': 'actual_amount',
+          'SourceSeqNo': null,
+        },
+      ],
+      'JoinMappings': [
+        {
+          'Id': 0,
+          'TemplateId': 3,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'LeftSourceId': 'n1',
+          'LeftSourceName': 'BudgetSrc',
+          'LeftColumn': 'period',
+          'JoinType': 'inner_join',
+          'RightSourceId': 'n3',
+          'RightSourceName': 'ActualSrc',
+          'RightColumn': 'period',
+          'CreatedOn': '2026-04-29T00:00:00',
+        },
+      ],
+      'Edges': [
+        {'template_id': 3, 'department': '1', 'From': 'n1', 'To': 'n4'},
+        {'template_id': 3, 'department': '1', 'From': 'n3', 'To': 'n4'},
+      ],
+      'connectedSources': [
+        {'TemplateId': 3, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n1'},
+        {'TemplateId': 3, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n3'},
+      ],
+      'outputColumns': [
+        {
+          'template_id': 3,
+          'department': '1',
+          'sourceid': '1',
+          'sourceName': 'BudgetSrc',
+          'SourceColName': 'variance',
+          'ColumnName': 'Variance',
+        },
+      ],
+    },
+  };
 
   // ── Helpers ──
   String newId(String prefix) =>

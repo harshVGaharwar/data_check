@@ -363,4 +363,41 @@ class MasterDataService {
       );
     }
   }
+
+  /// Fetch templates that have been configured AND approved, for a given dept.
+  /// Uses GetApprovedTemplates?DeptId=<deptId>.
+  Future<List<TemplateInfo>> getApprovedTemplatesByDept(int deptId) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.approvedTemplatesEndpoint}?DeptId=$deptId',
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(TemplateInfo.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getApprovedTemplatesByDept error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch the full saved pipeline configuration for a template.
+  /// Uses GetTemplateConfig?TemplateId=<templateId>&DeptId=<deptId>.
+  /// Returns the raw JSON map so the caller can hydrate the canvas.
+  Future<Map<String, dynamic>?> getTemplateConfig({
+    required int templateId,
+    required int deptId,
+  }) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.templateConfigEndpoint}?TemplateId=$templateId&DeptId=$deptId',
+      );
+      if (data is Map<String, dynamic>) return data;
+    } catch (e) {
+      debugPrint('[MasterData] getTemplateConfig error: $e');
+    }
+    return null;
+  }
 }

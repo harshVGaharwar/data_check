@@ -75,7 +75,31 @@ Future<Response> onRequest(RequestContext context) async {
     final id = db.newId('CFG');
     final templateId = body['TemplateId'] ?? 0;
 
-    print('[PIPELINE CONFIG SAVED - DEV] $id');
+    // Persist config so GetTemplateConfig can retrieve it later.
+    final sources = body['Sources'] as List?;
+    final deptId = sources != null && sources.isNotEmpty
+        ? (sources.first as Map<String, dynamic>)['Department']?.toString() ?? '0'
+        : '0';
+    final configKey = '${templateId}_$deptId';
+    db.pipelineConfigs[configKey] = PipelineConfig(
+      id: id,
+      sources: (body['Sources'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          [],
+      joinMappings: (body['JoinMappings'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          [],
+      edges: (body['Edges'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          [],
+    );
+    // Store full raw config so GetTemplateConfig can return the complete shape.
+    db.sourceConfigs[configKey] = Map<String, dynamic>.from(body);
+
+    print('[PIPELINE CONFIG SAVED - DEV] key=$configKey id=$id');
     print(const JsonEncoder.withIndent('  ').convert(body));
     print('[FILES] ${uploadedFiles.map((f) => f.filename).toList()}');
 
