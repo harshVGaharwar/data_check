@@ -40,6 +40,8 @@ class ApiConfig {
 
   // checker page
   static const String checkerListEndpoint = 'template/GetCheckerTayList';
+  static const String checkerListWithModuleEndpoint =
+      'template/GetCheckerTayListWithModule';
   static const String checkerApprovalEndpoint =
       'template/UploadManualDataChecker';
   static const String downloadFileEndpoint = 'template/DownloadFile';
@@ -51,6 +53,12 @@ class ApiConfig {
   static const String approvedTemplatesEndpoint =
       'template/GetApprovedTemplates';
   static const String templateConfigEndpoint = 'template/GetTemplateConfig';
+
+  // Template Creation / Configuration list pages
+  static const String templateCreationListEndpoint =
+      'template/GetTemplateCreationList';
+  static const String templateConfigurationListEndpoint =
+      'template/GetTemplateConfigurationList';
 
   // // Timeouts
   // static const Duration connectTimeout = Duration(seconds: 30);

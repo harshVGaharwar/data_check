@@ -30,6 +30,7 @@ Future<Response> onRequest(RequestContext context) async {
   final checkerBy = body['CheckerBy']?.toString() ?? '';
   final remark = body['Remart']?.toString() ?? '';
   final isApproved = body['isApproved']?.toString() ?? '';
+  final moduleId = body['ModuleId']?.toString() ?? '';
 
   if (templateId.isEmpty || departmentId.isEmpty || requestId.isEmpty) {
     return Response.json(
@@ -45,13 +46,13 @@ Future<Response> onRequest(RequestContext context) async {
       body: ApiResponse.error(message: 'Remart (remark) is required').toJson(),
     );
   }
-
   // Dev mode: return success mock
   if (kDevMode) {
     final reqId = DateTime.now().millisecondsSinceEpoch % 100000;
     print(
       '[CHECKER APPROVAL] templateId=$templateId deptId=$departmentId '
-      'requestId=$requestId checkerBy=$checkerBy isApproved=$isApproved remark=$remark',
+      'requestId=$requestId checkerBy=$checkerBy isApproved=$isApproved '
+      'moduleId=$moduleId remark=$remark',
     );
     return Response.json(body: {'status': 'Success', 'reqID': reqId});
   }

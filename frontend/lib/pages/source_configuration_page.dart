@@ -438,7 +438,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -634,8 +634,8 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
             onTap: _sourceTypesLoading
                 ? null
                 : _sourceTypesError
-                    ? _loadSourceTypes
-                    : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
+                ? _loadSourceTypes
+                : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               height: 42,
@@ -646,10 +646,10 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                   color: _sourceTypesError
                       ? AppColors.red.withValues(alpha: 0.4)
                       : isOpen
-                          ? AppColors.blue
-                          : hasError
-                          ? AppColors.red
-                          : AppColors.border,
+                      ? AppColors.blue
+                      : hasError
+                      ? AppColors.red
+                      : AppColors.border,
                   width: isOpen || hasError ? 1.5 : 1,
                 ),
                 color: _sourceTypesError
@@ -681,28 +681,40 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                             ],
                           )
                         : _sourceTypesError
-                            ? Row(
-                                children: [
-                                  Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Failed to load. Tap to retry',
-                                    style: TextStyle(fontSize: 12, color: AppColors.red),
-                                  ),
-                                ],
-                              )
-                            : Text(
-                                _selectedSourceType?.sourceName ?? 'Select source type',
+                        ? Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 14,
+                                color: AppColors.red,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Failed to load. Tap to retry',
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  color: _selectedSourceType != null
-                                      ? AppColors.text
-                                      : AppColors.textMuted,
+                                  fontSize: 12,
+                                  color: AppColors.red,
                                 ),
                               ),
+                            ],
+                          )
+                        : Text(
+                            _selectedSourceType?.sourceName ??
+                                'Select source type',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _selectedSourceType != null
+                                  ? AppColors.text
+                                  : AppColors.textMuted,
+                            ),
+                          ),
                   ),
                   _sourceTypesError
-                      ? Icon(Icons.refresh_rounded, size: 14, color: AppColors.red)
+                      ? Icon(
+                          Icons.refresh_rounded,
+                          size: 14,
+                          color: AppColors.red,
+                        )
                       : AnimatedRotation(
                           turns: isOpen ? 0.5 : 0,
                           duration: const Duration(milliseconds: 200),
@@ -779,8 +791,8 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
             onTap: _departmentsLoading
                 ? null
                 : _departmentsError
-                    ? _loadDepartments
-                    : () => isOpen ? _closeDeptDropdown() : _openDeptDropdown(),
+                ? _loadDepartments
+                : () => isOpen ? _closeDeptDropdown() : _openDeptDropdown(),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               height: 42,
@@ -791,10 +803,10 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                   color: _departmentsError
                       ? AppColors.red.withValues(alpha: 0.4)
                       : isOpen
-                          ? AppColors.blue
-                          : hasError
-                          ? AppColors.red
-                          : AppColors.border,
+                      ? AppColors.blue
+                      : hasError
+                      ? AppColors.red
+                      : AppColors.border,
                   width: isOpen || hasError ? 1.5 : 1,
                 ),
                 color: _departmentsError
@@ -826,28 +838,39 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                             ],
                           )
                         : _departmentsError
-                            ? Row(
-                                children: [
-                                  Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Failed to load. Tap to retry',
-                                    style: TextStyle(fontSize: 12, color: AppColors.red),
-                                  ),
-                                ],
-                              )
-                            : Text(
-                                _selectedDepartment?.name ?? 'Select department',
+                        ? Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 14,
+                                color: AppColors.red,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Failed to load. Tap to retry',
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  color: _selectedDepartment != null
-                                      ? AppColors.text
-                                      : AppColors.textMuted,
+                                  fontSize: 12,
+                                  color: AppColors.red,
                                 ),
                               ),
+                            ],
+                          )
+                        : Text(
+                            _selectedDepartment?.name ?? 'Select department',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _selectedDepartment != null
+                                  ? AppColors.text
+                                  : AppColors.textMuted,
+                            ),
+                          ),
                   ),
                   _departmentsError
-                      ? Icon(Icons.refresh_rounded, size: 14, color: AppColors.red)
+                      ? Icon(
+                          Icons.refresh_rounded,
+                          size: 14,
+                          color: AppColors.red,
+                        )
                       : AnimatedRotation(
                           turns: isOpen ? 0.5 : 0,
                           duration: const Duration(milliseconds: 200),

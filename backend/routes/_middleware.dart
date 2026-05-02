@@ -4,3 +4,4 @@ import '../lib/middleware/middleware.dart';
 Handler middleware(Handler handler) {
   return handler.use(corsMiddleware()).use(authMiddleware());
 }
+
