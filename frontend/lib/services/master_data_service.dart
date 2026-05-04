@@ -212,6 +212,33 @@ class MasterDataService {
     return [];
   }
 
+  /// Fetch checker task list with module
+  Future<List<Map<String, dynamic>>> getCheckerTayListWithModule({
+    required String templateId,
+    required String departmentId,
+    required String requestId,
+    required String module,
+  }) async {
+    try {
+      final body = {
+        'template_id': templateId,
+        'department_id': departmentId,
+        'Request_id': requestId,
+        'module': module,
+      };
+      final data = await _api.postRawData(
+        ApiConfig.checkerListWithModuleEndpoint,
+        body,
+      );
+      if (data is List) {
+        return data.whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getCheckerTayListWithModule error: $e');
+    }
+    return [];
+  }
+
   /// Fetch report list for a given template + department
   Future<List<Map<String, dynamic>>> getReportList({
     required String templateId,
@@ -283,6 +310,54 @@ class MasterDataService {
       }
     } catch (e) {
       debugPrint('[MasterData] submitCheckerApproval error: $e');
+    }
+    return (
+      success: false,
+      message: 'Network error. Please try again.',
+      reqId: 0,
+    );
+  }
+
+  /// Submit checker approval / rejection with module id
+  Future<({bool success, String message, int reqId})>
+  submitCheckerApprovalWithModule({
+    required String templateId,
+    required String departmentId,
+    required String requestId,
+    required String checkerBy,
+    required String remark,
+    required bool isApproved,
+    required String moduleId,
+  }) async {
+    try {
+      final body = {
+        'Template_id': templateId,
+        'department_id': departmentId,
+        'Request_id': requestId,
+        'CheckerBy': checkerBy,
+        'Remart': remark,
+        'isApproved': isApproved ? 'Y' : 'N',
+        'ModuleId': moduleId,
+      };
+      final data = await _api.postRawData(ApiConfig.checkerApprovalEndpoint, body);
+      if (data is Map<String, dynamic>) {
+        final status = data['status']?.toString() ?? '';
+        final message = data['message']?.toString() ?? status;
+        final reqId = data['reqID'];
+        final id = reqId is int ? reqId : int.tryParse('$reqId') ?? 0;
+        return (
+          success: status.toLowerCase() == 'success',
+          message: message,
+          reqId: id,
+        );
+      }
+    } catch (e) {
+      debugPrint('[MasterData] submitCheckerApprovalWithModule error: $e');
+      return (
+        success: false,
+        message: e.toString(),
+        reqId: 0,
+      );
     }
     return (
       success: false,
@@ -379,6 +454,40 @@ class MasterDataService {
       }
     } catch (e) {
       debugPrint('[MasterData] getApprovedTemplatesByDept error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch the flat list of all created templates across departments.
+  /// Direct GET to template/GetTemplateCreationList — used by the
+  /// Template Creation list page.
+  Future<List<Map<String, dynamic>>> getTemplateCreationList() async {
+    try {
+      final data = await _api.getRawData(
+        ApiConfig.templateCreationListEndpoint,
+      );
+      if (data is List) {
+        return data.whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getTemplateCreationList error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch the flat list of all configured templates across departments.
+  /// Direct GET to template/GetTemplateConfigurationList — used by the
+  /// Template Configuration list page.
+  Future<List<Map<String, dynamic>>> getTemplateConfigurationList() async {
+    try {
+      final data = await _api.getRawData(
+        ApiConfig.templateConfigurationListEndpoint,
+      );
+      if (data is List) {
+        return data.whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getTemplateConfigurationList error: $e');
     }
     return [];
   }

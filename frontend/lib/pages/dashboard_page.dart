@@ -5,10 +5,14 @@ import '../providers/auth_provider.dart';
 import '../services/storage_service.dart';
 import 'welcome_page.dart';
 import 'template_creation_page.dart';
+import 'template_creation_list_page.dart';
 import 'template_configuration_page.dart';
+import 'template_configuration_list_page.dart';
+import 'configuration_upload_page.dart';
 import 'source_configuration_page.dart';
 import 'manual_upload_page.dart';
 import 'checker_page.dart';
+import 'checker_module_page.dart';
 import 'report_page.dart';
 import 'edit_template_configuration_page.dart';
 
@@ -27,24 +31,30 @@ class _DashboardPageState extends State<DashboardPage> {
   final _titles = const [
     'Home',
     'Template Creation',
+    'Template Creation List',
     'Template Configuration',
+    'Template Configuration List',
     'Edit Configuration',
     // 'Configuration Upload',
     'Source Configuration',
     'Manual Upload',
     'Checker',
+    'Checker Module',
     'Reports',
   ];
 
   final _icons = const [
     Icons.home_outlined,
     Icons.add_circle_outline,
+    Icons.layers_rounded,
     Icons.settings_applications_outlined,
+    Icons.account_tree_rounded,
     Icons.edit_note_rounded,
     // Icons.cloud_upload_outlined,
     Icons.storage_rounded,
     Icons.upload_file_rounded,
     Icons.fact_check_outlined,
+    Icons.rule_folder_outlined,
     Icons.bar_chart_rounded,
   ];
 
@@ -54,12 +64,15 @@ class _DashboardPageState extends State<DashboardPage> {
     _pages = [
       WelcomePage(onNavigate: (i) => _navigate(i)),
       const TemplateCreationPage(),
+      const TemplateCreationListPage(),
       const TemplateConfigurationPage(),
+      const TemplateConfigurationListPage(),
       const EditTemplateConfigurationPage(),
       // const ConfigurationUploadPage(),
       const SourceConfigurationPage(),
       const ManualUploadPage(),
       const CheckerPage(),
+      const CheckerModulePage(),
       const ReportPage(),
     ];
     _restorePageIndex();
@@ -263,8 +276,16 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
           const SizedBox(height: 8),
-          for (int i = 0; i < _titles.length; i++) _drawerItem(i),
-          const Spacer(),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (int i = 0; i < _titles.length; i++) _drawerItem(i),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
