@@ -296,7 +296,20 @@ class PipelineController extends ChangeNotifier {
       );
     }
 
-    // columnAliases intentionally not restored — user re-enters aliases when editing.
+    // ── 3. Restore columnAliases from outputColumns ──
+    final rawOutputCols = config['outputColumns'];
+    if (rawOutputCols is List) {
+      for (final oc in rawOutputCols.whereType<Map<String, dynamic>>()) {
+        final srcName = oc['sourceName']?.toString() ?? '';
+        final sourceColName = oc['SourceColName']?.toString() ?? '';
+        final columnName = oc['ColumnName']?.toString() ?? '';
+        if (sourceColName.isEmpty || columnName.isEmpty) continue;
+        final nodeId = nameToNewId[srcName];
+        if (nodeId == null) continue;
+        final node = nodes.where((n) => n.id == nodeId).firstOrNull;
+        node?.columnAliases[sourceColName] = columnName;
+      }
+    }
 
     canvasVersion++;
     notifyListeners();
