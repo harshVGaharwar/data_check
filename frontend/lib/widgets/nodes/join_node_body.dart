@@ -639,19 +639,22 @@ class JoinNodeBody extends StatelessWidget {
     };
 
     // ── Collect file entries (column files + query files) ──
+    // Re-uploaded file → actual bytes.
+    // Not re-uploaded but filename exists (loaded from config) → empty bytes so
+    // the filename is still present in Files and the backend can reference it.
     final fileEntries = <({String key, List<int> bytes, String filename})>[];
     for (final s in sourceNodes) {
-      if (s.columnFileBytes != null && s.fileName != null) {
+      if (s.fileName != null && s.fileName!.isNotEmpty) {
         fileEntries.add((
           key: 'Files',
-          bytes: s.columnFileBytes!,
+          bytes: s.columnFileBytes ?? [],
           filename: s.fileName!,
         ));
       }
-      if (s.queryFileBytes != null && s.queryFileName != null) {
+      if (s.queryFileName != null && s.queryFileName!.isNotEmpty) {
         fileEntries.add((
           key: 'Files',
-          bytes: s.queryFileBytes!,
+          bytes: s.queryFileBytes ?? [],
           filename: s.queryFileName!,
         ));
       }
