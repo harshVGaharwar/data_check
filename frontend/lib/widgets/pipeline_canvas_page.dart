@@ -6,7 +6,6 @@ import '../controllers/pipeline_controller.dart';
 import 'edge_painter.dart';
 import 'nodes/source_node_body.dart';
 import 'nodes/join_node_body.dart';
-import 'top_bar.dart';
 import 'sidebar.dart';
 import 'config_panel.dart';
 import 'status_bar.dart';

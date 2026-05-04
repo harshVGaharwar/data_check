@@ -76,7 +76,7 @@ Future<Response> onRequest(RequestContext context) async {
 
     final sources = availableSources.asMap().entries.map((e) {
       final idx = e.key;
-      final src = e.value as Map<String, dynamic>;
+      final src = e.value;
       return {
         'TemplateId': templateId,
         'SourceId': '${src['id']}',

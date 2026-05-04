@@ -6,7 +6,6 @@ import '../services/storage_service.dart';
 import 'welcome_page.dart';
 import 'template_creation_page.dart';
 import 'template_configuration_page.dart';
-import 'configuration_upload_page.dart';
 import 'source_configuration_page.dart';
 import 'manual_upload_page.dart';
 import 'checker_page.dart';
