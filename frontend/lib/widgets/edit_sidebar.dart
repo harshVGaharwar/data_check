@@ -478,6 +478,7 @@ class _EditSidebarState extends State<EditSidebar>
                               );
                             }
                             final canAdd =
+                                _configLoaded &&
                                 ctrl.canAddSource &&
                                 ctrl.requiredSourceCount > 0;
                             return Column(
