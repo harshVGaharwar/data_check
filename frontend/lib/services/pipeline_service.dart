@@ -23,6 +23,4 @@ class PipelineService {
       fromData: SubmitMappingResponse.fromJson,
     );
   }
-
- 
 }

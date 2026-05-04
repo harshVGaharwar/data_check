@@ -5,10 +5,9 @@ import '../models/pipeline_config.dart';
 import '../utils/join_engine.dart';
 
 class PipelineController extends ChangeNotifier {
-  PipelineController({this.templateMode = 'configure'});
+  PipelineController({this.templateMode = TemplateMode.configure});
 
-  /// 'configure' for new template configuration, 'edit' for editing existing.
-  final String templateMode;
+  final TemplateMode templateMode;
 
   // ── Core state (same as HTML) ──
   final List<PipelineNode> nodes = [];

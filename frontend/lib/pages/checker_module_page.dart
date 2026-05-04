@@ -258,13 +258,11 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
           );
     } else {
       final flag = _selectedModuleId == '1' ? 4 : 5;
-      results = await context
-          .read<MasterDataService>()
-          .getTemplateCheckerTray(
-            deptId: '$deptId',
-            templateId: templateId,
-            flag: flag,
-          );
+      results = await context.read<MasterDataService>().getTemplateCheckerTray(
+        deptId: '$deptId',
+        templateId: templateId,
+        flag: flag,
+      );
     }
 
     if (!mounted) return;
@@ -472,9 +470,9 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                                           (m) => m.id == _selectedModuleId,
                                         )
                                         .label,
-                            hint: _selectedTemplate == null
-                                ? '— Select Template first —'
-                                : '— Select Module —',
+                              hint: _selectedTemplate == null
+                                  ? '— Select Template first —'
+                                  : '— Select Module —',
                               isOpen: _moduleOverlay != null,
                               enabled: enabled,
                             ),
@@ -525,8 +523,26 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
   // ── results section ───────────────────────────────────────────────────────
 
   List<String> get _activeColumns => _selectedModuleId == '2'
-      ? ['#', 'Source ID', 'Department', 'Source Name', 'Created By', 'Created Date', 'View', 'Approval']
-      : ['#', 'ID', 'Department', 'Template', 'Created By', 'Created Date', 'View', 'Approval'];
+      ? [
+          '#',
+          'Source ID',
+          'Department',
+          'Source Name',
+          'Created By',
+          'Created Date',
+          'View',
+          'Approval',
+        ]
+      : [
+          '#',
+          'ID',
+          'Department',
+          'Template',
+          'Created By',
+          'Created Date',
+          'View',
+          'Approval',
+        ];
 
   Widget _buildResultsSection() {
     if (_results.isEmpty) {
@@ -687,7 +703,10 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                   7: FlexColumnWidth(2.4),
                 },
                 children: [
-                  _buildHeaderRow(_matchedColumns(_searchQuery), _activeColumns),
+                  _buildHeaderRow(
+                    _matchedColumns(_searchQuery),
+                    _activeColumns,
+                  ),
                   ...pageRows.asMap().entries.map(
                     (e) => _buildTableRow(e.value, start + e.key),
                   ),
@@ -721,13 +740,15 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
           matched.add('Source ID');
         if (item['sourceName']?.toString().toLowerCase().contains(q) ?? false)
           matched.add('Source Name');
-        if ((item['sourceTypeName']?.toString().toLowerCase().contains(q) ?? false) ||
+        if ((item['sourceTypeName']?.toString().toLowerCase().contains(q) ??
+                false) ||
             (item['appName']?.toString().toLowerCase().contains(q) ?? false) ||
             (item['itgrc']?.toString().toLowerCase().contains(q) ?? false) ||
             (item['dbVault']?.toString().toLowerCase().contains(q) ?? false))
           matched.add('View');
       } else {
-        if ((item['requestId']?.toString().toLowerCase().contains(q) ?? false) ||
+        if ((item['requestId']?.toString().toLowerCase().contains(q) ??
+                false) ||
             (item['templateId']?.toString().toLowerCase().contains(q) ?? false))
           matched.add('ID');
         if (item['templateName']?.toString().toLowerCase().contains(q) ?? false)
@@ -811,8 +832,8 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     final rowId = isSourceConfig
         ? item['sourceID']?.toString() ?? '—'
         : item['requestId']?.toString().isNotEmpty == true
-            ? item['requestId'].toString()
-            : item['templateId']?.toString() ?? '—';
+        ? item['requestId'].toString()
+        : item['templateId']?.toString() ?? '—';
     final nameCol = isSourceConfig
         ? item['sourceName']?.toString() ?? '—'
         : item['templateName']?.toString() ?? '—';
@@ -1165,7 +1186,8 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
 
   Map<String, dynamic>? _extractPayload(Map<String, dynamic> item) {
     final jsonData = item['jsonData'];
-    if (jsonData is Map<String, dynamic> && jsonData.isNotEmpty) return jsonData;
+    if (jsonData is Map<String, dynamic> && jsonData.isNotEmpty)
+      return jsonData;
     if (jsonData is Map && (jsonData as Map).isNotEmpty) {
       return jsonData.map((k, v) => MapEntry(k.toString(), v));
     }
@@ -1220,7 +1242,13 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     }
 
     // Root-level fields the view expects inside Template
-    for (final key in ['SpocPerson', 'SpocManager', 'UnitHead', 'Priority', 'createdBy']) {
+    for (final key in [
+      'SpocPerson',
+      'SpocManager',
+      'UnitHead',
+      'Priority',
+      'createdBy',
+    ]) {
       if (data[key] != null && !templateMap.containsKey(key)) {
         templateMap[key] = data[key];
       }
@@ -1230,11 +1258,13 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     final benefit = data['Benefit'];
     if (benefit is Map) {
       if (benefit['BenefitAmount'] != null)
-        templateMap.putIfAbsent('BenefitAmount', () => benefit['BenefitAmount']);
+        templateMap.putIfAbsent(
+          'BenefitAmount',
+          () => benefit['BenefitAmount'],
+        );
       // API sends BenefitInTAT, view reads BenefitInTat
       final inTat = benefit['BenefitInTAT'] ?? benefit['BenefitInTat'];
-      if (inTat != null)
-        templateMap.putIfAbsent('BenefitInTat', () => inTat);
+      if (inTat != null) templateMap.putIfAbsent('BenefitInTat', () => inTat);
     }
 
     // AdditionalData.ActivatedDate → GoLiveDate
@@ -1249,7 +1279,10 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
       templateMap['NumberOfOutputs'] = templateMap['NumberOfOutput'];
     }
 
-    return {...data, 'Template': [templateMap]};
+    return {
+      ...data,
+      'Template': [templateMap],
+    };
   }
 
   Future<void> _viewSourceConfig(Map<String, dynamic> item) async {
@@ -1274,12 +1307,11 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
       MaterialPageRoute(
         builder: (_) => _isSourceConfigModule(item)
             ? SourceConfigurationViewPage(
-                data: {
-                  ...item,
-                  'Name': item['sourceName'] ?? '',
-                },
+                data: {...item, 'Name': item['sourceName'] ?? ''},
               )
-            : TemplateCreationViewPage(data: _normalizeTemplatePayload(payload!)),
+            : TemplateCreationViewPage(
+                data: _normalizeTemplatePayload(payload!),
+              ),
       ),
     );
   }
@@ -1352,11 +1384,12 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                       const SizedBox(width: 6),
                       Text(
                         (_selectedModuleId == '2'
-                            ? item['sourceID']?.toString()
-                            : item['requestId']?.toString().isNotEmpty == true
+                                ? item['sourceID']?.toString()
+                                : item['requestId']?.toString().isNotEmpty ==
+                                      true
                                 ? item['requestId'].toString()
                                 : item['templateId']?.toString()) ??
-                        '—',
+                            '—',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -1466,10 +1499,9 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     final requestId = _selectedModuleId == '2'
         ? item['sourceID']?.toString() ?? ''
         : item['requestId']?.toString().isNotEmpty == true
-            ? item['requestId'].toString()
-            : item['templateId']?.toString() ?? '';
-    final moduleId =
-        item['module']?.toString().trim().isNotEmpty == true
+        ? item['requestId'].toString()
+        : item['templateId']?.toString() ?? '';
+    final moduleId = item['module']?.toString().trim().isNotEmpty == true
         ? item['module'].toString().trim()
         : (_selectedModuleId ?? '');
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/pipeline_controller.dart';
+import '../models/pipeline_models.dart';
 import '../providers/pipeline_master_provider.dart';
 import '../services/master_data_service.dart';
 import '../widgets/pipeline_canvas_page.dart';
@@ -12,7 +13,7 @@ class TemplateConfigurationPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => PipelineController(templateMode: 'configure')),
+        ChangeNotifierProvider(create: (_) => PipelineController(templateMode: TemplateMode.configure)),
         ChangeNotifierProvider(
           lazy: false,
           create: (ctx) =>
