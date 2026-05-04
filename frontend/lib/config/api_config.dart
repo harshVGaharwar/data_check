@@ -42,8 +42,12 @@ class ApiConfig {
   static const String checkerListEndpoint = 'template/GetCheckerTayList';
   static const String checkerListWithModuleEndpoint =
       'template/GetCheckerTayListWithModule';
+  static const String templateCheckerTrayEndpoint =
+      'template/GetTemplateCheckerTray';
+  static const String sourceMasterCheckerTrayEndpoint =
+      'template/GetsourceMasterCheckerTray';
   static const String checkerApprovalEndpoint =
-      'template/UploadManualDataChecker';
+      'template/ApproveCheckerTray';
   static const String downloadFileEndpoint = 'template/DownloadFile';
 
   // report page

@@ -35,7 +35,7 @@ class SourceConfigurationViewPage extends StatelessWidget {
       'source_type',
       'source_type_id',
     ]);
-    final sourceName = _v(['Name', 'name']);
+    final sourceName = _v(['sourceName', 'Name', 'name']);
     final appName = _v(['AppName', 'appName']);
     final itgrc = _v(['ITGRC', 'itgrc']);
     final dbVault = _v(['DBVault', 'dbVault']);

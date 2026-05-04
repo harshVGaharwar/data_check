@@ -257,7 +257,10 @@ class TemplateCreationViewPage extends StatelessWidget {
                       ? [_fileRow('—', 'No file')]
                       : _approvals.map((a) {
                           final name =
-                              a['Approval_Type']?.toString().trim().isNotEmpty ==
+                              a['Approval_Type']
+                                      ?.toString()
+                                      .trim()
+                                      .isNotEmpty ==
                                   true
                               ? a['Approval_Type'].toString()
                               : 'Approval';
@@ -298,7 +301,7 @@ class TemplateCreationViewPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Create New Template',
+                'Template',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -427,9 +430,7 @@ class TemplateCreationViewPage extends StatelessWidget {
         color: selected
             ? AppColors.blue.withValues(alpha: 0.12)
             : AppColors.surface2,
-        border: Border.all(
-          color: selected ? AppColors.blue : AppColors.border,
-        ),
+        border: Border.all(color: selected ? AppColors.blue : AppColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -460,9 +461,7 @@ class TemplateCreationViewPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: selected
-            ? const Color(0xFFECFDF3)
-            : AppColors.surface2,
+        color: selected ? const Color(0xFFECFDF3) : AppColors.surface2,
         border: Border.all(
           color: selected ? const Color(0xFF10B981) : AppColors.border,
         ),
@@ -489,7 +488,11 @@ class TemplateCreationViewPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF059669)),
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 18,
+            color: Color(0xFF059669),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
