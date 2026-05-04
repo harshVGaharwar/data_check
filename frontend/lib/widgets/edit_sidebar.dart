@@ -10,6 +10,7 @@ import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
 import 'searchable_dropdown.dart';
 import 'shimmer_button.dart';
+import 'sidebar.dart' show DynamicPaletteItem;
 
 class EditSidebar extends StatefulWidget {
   final Future<void> Function(int templateId, int deptId) onFetchConfig;
@@ -455,7 +456,7 @@ class _EditSidebarState extends State<EditSidebar>
 
                     const SizedBox(height: 12),
 
-                    // ── Source Type (read-only in edit mode, no highlight) ──
+                    // ── Source Type ──
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -476,10 +477,16 @@ class _EditSidebarState extends State<EditSidebar>
                                 ),
                               );
                             }
+                            final canAdd =
+                                ctrl.canAddSource &&
+                                ctrl.requiredSourceCount > 0;
                             return Column(
                               children: _filteredSourceTypes
                                   .map(
-                                    (st) => _ReadOnlySourceItem(sourceItem: st),
+                                    (st) => DynamicPaletteItem(
+                                      sourceItem: st,
+                                      enabled: canAdd,
+                                    ),
                                   )
                                   .toList(),
                             );
@@ -675,69 +682,6 @@ class _EditSidebarState extends State<EditSidebar>
           Text(
             'Loading...',
             style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Read-only source type chip (no drag, just display) ──
-class _ReadOnlySourceItem extends StatelessWidget {
-  final SourceMasterFilterItem sourceItem;
-  const _ReadOnlySourceItem({required this.sourceItem});
-
-  @override
-  Widget build(BuildContext context) {
-    final nodeType = _sourceTypeToNodeType(sourceItem.sourceType);
-    final color = nodeType.color;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-        color: AppColors.surface2,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              color: color.withValues(alpha: 0.15),
-            ),
-            child: Icon(nodeType.icon, color: color, size: 14),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  sourceItem.name,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (sourceItem.sourceTypeLabel.isNotEmpty)
-                  Text(
-                    sourceItem.sourceTypeLabel,
-                    style: const TextStyle(
-                      color: AppColors.textDim,
-                      fontSize: 10,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.check_circle_outline,
-            color: AppColors.green,
-            size: 14,
           ),
         ],
       ),
@@ -946,19 +890,6 @@ class _JoinPaletteItemState extends State<_JoinPaletteItem>
         ),
       ),
     );
-  }
-}
-
-NodeType _sourceTypeToNodeType(int? sourceType) {
-  switch (sourceType) {
-    case 1:
-      return NodeType.manual;
-    case 2:
-      return NodeType.db;
-    case 3:
-      return NodeType.fc;
-    default:
-      return NodeType.db;
   }
 }
 

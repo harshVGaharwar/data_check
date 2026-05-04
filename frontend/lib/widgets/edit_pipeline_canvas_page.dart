@@ -111,7 +111,14 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
                 final localPos = box.globalToLocal(details.offset);
                 final inv = Matrix4.inverted(_transformCtrl.value);
                 final canvasPos = MatrixUtils.transformPoint(inv, localPos);
-                ctrl.addNode(details.data.type, canvasPos);
+                ctrl.addNode(
+                  details.data.type,
+                  canvasPos,
+                  sourceTypeValue: details.data.sourceValue,
+                  sourceTypeId: details.data.sourceTypeId,
+                  sourceTypeName: details.data.sourceName,
+                  name: '',
+                );
               },
               builder: (ctx2, _, __) => GestureDetector(
                 onTapDown: isConnecting

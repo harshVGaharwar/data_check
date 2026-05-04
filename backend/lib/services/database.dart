@@ -701,7 +701,6 @@ class Database {
     '2_1': {
       'TemplateId': 2,
       'createdBy': 'ADM001',
-     
       'Sources': [
         {
           'TemplateId': 2,
@@ -713,8 +712,7 @@ class Database {
           'Separator': ',',
           'ColumnFile': 'dummy_data.csv',
           'QueryFile': '',
-          'Columns':
-              'id,template_name,department,source_type,operation,'
+          'Columns': 'id,template_name,department,source_type,operation,'
               'approval_status,config_file,pipeline_format,token,'
               'created_at,updated_at',
           'SelectedColumns': 'approval_status',
@@ -730,8 +728,7 @@ class Database {
           'Separator': ',',
           'ColumnFile': 'dummy_data.csv',
           'QueryFile': 'valid_query_with.txt',
-          'Columns':
-              'id,template_name,department,source_type,operation,'
+          'Columns': 'id,template_name,department,source_type,operation,'
               'approval_status,config_file,pipeline_format,token,'
               'created_at,updated_at',
           'SelectedColumns': 'created_at',
@@ -773,8 +770,18 @@ class Database {
         {'template_id': 2, 'department': '1', 'From': 'n3', 'To': 'n4'},
       ],
       'connectedSources': [
-        {'TemplateId': 2, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n1'},
-        {'TemplateId': 2, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n3'},
+        {
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n1'
+        },
+        {
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n3'
+        },
       ],
       'outputColumns': [
         {
@@ -850,8 +857,18 @@ class Database {
         {'template_id': 3, 'department': '1', 'From': 'n3', 'To': 'n4'},
       ],
       'connectedSources': [
-        {'TemplateId': 3, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n1'},
-        {'TemplateId': 3, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n3'},
+        {
+          'TemplateId': 3,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n1'
+        },
+        {
+          'TemplateId': 3,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n3'
+        },
       ],
       'outputColumns': [
         {
