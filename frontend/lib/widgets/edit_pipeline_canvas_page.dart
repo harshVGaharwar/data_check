@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
@@ -46,23 +47,74 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
     super.dispose();
   }
 
+  Map<String, dynamic>? _extractPayload(Map<String, dynamic> item) {
+    final jsonData = item['jsonData'];
+    if (jsonData is Map<String, dynamic> && jsonData.isNotEmpty) {
+      return jsonData;
+    }
+    if (jsonData is Map && jsonData.isNotEmpty) {
+      return jsonData.map((k, v) => MapEntry(k.toString(), v));
+    }
+    if (jsonData is String && jsonData.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(jsonData);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) {
+          return decoded.map((k, v) => MapEntry(k.toString(), v));
+        }
+      } catch (_) {}
+    }
+
+    final responseData = item['responseData'];
+    if (responseData is Map<String, dynamic>) return responseData;
+    if (responseData is Map) {
+      return responseData.map((k, v) => MapEntry(k.toString(), v));
+    }
+
+    final payload = item['payload'];
+    if (payload is Map<String, dynamic>) return payload;
+    if (payload is Map) {
+      return payload.map((k, v) => MapEntry(k.toString(), v));
+    }
+
+    final payloadJson = item['payloadJson']?.toString().trim() ?? '';
+    if (payloadJson.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(payloadJson);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return decoded.map((k, v) => MapEntry(k.toString(), v));
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> _fetchAndLoad(int templateId, int deptId) async {
     final ctrl = context.read<PipelineController>();
     final service = context.read<MasterDataService>();
 
     setState(() => _errorMessage = null);
 
-    final config = await service.getTemplateConfig(
+    final raw = await service.getTemplateConfig(
       templateId: templateId,
       deptId: deptId,
     );
 
     if (!mounted) return;
 
-    if (config == null) {
+    if (raw == null) {
       setState(
         () => _errorMessage =
             'Could not load configuration. Please check the template and try again.',
+      );
+      return;
+    }
+
+    final config = _extractPayload(raw);
+    if (config == null) {
+      setState(
+        () => _errorMessage =
+            'Configuration data is missing or could not be parsed.',
       );
       return;
     }
@@ -83,9 +135,8 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
               ),
               Expanded(child: _buildCanvas()),
               Consumer<PipelineController>(
-                builder: (_, ctrl, __) => _SlideInConfigPanel(
-                  visible: ctrl.selectedNodeId != null,
-                ),
+                builder: (_, ctrl, __) =>
+                    _SlideInConfigPanel(visible: ctrl.selectedNodeId != null),
               ),
             ],
           ),
@@ -402,7 +453,10 @@ class _SlideInConfigPanelState extends State<_SlideInConfigPanel>
       end: Offset.zero,
     ).animate(curved);
     _fade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _ctrl,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
     );
   }
 
@@ -428,10 +482,7 @@ class _SlideInConfigPanelState extends State<_SlideInConfigPanel>
         axis: Axis.horizontal,
         child: FadeTransition(
           opacity: _fade,
-          child: SlideTransition(
-            position: _slide,
-            child: const ConfigPanel(),
-          ),
+          child: SlideTransition(position: _slide, child: const ConfigPanel()),
         ),
       ),
     );

@@ -31,14 +31,7 @@ Future<Response> onRequest(RequestContext context) async {
     final db = Database();
     final key = '${templateIdStr}_$deptIdStr';
 
-    // 1. Return previously submitted config if it exists.
-    final saved = db.sourceConfigs[key];
-    if (saved != null) {
-      print('[GetTemplateConfig] returning saved config for key=$key');
-      return Response.json(body: saved);
-    }
-
-    // 2. Fall back to dynamically generated mock from template master data.
+    // 2. Resolve template metadata for the outer wrapper.
     final templateId = int.tryParse(templateIdStr) ?? 0;
     final deptId = int.tryParse(deptIdStr) ?? 0;
 
@@ -48,6 +41,20 @@ Future<Response> onRequest(RequestContext context) async {
       template = deptTemplates.firstWhere((t) => t['templateId'] == templateId);
     } catch (_) {
       template = null;
+    }
+
+    // 1. Return previously submitted config if it exists, wrapped in outer structure.
+    final saved = db.sourceConfigs[key];
+    if (saved != null) {
+      print('[GetTemplateConfig] returning saved config for key=$key');
+      final outerSaved = {
+        'templateId': templateIdStr,
+        'departmentId': deptIdStr,
+        'templateName': template?['templateName']?.toString() ?? '',
+        'departmentName': template?['department']?.toString() ?? '',
+        'jsonData': jsonEncode(saved),
+      };
+      return Response.json(body: outerSaved);
     }
 
     if (template == null) {
@@ -146,7 +153,7 @@ Future<Response> onRequest(RequestContext context) async {
       },
     ];
 
-    final mock = {
+    final innerConfig = {
       'TemplateId': templateId,
       'createdBy': 'ADM001',
       'Sources': sources,
@@ -154,6 +161,15 @@ Future<Response> onRequest(RequestContext context) async {
       'Edges': edges,
       'connectedSources': connectedSources,
       'outputColumns': outputColumns,
+      'Jsondata': '',
+    };
+
+    final mock = {
+      'templateId': templateIdStr,
+      'departmentId': deptIdStr,
+      'templateName': templateName,
+      'departmentName': template['department']?.toString() ?? '',
+      'jsonData': jsonEncode(innerConfig),
     };
 
     print('[GetTemplateConfig] returning generated mock for key=$key');
