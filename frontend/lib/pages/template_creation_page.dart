@@ -211,6 +211,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   }
 
   void _syncModel() {
+    
     _model.templateName = _nameCtrl.text.trim();
     _model.normalVolume = int.tryParse(_normalVolCtrl.text) ?? 0;
     _model.peakVolume = int.tryParse(_peakVolCtrl.text) ?? 0;

@@ -123,7 +123,7 @@ class _EditSidebarState extends State<EditSidebar>
 
     final service = context.read<MasterDataService>();
     // Only approved+configured templates
-    final templates = await service.getApprovedTemplatesByDept(deptId);
+    final templates = await service.getTemplatesByDept(deptId);
     if (!mounted) return;
     setState(() {
       _templates = templates;
