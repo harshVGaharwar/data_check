@@ -52,6 +52,7 @@ class TemplateRequest {
   String spocManager;
   String unitHead;
   String priority;
+  String createdBy;
   List<String> outputFormats;
   List<String> approvals;
 
@@ -79,6 +80,7 @@ class TemplateRequest {
     this.spocManager = '',
     this.unitHead = '',
     this.priority = 'Medium',
+    this.createdBy = '',
     List<String>? outputFormats,
     List<String>? approvals,
     Map<String, String>? approvalFiles,
@@ -122,6 +124,8 @@ class TemplateRequest {
           },
         )
         .toList(),
+    'CreatedBy': createdBy,
+    'jsonData': "",
   };
 
   bool get isGeneralInfoValid =>
@@ -162,6 +166,7 @@ class TemplateRequest {
     spocManager = '';
     unitHead = '';
     priority = 'Medium';
+    createdBy = '';
     outputFormats = [];
     approvals = [];
     approvalFiles = {};

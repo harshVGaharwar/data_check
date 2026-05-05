@@ -239,6 +239,43 @@ class MasterDataService {
     return [];
   }
 
+  /// Fetch source master checker tray (Source Configuration)
+  Future<List<Map<String, dynamic>>> getSourceMasterCheckerTray({
+    required String deptId,
+    required String templateId,
+  }) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.sourceMasterCheckerTrayEndpoint}?DeptId=$deptId&templateId=$templateId',
+      );
+      if (data is List) {
+        return data.whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getSourceMasterCheckerTray error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch template checker tray (Template Creation flag=4, Template Configuration flag=5)
+  Future<List<Map<String, dynamic>>> getTemplateCheckerTray({
+    required String deptId,
+    required String templateId,
+    required int flag,
+  }) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.templateCheckerTrayEndpoint}?DeptId=$deptId&templateId=$templateId&flag=$flag',
+      );
+      if (data is List) {
+        return data.whereType<Map<String, dynamic>>().toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getTemplateCheckerTray error: $e');
+    }
+    return [];
+  }
+
   /// Fetch report list for a given template + department
   Future<List<Map<String, dynamic>>> getReportList({
     required String templateId,
@@ -339,7 +376,10 @@ class MasterDataService {
         'isApproved': isApproved ? 'Y' : 'N',
         'ModuleId': moduleId,
       };
-      final data = await _api.postRawData(ApiConfig.checkerApprovalEndpoint, body);
+      final data = await _api.postRawData(
+        ApiConfig.checkerApprovalEndpoint,
+        body,
+      );
       if (data is Map<String, dynamic>) {
         final status = data['status']?.toString() ?? '';
         final message = data['message']?.toString() ?? status;
@@ -353,11 +393,7 @@ class MasterDataService {
       }
     } catch (e) {
       debugPrint('[MasterData] submitCheckerApprovalWithModule error: $e');
-      return (
-        success: false,
-        message: e.toString(),
-        reqId: 0,
-      );
+      return (success: false, message: e.toString(), reqId: 0);
     }
     return (
       success: false,

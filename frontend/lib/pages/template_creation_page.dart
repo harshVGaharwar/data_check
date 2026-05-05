@@ -211,6 +211,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   }
 
   void _syncModel() {
+    
     _model.templateName = _nameCtrl.text.trim();
     _model.normalVolume = int.tryParse(_normalVolCtrl.text) ?? 0;
     _model.peakVolume = int.tryParse(_peakVolCtrl.text) ?? 0;
@@ -220,6 +221,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     _model.spocManager = _spocMgrCtrl.text.trim();
     _model.unitHead = _unitHeadCtrl.text.trim();
     _model.approvalFiles = Map<String, String>.from(_approvalFiles);
+    _model.createdBy = context.read<AuthProvider>().user?.user.employeeCode ?? '';
   }
 
   bool get _allApprovalFilesUploaded =>

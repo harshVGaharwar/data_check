@@ -81,7 +81,7 @@ class PipelineApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'HDFC Data Orchestration',
+      title: 'Data Fusion',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: scaffoldMessengerKey,
       theme: ThemeData(

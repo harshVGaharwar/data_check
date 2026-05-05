@@ -35,8 +35,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     (id: '3', label: 'Template Configuration'),
   ];
 
-  final _reqIdCtrl = TextEditingController();
-
   // ── results state ─────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _results = [];
   bool _fetching = false;
@@ -68,7 +66,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     _deptOverlay?.remove();
     _templateOverlay?.remove();
     _moduleOverlay?.remove();
-    _reqIdCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -243,21 +240,31 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
       _snack('Please select a module.', isError: true);
       return;
     }
-    final reqId = _reqIdCtrl.text.trim();
     final deptId = _deptMap[_selectedDept!]!;
+    final templateId = '${_selectedTemplate!.templateId}';
     setState(() {
       _fetching = true;
       _results = [];
       _fetched = false;
     });
-    final results = await context
-        .read<MasterDataService>()
-        .getCheckerTayListWithModule(
-          templateId: '${_selectedTemplate!.templateId}',
-          departmentId: '$deptId',
-          requestId: reqId,
-          module: _selectedModuleId!,
-        );
+
+    List<Map<String, dynamic>> results;
+    if (_selectedModuleId == '2') {
+      results = await context
+          .read<MasterDataService>()
+          .getSourceMasterCheckerTray(
+            deptId: '$deptId',
+            templateId: templateId,
+          );
+    } else {
+      final flag = _selectedModuleId == '1' ? 4 : 5;
+      results = await context.read<MasterDataService>().getTemplateCheckerTray(
+        deptId: '$deptId',
+        templateId: templateId,
+        flag: flag,
+      );
+    }
+
     if (!mounted) return;
     setState(() {
       _results = results;
@@ -477,18 +484,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                 ),
               ),
               const SizedBox(width: 16),
-              Expanded(
-                child: _labelledField(
-                  label: 'Request ID',
-                  child: TextField(
-                    controller: _reqIdCtrl,
-                    style: const TextStyle(fontSize: 13, color: AppColors.text),
-                    decoration: _inputDecoration('e.g. REQ_00021'),
-                    onSubmitted: (_) => _fetch(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
               Padding(
                 padding: const EdgeInsets.only(top: 22),
                 child: SizedBox(
@@ -527,16 +522,27 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
 
   // ── results section ───────────────────────────────────────────────────────
 
-  static const _columns = [
-    '#',
-    'Request ID',
-    'Department',
-    'Template',
-    'Created By',
-    'Created Date',
-    'View',
-    'Approval',
-  ];
+  List<String> get _activeColumns => _selectedModuleId == '2'
+      ? [
+          '#',
+          'Source ID',
+          'Department',
+          'Source Name',
+          'Created By',
+          'Created Date',
+          'View',
+          'Approval',
+        ]
+      : [
+          '#',
+          'ID',
+          'Department',
+          'Template',
+          'Created By',
+          'Created Date',
+          'View',
+          'Approval',
+        ];
 
   Widget _buildResultsSection() {
     if (_results.isEmpty) {
@@ -569,15 +575,31 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
             final q = _searchQuery.toLowerCase();
             return (item['requestId']?.toString().toLowerCase().contains(q) ??
                     false) ||
+                (item['templateId']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['sourceID']?.toString().toLowerCase().contains(q) ??
+                    false) ||
                 (item['departmentName']?.toString().toLowerCase().contains(q) ??
                     false) ||
                 (item['templateName']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['sourceName']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['sourceTypeName']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['appName']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['itgrc']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['dbVault']?.toString().toLowerCase().contains(q) ??
                     false) ||
                 (item['makerBy']?.toString().toLowerCase().contains(q) ??
                     false) ||
                 (item['payload']?.toString().toLowerCase().contains(q) ??
                     false) ||
                 (item['payloadJson']?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                (item['jsonData']?.toString().toLowerCase().contains(q) ??
                     false) ||
                 _formatDate(
                   item['makerDate']?.toString(),
@@ -681,7 +703,10 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                   7: FlexColumnWidth(2.4),
                 },
                 children: [
-                  _buildHeaderRow(_matchedColumns(_searchQuery)),
+                  _buildHeaderRow(
+                    _matchedColumns(_searchQuery),
+                    _activeColumns,
+                  ),
                   ...pageRows.asMap().entries.map(
                     (e) => _buildTableRow(e.value, start + e.key),
                   ),
@@ -708,33 +733,50 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     if (query.isEmpty) return {};
     final q = query.toLowerCase();
     final matched = <String>{};
+    final isSourceConfig = _selectedModuleId == '2';
     for (final item in _results) {
-      if (item['requestId']?.toString().toLowerCase().contains(q) ?? false)
-        matched.add('Request ID');
+      if (isSourceConfig) {
+        if (item['sourceID']?.toString().toLowerCase().contains(q) ?? false)
+          matched.add('Source ID');
+        if (item['sourceName']?.toString().toLowerCase().contains(q) ?? false)
+          matched.add('Source Name');
+        if ((item['sourceTypeName']?.toString().toLowerCase().contains(q) ??
+                false) ||
+            (item['appName']?.toString().toLowerCase().contains(q) ?? false) ||
+            (item['itgrc']?.toString().toLowerCase().contains(q) ?? false) ||
+            (item['dbVault']?.toString().toLowerCase().contains(q) ?? false))
+          matched.add('View');
+      } else {
+        if ((item['requestId']?.toString().toLowerCase().contains(q) ??
+                false) ||
+            (item['templateId']?.toString().toLowerCase().contains(q) ?? false))
+          matched.add('ID');
+        if (item['templateName']?.toString().toLowerCase().contains(q) ?? false)
+          matched.add('Template');
+        final payload = item['payload'];
+        final payloadJson = item['payloadJson'];
+        final jsonData = item['jsonData'];
+        if ((payload != null && '$payload'.toLowerCase().contains(q)) ||
+            (payloadJson != null && '$payloadJson'.toLowerCase().contains(q)) ||
+            (jsonData != null && '$jsonData'.toLowerCase().contains(q)))
+          matched.add('View');
+      }
       if (item['departmentName']?.toString().toLowerCase().contains(q) ?? false)
         matched.add('Department');
-      if (item['templateName']?.toString().toLowerCase().contains(q) ?? false)
-        matched.add('Template');
       if (item['makerBy']?.toString().toLowerCase().contains(q) ?? false)
         matched.add('Created By');
       if (_formatDate(item['makerDate']?.toString()).toLowerCase().contains(q))
         matched.add('Created Date');
-      final payload = item['payload'];
-      final payloadJson = item['payloadJson'];
-      if ((payload != null && '$payload'.toLowerCase().contains(q)) ||
-          (payloadJson != null && '$payloadJson'.toLowerCase().contains(q))) {
-        matched.add('View');
-      }
     }
     return matched;
   }
 
   // ── table header row ──────────────────────────────────────────────────────
 
-  TableRow _buildHeaderRow(Set<String> highlighted) {
+  TableRow _buildHeaderRow(Set<String> highlighted, List<String> columns) {
     return TableRow(
       decoration: const BoxDecoration(color: Color(0xFFF1F4F9)),
-      children: _columns.map((col) {
+      children: columns.map((col) {
         final isHit = highlighted.contains(col);
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -786,8 +828,15 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
   TableRow _buildTableRow(Map<String, dynamic> item, int index) {
     final makerBy = item['makerBy']?.toString() ?? '—';
     final makerDate = _formatDate(item['makerDate']?.toString());
-    final requestId = item['requestId']?.toString() ?? '—';
-    final templateName = item['templateName']?.toString() ?? '—';
+    final isSourceConfig = _selectedModuleId == '2';
+    final rowId = isSourceConfig
+        ? item['sourceID']?.toString() ?? '—'
+        : item['requestId']?.toString().isNotEmpty == true
+        ? item['requestId'].toString()
+        : item['templateId']?.toString() ?? '—';
+    final nameCol = isSourceConfig
+        ? item['sourceName']?.toString() ?? '—'
+        : item['templateName']?.toString() ?? '—';
     final deptName = item['departmentName']?.toString() ?? '—';
     final bg = index.isEven ? Colors.white : const Color(0xFFF9FAFC);
 
@@ -807,7 +856,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
           ),
         ),
 
-        // Request ID — inline chip
+        // ID — inline chip
         _tdCell(
           child: Row(
             children: [
@@ -818,7 +867,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                   color: AppColors.blue.withValues(alpha: 0.09),
                 ),
                 child: Text(
-                  requestId,
+                  rowId,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -844,10 +893,10 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
           ),
         ),
 
-        // Template
+        // Template / Source Name
         _tdCell(
           child: Text(
-            templateName,
+            nameCol,
             style: const TextStyle(fontSize: 12, color: AppColors.textDim),
             overflow: TextOverflow.ellipsis,
           ),
@@ -1101,37 +1150,57 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
   }
 
   bool _isSourceConfigModule(Map<String, dynamic> item) {
-    return (item['module']?.toString() ?? '') == '2';
+    return _selectedModuleId == '2';
   }
 
   bool _isTemplateCreationModule(Map<String, dynamic> item) {
-    return (item['module']?.toString() ?? '') == '1';
+    return _selectedModuleId == '1';
+  }
+
+  bool _isTemplateConfigModule(Map<String, dynamic> item) {
+    return _selectedModuleId == '3';
   }
 
   bool _canViewItem(Map<String, dynamic> item) {
-    if (!(_isSourceConfigModule(item) || _isTemplateCreationModule(item))) {
-      return false;
+    if (_isSourceConfigModule(item)) {
+      // Row data is the view data — always viewable
+      return true;
     }
-    final responseData = item['responseData'];
-    final payload = item['payload'];
-    final payloadJson = item['payloadJson'];
-    final hasResponseData = responseData is Map
-        ? responseData.isNotEmpty
-        : (responseData?.toString().trim().isNotEmpty ?? false);
-    return hasResponseData ||
-        payload != null ||
-        (payloadJson?.toString().trim().isNotEmpty ?? false);
+    if (_isTemplateCreationModule(item) || _isTemplateConfigModule(item)) {
+      final jsonData = item['jsonData'];
+      if (jsonData is Map) return (jsonData as Map).isNotEmpty;
+      return jsonData?.toString().trim().isNotEmpty ?? false;
+    }
+    return false;
   }
 
   String _viewTooltip(Map<String, dynamic> item) {
-    if (!(_isSourceConfigModule(item) || _isTemplateCreationModule(item))) {
-      return 'View supported only for Source Configuration and Template Creation';
+    if (!(_isSourceConfigModule(item) ||
+        _isTemplateCreationModule(item) ||
+        _isTemplateConfigModule(item))) {
+      return 'View supported only for Source Configuration, Template Creation and Template Configuration';
     }
     if (!_canViewItem(item)) return 'Details unavailable';
     return 'View submitted details';
   }
 
   Map<String, dynamic>? _extractPayload(Map<String, dynamic> item) {
+    final jsonData = item['jsonData'];
+    if (jsonData is Map<String, dynamic> && jsonData.isNotEmpty)
+      return jsonData;
+    if (jsonData is Map && (jsonData as Map).isNotEmpty) {
+      return jsonData.map((k, v) => MapEntry(k.toString(), v));
+    }
+    if (jsonData is String && jsonData.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(jsonData);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) {
+          return decoded.map((k, v) => MapEntry(k.toString(), v));
+        }
+      } catch (_) {}
+    }
+
     final responseData = item['responseData'];
     if (responseData is Map<String, dynamic>) return responseData;
     if (responseData is Map) {
@@ -1152,23 +1221,83 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
       if (decoded is Map) {
         return decoded.map((k, v) => MapEntry(k.toString(), v));
       }
-    } catch (_) {
-      return null;
-    }
+    } catch (_) {}
     return null;
   }
 
+  // TemplateCreationViewPage reads all fields from data['Template'][0].
+  // The new API has a different shape: Template is a flat Map, several fields
+  // live at root level (SpocPerson, Priority, …), benefit data is nested under
+  // 'Benefit', and some key names differ. Flatten everything here.
+  Map<String, dynamic> _normalizeTemplatePayload(Map<String, dynamic> data) {
+    final raw = data['Template'];
+
+    Map<String, dynamic> templateMap;
+    if (raw is Map) {
+      templateMap = raw.map((k, v) => MapEntry(k.toString(), v));
+    } else if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      templateMap = (raw.first as Map).map((k, v) => MapEntry(k.toString(), v));
+    } else {
+      templateMap = {};
+    }
+
+    // Root-level fields the view expects inside Template
+    for (final key in [
+      'SpocPerson',
+      'SpocManager',
+      'UnitHead',
+      'Priority',
+      'createdBy',
+    ]) {
+      if (data[key] != null && !templateMap.containsKey(key)) {
+        templateMap[key] = data[key];
+      }
+    }
+
+    // Flatten Benefit sub-object
+    final benefit = data['Benefit'];
+    if (benefit is Map) {
+      if (benefit['BenefitAmount'] != null)
+        templateMap.putIfAbsent(
+          'BenefitAmount',
+          () => benefit['BenefitAmount'],
+        );
+      // API sends BenefitInTAT, view reads BenefitInTat
+      final inTat = benefit['BenefitInTAT'] ?? benefit['BenefitInTat'];
+      if (inTat != null) templateMap.putIfAbsent('BenefitInTat', () => inTat);
+    }
+
+    // AdditionalData.ActivatedDate → GoLiveDate
+    final additional = data['AdditionalData'];
+    if (additional is Map && additional['ActivatedDate'] != null) {
+      templateMap.putIfAbsent('GoLiveDate', () => additional['ActivatedDate']);
+    }
+
+    // API sends NumberOfOutput (no trailing s), view reads NumberOfOutputs
+    if (!templateMap.containsKey('NumberOfOutputs') &&
+        templateMap.containsKey('NumberOfOutput')) {
+      templateMap['NumberOfOutputs'] = templateMap['NumberOfOutput'];
+    }
+
+    return {
+      ...data,
+      'Template': [templateMap],
+    };
+  }
+
   Future<void> _viewSourceConfig(Map<String, dynamic> item) async {
-    if (!(_isSourceConfigModule(item) || _isTemplateCreationModule(item))) {
+    if (!(_isSourceConfigModule(item) ||
+        _isTemplateCreationModule(item) ||
+        _isTemplateConfigModule(item))) {
       _snack(
-        'View is currently available only for Source Configuration and Template Creation.',
+        'View is currently available only for Source Configuration, Template Creation and Template Configuration.',
         isError: true,
       );
       return;
     }
 
-    final payload = _extractPayload(item);
-    if (payload == null) {
+    final payload = _isSourceConfigModule(item) ? null : _extractPayload(item);
+    if (!_isSourceConfigModule(item) && payload == null) {
       _snack('Details unavailable for this request.', isError: true);
       return;
     }
@@ -1178,16 +1307,11 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
       MaterialPageRoute(
         builder: (_) => _isSourceConfigModule(item)
             ? SourceConfigurationViewPage(
-                data: {
-                  ...payload,
-                  'departmentName': item['departmentName']?.toString() ?? '—',
-                  'requestId': item['requestId']?.toString() ?? '—',
-                  'templateName': item['templateName']?.toString() ?? '—',
-                  'makerBy': item['makerBy']?.toString() ?? '—',
-                  'makerDate': _formatDate(item['makerDate']?.toString()),
-                },
+                data: {...item, 'Name': item['sourceName'] ?? ''},
               )
-            : TemplateCreationViewPage(data: payload),
+            : TemplateCreationViewPage(
+                data: _normalizeTemplatePayload(payload!),
+              ),
       ),
     );
   }
@@ -1251,7 +1375,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                   child: Row(
                     children: [
                       const Text(
-                        'Request ID:',
+                        'ID:',
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textDim,
@@ -1259,7 +1383,13 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        item['requestId']?.toString() ?? '—',
+                        (_selectedModuleId == '2'
+                                ? item['sourceID']?.toString()
+                                : item['requestId']?.toString().isNotEmpty ==
+                                      true
+                                ? item['requestId'].toString()
+                                : item['templateId']?.toString()) ??
+                            '—',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -1362,12 +1492,16 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     final checkerBy = auth.user?.user.employeeCode ?? '';
     final templateId =
         item['template_id']?.toString() ??
+        item['templateId']?.toString() ??
         _selectedTemplate?.templateId.toString() ??
         '';
     final deptId = (_deptMap[_selectedDept] ?? 0).toString();
-    final requestId = item['requestId']?.toString() ?? '';
-    final moduleId =
-        item['module']?.toString().trim().isNotEmpty == true
+    final requestId = _selectedModuleId == '2'
+        ? item['sourceID']?.toString() ?? ''
+        : item['requestId']?.toString().isNotEmpty == true
+        ? item['requestId'].toString()
+        : item['templateId']?.toString() ?? '';
+    final moduleId = item['module']?.toString().trim().isNotEmpty == true
         ? item['module'].toString().trim()
         : (_selectedModuleId ?? '');
 

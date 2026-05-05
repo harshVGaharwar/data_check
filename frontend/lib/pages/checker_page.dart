@@ -615,18 +615,24 @@ class _CheckerPageState extends State<CheckerPage> {
     final q = query.toLowerCase();
     final matched = <String>{};
     for (final item in _results) {
-      if (item['requestId']?.toString().toLowerCase().contains(q) ?? false)
+      if (item['requestId']?.toString().toLowerCase().contains(q) ?? false) {
         matched.add('Request ID');
-      if (item['departmentName']?.toString().toLowerCase().contains(q) ?? false)
+      }
+      if (item['departmentName']?.toString().toLowerCase().contains(q) ?? false) {
         matched.add('Department');
-      if (item['templateName']?.toString().toLowerCase().contains(q) ?? false)
+      }
+      if (item['templateName']?.toString().toLowerCase().contains(q) ?? false) {
         matched.add('Template');
-      if (item['makerBy']?.toString().toLowerCase().contains(q) ?? false)
+      }
+      if (item['makerBy']?.toString().toLowerCase().contains(q) ?? false) {
         matched.add('Created By');
-      if (_formatDate(item['makerDate']?.toString()).toLowerCase().contains(q))
+      }
+      if (_formatDate(item['makerDate']?.toString()).toLowerCase().contains(q)) {
         matched.add('Created Date');
-      if (item['filename']?.toString().toLowerCase().contains(q) ?? false)
+      }
+      if (item['filename']?.toString().toLowerCase().contains(q) ?? false) {
         matched.add('Download');
+      }
     }
     return matched;
   }

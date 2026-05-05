@@ -83,9 +83,9 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
               ),
               Expanded(child: _buildCanvas()),
               Consumer<PipelineController>(
-                builder: (_, ctrl, __) => ctrl.selectedNodeId != null
-                    ? const Flexible(flex: 0, child: ConfigPanel())
-                    : const SizedBox.shrink(),
+                builder: (_, ctrl, __) => _SlideInConfigPanel(
+                  visible: ctrl.selectedNodeId != null,
+                ),
               ),
             ],
           ),
@@ -111,7 +111,14 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
                 final localPos = box.globalToLocal(details.offset);
                 final inv = Matrix4.inverted(_transformCtrl.value);
                 final canvasPos = MatrixUtils.transformPoint(inv, localPos);
-                ctrl.addNode(details.data.type, canvasPos);
+                ctrl.addNode(
+                  details.data.type,
+                  canvasPos,
+                  sourceTypeValue: details.data.sourceValue,
+                  sourceTypeId: details.data.sourceTypeId,
+                  sourceTypeName: details.data.sourceName,
+                  name: '',
+                );
               },
               builder: (ctx2, _, __) => GestureDetector(
                 onTapDown: isConnecting
@@ -363,6 +370,74 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
   }
 }
 
+// ── Slide-in config panel ──
+class _SlideInConfigPanel extends StatefulWidget {
+  final bool visible;
+  const _SlideInConfigPanel({required this.visible});
+
+  @override
+  State<_SlideInConfigPanel> createState() => _SlideInConfigPanelState();
+}
+
+class _SlideInConfigPanelState extends State<_SlideInConfigPanel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _sizeFactor;
+  late final Animation<Offset> _slide;
+  late final Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+      reverseDuration: const Duration(milliseconds: 250),
+      value: widget.visible ? 1.0 : 0.0,
+    );
+    final curved = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    _sizeFactor = curved;
+    _slide = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(curved);
+    _fade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_SlideInConfigPanel old) {
+    super.didUpdateWidget(old);
+    if (widget.visible != old.visible) {
+      widget.visible ? _ctrl.forward() : _ctrl.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: SizeTransition(
+        sizeFactor: _sizeFactor,
+        axis: Axis.horizontal,
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(
+            position: _slide,
+            child: const ConfigPanel(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Grid painter ──
 class _GridPainter extends CustomPainter {
   @override
@@ -391,29 +466,133 @@ class _EmptyHint extends StatelessWidget {
     return Center(
       child: AnimatedBuilder(
         animation: pulseAnim,
-        builder: (_, __) => Opacity(
-          opacity: 0.4 + pulseAnim.value * 0.4,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.cloud_download_outlined,
-                size: 48,
-                color: AppColors.blue.withValues(alpha: 0.6),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Select a department and template,\nthen tap Load Configuration.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textDim,
-                  height: 1.5,
+        builder: (_, __) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Pulsing icon
+            Opacity(
+              opacity: 0.55 + pulseAnim.value * 0.45,
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.blue.withValues(
+                    alpha: 0.08 + pulseAnim.value * 0.06,
+                  ),
+                ),
+                child: Icon(
+                  Icons.manage_search_rounded,
+                  size: 36,
+                  color: AppColors.blue.withValues(alpha: 0.7),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            Text(
+              'Load a Configuration',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.text.withValues(alpha: 0.7),
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Follow the steps on the left panel to get started',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textDim.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // Step indicators
+            _StepRow(
+              step: '1',
+              label: 'Select a Department',
+              icon: Icons.corporate_fare_rounded,
+              color: AppColors.blue,
+            ),
+            const SizedBox(height: 10),
+            _StepRow(
+              step: '2',
+              label: 'Choose a Template',
+              icon: Icons.description_outlined,
+              color: AppColors.violet,
+            ),
+            const SizedBox(height: 10),
+            _StepRow(
+              step: '3',
+              label: 'Tap Load Configuration',
+              icon: Icons.cloud_download_outlined,
+              color: AppColors.green,
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _StepRow extends StatelessWidget {
+  final String step;
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _StepRow({
+    required this.step,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 260,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.15),
+            ),
+            child: Center(
+              child: Text(
+                step,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Icon(icon, size: 16, color: color.withValues(alpha: 0.8)),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.text.withValues(alpha: 0.75),
+            ),
+          ),
+        ],
       ),
     );
   }

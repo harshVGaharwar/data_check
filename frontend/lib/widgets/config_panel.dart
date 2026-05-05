@@ -55,7 +55,7 @@ class _ConfigPanelState extends State<ConfigPanel>
   // Non-manual : 0=sourceName  1=queryFile   2=columnFile  3=outputFormat  4=configBtn
   // Manual     : 0=sourceName  1=separator   2=columnFile  3=outputFormat  4=configBtn
   int _computeStep(PipelineNode node) {
-    if (node.confirmState != NodeConfirmState.notConfigured) return -1;
+    if (node.confirmState == NodeConfirmState.confirmed) return -1;
     if (node.name.trim().isEmpty) return 0;
     final isManual = node.type == NodeType.manual;
     if (isManual) {

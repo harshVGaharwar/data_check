@@ -6,7 +6,6 @@ import '../controllers/pipeline_controller.dart';
 import 'edge_painter.dart';
 import 'nodes/source_node_body.dart';
 import 'nodes/join_node_body.dart';
-import 'top_bar.dart';
 import 'sidebar.dart';
 import 'config_panel.dart';
 import 'status_bar.dart';
@@ -56,9 +55,8 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
               const Flexible(flex: 0, child: Sidebar()),
               Expanded(child: _buildCanvas()),
               Consumer<PipelineController>(
-                builder: (_, ctrl, __) => ctrl.selectedNodeId != null
-                    ? const Flexible(flex: 0, child: ConfigPanel())
-                    : const SizedBox.shrink(),
+                builder: (_, ctrl, __) =>
+                    _SlideInConfigPanel(visible: ctrl.selectedNodeId != null),
               ),
             ],
           ),
@@ -269,10 +267,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
         final isActive = ctrl.portDragFromNodeId == node.id;
         final alreadyConnected = ctrl.edges.any((e) => e.fromNodeId == node.id);
         final shouldGlow =
-            !isActive &&
-            hasJoinNode &&
-            node.type.isSource &&
-            !alreadyConnected;
+            !isActive && hasJoinNode && node.type.isSource && !alreadyConnected;
 
         dots.add(
           Positioned(
@@ -679,6 +674,74 @@ class _CanvasNodeState extends State<_CanvasNode>
       default:
         return SourceNodeBody(node: node);
     }
+  }
+}
+
+// ── Slide-in config panel ──
+class _SlideInConfigPanel extends StatefulWidget {
+  final bool visible;
+  const _SlideInConfigPanel({required this.visible});
+
+  @override
+  State<_SlideInConfigPanel> createState() => _SlideInConfigPanelState();
+}
+
+class _SlideInConfigPanelState extends State<_SlideInConfigPanel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _sizeFactor;
+  late final Animation<Offset> _slide;
+  late final Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+      reverseDuration: const Duration(milliseconds: 250),
+      value: widget.visible ? 1.0 : 0.0,
+    );
+    final curved = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    _sizeFactor = curved;
+    _slide = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(curved);
+    _fade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _ctrl,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_SlideInConfigPanel old) {
+    super.didUpdateWidget(old);
+    if (widget.visible != old.visible) {
+      widget.visible ? _ctrl.forward() : _ctrl.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: SizeTransition(
+        sizeFactor: _sizeFactor,
+        axis: Axis.horizontal,
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(position: _slide, child: const ConfigPanel()),
+        ),
+      ),
+    );
   }
 }
 

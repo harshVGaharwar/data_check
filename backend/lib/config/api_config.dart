@@ -32,8 +32,13 @@ class ExternalApi {
   static const String getCheckerTayList = '/api/template/GetCheckerTayList';
   static const String getCheckerTayListWithModule =
       '/api/template/GetCheckerTayListWithModule';
+  static const String getTemplateCheckerTray =
+      '/api/template/GetTemplatesCheckerTray';
+  static const String getSourceMasterCheckerTray =
+      '/api/template/GetsourceMasterCheckerTray';
   static const String uploadManualDataChecker =
       '/api/template/UploadManualDataChecker';
+  static const String approveCheckerTray = '/api/template/ApproveCheckerTray';
   static const String downloadFile = '/api/template/DownloadFile';
   static const String refreshToken = '/api/Account/refresh';
 }

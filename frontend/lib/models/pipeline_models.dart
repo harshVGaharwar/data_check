@@ -9,6 +9,14 @@ enum NodeType { db, manual, fc, laser, join }
 
 enum NodeConfirmState { notConfigured, confirmed, editing }
 
+enum TemplateMode {
+  configure(0),
+  edit(1);
+
+  const TemplateMode(this.value);
+  final int value;
+}
+
 /// Drag payload — carries both node type and optional API sourceValue
 class DragNodeData {
   final NodeType type;
