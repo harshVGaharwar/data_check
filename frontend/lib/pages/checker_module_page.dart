@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
-import '../models/template_info.dart';
 import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
 import 'source_configuration_view_page.dart';
@@ -22,12 +21,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
   bool _deptLoading = true;
   bool _deptError = false;
 
-  List<ManualTemplateInfo> _templates = [];
-  bool _templateLoading = false;
-  bool _templateError = false;
-
   String? _selectedDept;
-  ManualTemplateInfo? _selectedTemplate;
   String? _selectedModuleId;
   static const List<({String id, String label})> _moduleOptions = [
     (id: '2', label: 'Source Configuration'),
@@ -45,10 +39,8 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
 
   // ── searchable overlay links ───────────────────────────────────────────────
   final _deptLayerLink = LayerLink();
-  final _templateLayerLink = LayerLink();
   final _moduleLayerLink = LayerLink();
   OverlayEntry? _deptOverlay;
-  OverlayEntry? _templateOverlay;
   OverlayEntry? _moduleOverlay;
 
   // ── pagination state ──────────────────────────────────────────────────────
@@ -64,7 +56,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
   @override
   void dispose() {
     _deptOverlay?.remove();
-    _templateOverlay?.remove();
     _moduleOverlay?.remove();
     _searchCtrl.dispose();
     super.dispose();
@@ -75,12 +66,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
   void _closeDeptOverlay() {
     _deptOverlay?.remove();
     _deptOverlay = null;
-    if (mounted) setState(() {});
-  }
-
-  void _closeTemplateOverlay() {
-    _templateOverlay?.remove();
-    _templateOverlay = null;
     if (mounted) setState(() {});
   }
 
@@ -104,38 +89,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
       ),
     );
     Overlay.of(context).insert(_deptOverlay!);
-    setState(() {});
-  }
-
-  void _openTemplateOverlay(double width) {
-    _closeTemplateOverlay();
-    final items = _templates
-        .asMap()
-        .entries
-        .map((e) => (id: e.key, label: e.value.templateName))
-        .toList();
-    _templateOverlay = OverlayEntry(
-      builder: (_) => _SelectDropdownOverlay(
-        layerLink: _templateLayerLink,
-        items: items,
-        selectedId: _selectedTemplate != null
-            ? _templates.indexOf(_selectedTemplate!)
-            : null,
-        dropdownWidth: width,
-        searchHint: 'Search template...',
-        onDismiss: _closeTemplateOverlay,
-        onSelect: (id, label) {
-          _closeTemplateOverlay();
-          setState(() {
-            _selectedTemplate = _templates[id];
-            _selectedModuleId = null;
-            _results = [];
-            _fetched = false;
-          });
-        },
-      ),
-    );
-    Overlay.of(context).insert(_templateOverlay!);
     setState(() {});
   }
 
@@ -200,48 +153,24 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     });
   }
 
-  Future<void> _onDeptSelected(String dept) async {
+  void _onDeptSelected(String dept) {
     setState(() {
       _selectedDept = dept;
-      _selectedTemplate = null;
-      _selectedModuleId = null;
-      _templates = [];
-      _templateLoading = true;
-      _templateError = false;
       _results = [];
       _fetched = false;
-    });
-    final deptId = _deptMap[dept];
-    if (deptId == null) {
-      setState(() => _templateLoading = false);
-      return;
-    }
-    final templates = await context
-        .read<MasterDataService>()
-        .getManualTemplatesByDept(deptId);
-    if (!mounted) return;
-    setState(() {
-      _templates = templates;
-      _templateLoading = false;
-      _templateError = templates.isEmpty;
     });
   }
 
   Future<void> _fetch() async {
-    if (_selectedDept == null) {
-      _snack('Please select a department.', isError: true);
-      return;
-    }
-    if (_selectedTemplate == null) {
-      _snack('Please select a template.', isError: true);
-      return;
-    }
     if (_selectedModuleId == null) {
       _snack('Please select a module.', isError: true);
       return;
     }
+    if (_selectedDept == null) {
+      _snack('Please select a department.', isError: true);
+      return;
+    }
     final deptId = _deptMap[_selectedDept!]!;
-    final templateId = '${_selectedTemplate!.templateId}';
     setState(() {
       _fetching = true;
       _results = [];
@@ -252,15 +181,11 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     if (_selectedModuleId == '2') {
       results = await context
           .read<MasterDataService>()
-          .getSourceMasterCheckerTray(
-            deptId: '$deptId',
-            templateId: templateId,
-          );
+          .getSourceMasterCheckerTray(deptId: '$deptId');
     } else {
       final flag = _selectedModuleId == '1' ? 4 : 5;
       results = await context.read<MasterDataService>().getTemplateCheckerTray(
         deptId: '$deptId',
-        templateId: templateId,
         flag: flag,
       );
     }
@@ -386,6 +311,40 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text('Module', style: AppTextStyles.fieldLabel),
+                        const SizedBox(height: 6),
+                        CompositedTransformTarget(
+                          link: _moduleLayerLink,
+                          child: GestureDetector(
+                            onTap: () =>
+                                _openModuleOverlay(constraints.maxWidth),
+                            child: _dropdownTrigger(
+                              value: _selectedModuleId == null
+                                  ? null
+                                  : _moduleOptions
+                                        .firstWhere(
+                                          (m) => m.id == _selectedModuleId,
+                                        )
+                                        .label,
+                              hint: '— Select Module —',
+                              isOpen: _moduleOverlay != null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    final enabled =
+                        _selectedModuleId != null && !_deptLoading;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text('Department', style: AppTextStyles.fieldLabel),
                         const SizedBox(height: 6),
                         _deptLoading
@@ -395,89 +354,21 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                             : CompositedTransformTarget(
                                 link: _deptLayerLink,
                                 child: GestureDetector(
-                                  onTap: () =>
-                                      _openDeptOverlay(constraints.maxWidth),
-                                  child: _dropdownTrigger(
-                                    value: _selectedDept,
-                                    hint: '— Select Department —',
-                                    isOpen: _deptOverlay != null,
-                                  ),
-                                ),
-                              ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (ctx, constraints) {
-                    final enabled = _selectedDept != null && !_templateLoading;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Template', style: AppTextStyles.fieldLabel),
-                        const SizedBox(height: 6),
-                        _templateLoading
-                            ? _loadingField()
-                            : _templateError
-                            ? _errorField(() => _onDeptSelected(_selectedDept!))
-                            : CompositedTransformTarget(
-                                link: _templateLayerLink,
-                                child: GestureDetector(
                                   onTap: enabled
-                                      ? () => _openTemplateOverlay(
+                                      ? () => _openDeptOverlay(
                                           constraints.maxWidth,
                                         )
                                       : null,
                                   child: _dropdownTrigger(
-                                    value: _selectedTemplate?.templateName,
-                                    hint: _selectedDept == null
-                                        ? '— Select Department first —'
-                                        : '— Select Template —',
-                                    isOpen: _templateOverlay != null,
+                                    value: _selectedDept,
+                                    hint: _selectedModuleId == null
+                                        ? '— Select Module first —'
+                                        : '— Select Department —',
+                                    isOpen: _deptOverlay != null,
                                     enabled: enabled,
                                   ),
                                 ),
                               ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (ctx, constraints) {
-                    final enabled = _selectedTemplate != null;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Module', style: AppTextStyles.fieldLabel),
-                        const SizedBox(height: 6),
-                        CompositedTransformTarget(
-                          link: _moduleLayerLink,
-                          child: GestureDetector(
-                            onTap: enabled
-                                ? () => _openModuleOverlay(constraints.maxWidth)
-                                : null,
-                            child: _dropdownTrigger(
-                              value: _selectedModuleId == null
-                                  ? null
-                                  : _moduleOptions
-                                        .firstWhere(
-                                          (m) => m.id == _selectedModuleId,
-                                        )
-                                        .label,
-                              hint: _selectedTemplate == null
-                                  ? '— Select Template first —'
-                                  : '— Select Module —',
-                              isOpen: _moduleOverlay != null,
-                              enabled: enabled,
-                            ),
-                          ),
-                        ),
                       ],
                     );
                   },
@@ -1493,7 +1384,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     final templateId =
         item['template_id']?.toString() ??
         item['templateId']?.toString() ??
-        _selectedTemplate?.templateId.toString() ??
         '';
     final deptId = (_deptMap[_selectedDept] ?? 0).toString();
     final requestId = _selectedModuleId == '2'

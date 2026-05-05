@@ -15,7 +15,6 @@ Future<Response> onRequest(RequestContext context) async {
 
   final params = context.request.uri.queryParameters;
   final deptId = params['DeptId'] ?? '';
-  final templateId = params['templateId'] ?? '';
 
   if (deptId.isEmpty) {
     return Response.json(
@@ -69,7 +68,7 @@ Future<Response> onRequest(RequestContext context) async {
     final externalResponse = await client
         .get(
           Uri.parse(
-            '$kBaseUrl${ExternalApi.getSourceMasterCheckerTray}?DeptId=$deptId&templateId=$templateId',
+            '$kBaseUrl${ExternalApi.getSourceMasterCheckerTray}?DeptId=$deptId',
           ),
           headers: {
             'Content-Type': 'application/json',

@@ -242,11 +242,10 @@ class MasterDataService {
   /// Fetch source master checker tray (Source Configuration)
   Future<List<Map<String, dynamic>>> getSourceMasterCheckerTray({
     required String deptId,
-    required String templateId,
   }) async {
     try {
       final data = await _api.getRawData(
-        '${ApiConfig.sourceMasterCheckerTrayEndpoint}?DeptId=$deptId&templateId=$templateId',
+        '${ApiConfig.sourceMasterCheckerTrayEndpoint}?DeptId=$deptId',
       );
       if (data is List) {
         return data.whereType<Map<String, dynamic>>().toList();
@@ -260,12 +259,11 @@ class MasterDataService {
   /// Fetch template checker tray (Template Creation flag=4, Template Configuration flag=5)
   Future<List<Map<String, dynamic>>> getTemplateCheckerTray({
     required String deptId,
-    required String templateId,
     required int flag,
   }) async {
     try {
       final data = await _api.getRawData(
-        '${ApiConfig.templateCheckerTrayEndpoint}?DeptId=$deptId&templateId=$templateId&flag=$flag',
+        '${ApiConfig.templateCheckerTrayEndpoint}?DeptId=$deptId&flag=$flag',
       );
       if (data is List) {
         return data.whereType<Map<String, dynamic>>().toList();

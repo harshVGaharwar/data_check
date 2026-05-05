@@ -15,14 +15,13 @@ Future<Response> onRequest(RequestContext context) async {
 
   final params = context.request.uri.queryParameters;
   final deptId = params['DeptId'] ?? '';
-  final templateId = params['templateId'] ?? '';
   final flag = int.tryParse(params['flag'] ?? '') ?? 0;
 
-  if (deptId.isEmpty || templateId.isEmpty || (flag != 4 && flag != 5)) {
+  if (deptId.isEmpty || (flag != 4 && flag != 5)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
       body: ApiResponse.error(
-        message: 'DeptId, templateId and flag (4 or 5) are required',
+        message: 'DeptId and flag (4 or 5) are required',
       ).toJson(),
     );
   }
@@ -115,7 +114,7 @@ Future<Response> onRequest(RequestContext context) async {
     final externalResponse = await client
         .get(
           Uri.parse(
-            '$kBaseUrl${ExternalApi.getTemplateCheckerTray}?DeptId=$deptId&templateId=$templateId&flag=$flag',
+            '$kBaseUrl${ExternalApi.getTemplateCheckerTray}?DeptId=$deptId&flag=$flag',
           ),
           headers: {
             'Content-Type': 'application/json',
