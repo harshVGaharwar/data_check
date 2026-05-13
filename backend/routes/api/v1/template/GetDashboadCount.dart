@@ -13,49 +13,42 @@ Future<Response> onRequest(RequestContext context) async {
     );
   }
 
-  final params = context.request.uri.queryParameters;
-  final deptId = params['DeptId'] ?? '';
-
-  if (deptId.isEmpty) {
-    return Response.json(
-      statusCode: HttpStatus.badRequest,
-      body: ApiResponse.error(message: 'DeptId is required').toJson(),
-    );
-  }
-
   if (kDevMode) {
-    final mockRows = [
-      {
-        'departmentId': 7,
-        'sourceName': 'test name',
-        'sourceID': 4,
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '11/05/2026 11:35:40 AM',
-        'sourceType': 1,
-        'appName': 'test app name',
-        'itgrc': 91729,
-        'dbVault': 'test db',
-        'sourceTypeName': 'Manual',
-      },
-      {
-        'departmentId': 7,
-        'sourceName': 'Test Source',
-        'sourceID': 5,
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '11/05/2026 2:56:37 PM',
-        'sourceType': 1,
-        'appName': 'Test app name',
-        'itgrc': 1872197,
-        'dbVault': 'dbvault',
-        'sourceTypeName': 'Manual',
-      },
-    ];
-    return Response.json(body: mockRows);
+    final mockData = {
+      'dashboardCount': [
+        {
+          'count': '12',
+          'label': 'Total Templates',
+          'lightColor': '#E3F2FD',
+          'icon': '0xe318',
+          'darkColor': '#1565C0',
+        },
+        {
+          'count': '5',
+          'label': 'Pending Approvals',
+          'lightColor': '#FFF8E1',
+          'icon': '0xe425',
+          'darkColor': '#F57F17',
+        },
+        {
+          'count': '3',
+          'label': 'Active Jobs',
+          'lightColor': '#E8F5E9',
+          'icon': '0xe1b1',
+          'darkColor': '#2E7D32',
+        },
+        {
+          'count': '8',
+          'label': 'Reports Generated',
+          'lightColor': '#FCE4EC',
+          'icon': '0xe873',
+          'darkColor': '#880E4F',
+        },
+      ],
+    };
+    return Response.json(body: mockData);
   }
 
-  // Production: forward to external API
   try {
     final httpClient = HttpClient()
       ..badCertificateCallback = (cert, host, port) => true;
@@ -65,10 +58,15 @@ Future<Response> onRequest(RequestContext context) async {
         context.request.headers['authorization'] ??
         '';
 
+    final val1 = context.request.uri.queryParameters['val1'] ?? '1';
+    final val2 = context.request.uri.queryParameters['val2'] ?? '2';
+    final val3 = context.request.uri.queryParameters['val3'] ?? '3';
+    final val4 = context.request.uri.queryParameters['val4'] ?? '4';
+
     final externalResponse = await client
         .get(
           Uri.parse(
-            '$kBaseUrl${ExternalApi.getSourceMasterCheckerTray}?DeptId=$deptId',
+            '$kBaseUrl${ExternalApi.getDashboardCount}?val1=$val1&val2=$val2&val3=$val3&val4=$val4',
           ),
           headers: {
             'Content-Type': 'application/json',
@@ -78,8 +76,9 @@ Future<Response> onRequest(RequestContext context) async {
         )
         .timeout(const Duration(seconds: 30));
 
-    print('[SOURCE MASTER CHECKER TRAY] External API status: '
-        '${externalResponse.statusCode}');
+    print(
+      '[GET DASHBOARD COUNT] External API status: ${externalResponse.statusCode}',
+    );
 
     if (externalResponse.statusCode >= 200 &&
         externalResponse.statusCode < 300) {
@@ -93,15 +92,14 @@ Future<Response> onRequest(RequestContext context) async {
 
     return Response.json(
       statusCode: externalResponse.statusCode,
-      body: ApiResponse.error(
-        message: 'Failed to fetch source master checker tray',
-      ).toJson(),
+      body: ApiResponse.error(message: 'Failed to fetch dashboard count')
+          .toJson(),
     );
   } catch (e) {
     return Response.json(
       statusCode: HttpStatus.internalServerError,
       body: ApiResponse.error(
-        message: 'Source master checker tray service unavailable: $e',
+        message: 'Dashboard count service unavailable: $e',
       ).toJson(),
     );
   }

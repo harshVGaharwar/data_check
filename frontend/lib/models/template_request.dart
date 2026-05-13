@@ -55,6 +55,8 @@ class TemplateRequest {
   String createdBy;
   List<String> outputFormats;
   List<String> approvals;
+  String departmentName;
+  String sourceListName;
 
   /// Per-approval file uploads: {"Unit Head": "approval_uh.pdf", "UAT Sign Off": "uat.pdf"}
   Map<String, String> approvalFiles;
@@ -81,7 +83,10 @@ class TemplateRequest {
     this.unitHead = '',
     this.priority = 'Medium',
     this.createdBy = '',
+    this.sourceListName = "",
+    this.departmentName = "",
     List<String>? outputFormats,
+
     List<String>? approvals,
     Map<String, String>? approvalFiles,
     List<Map<String, dynamic>>? sourceList,
@@ -126,6 +131,8 @@ class TemplateRequest {
         .toList(),
     'CreatedBy': createdBy,
     'jsonData': "",
+    'DepartmentName': departmentName,
+    'SourceListNames': sourceListName,
   };
 
   bool get isGeneralInfoValid =>

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../models/template_info.dart';
+import '../models/checker_tray_item.dart';
 import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
-import '../utils/file_download_stub.dart'
-    if (dart.library.js_interop) '../utils/file_download_web.dart';
+import '../utils/download_helper.dart';
 
 class CheckerPage extends StatefulWidget {
   const CheckerPage({super.key});
@@ -31,7 +31,7 @@ class _CheckerPageState extends State<CheckerPage> {
   final _reqIdCtrl = TextEditingController();
 
   // ── results state ─────────────────────────────────────────────────────────
-  List<Map<String, dynamic>> _results = [];
+  List<CheckerTrayItem> _results = [];
   bool _fetching = false;
   bool _fetched = false;
 
@@ -332,18 +332,19 @@ class _CheckerPageState extends State<CheckerPage> {
                         _deptLoading
                             ? _loadingField()
                             : _deptError
-                                ? _errorField(_loadDepartments)
-                                : CompositedTransformTarget(
-                                    link: _deptLayerLink,
-                                    child: GestureDetector(
-                                      onTap: () => _openDeptOverlay(constraints.maxWidth),
-                                      child: _dropdownTrigger(
-                                        value: _selectedDept,
-                                        hint: '— Select Department —',
-                                        isOpen: _deptOverlay != null,
-                                      ),
-                                    ),
+                            ? _errorField(_loadDepartments)
+                            : CompositedTransformTarget(
+                                link: _deptLayerLink,
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      _openDeptOverlay(constraints.maxWidth),
+                                  child: _dropdownTrigger(
+                                    value: _selectedDept,
+                                    hint: '— Select Department —',
+                                    isOpen: _deptOverlay != null,
                                   ),
+                                ),
+                              ),
                       ],
                     );
                   },
@@ -362,23 +363,25 @@ class _CheckerPageState extends State<CheckerPage> {
                         _templateLoading
                             ? _loadingField()
                             : _templateError
-                                ? _errorField(() => _onDeptSelected(_selectedDept!))
-                                : CompositedTransformTarget(
-                                    link: _templateLayerLink,
-                                    child: GestureDetector(
-                                      onTap: enabled
-                                          ? () => _openTemplateOverlay(constraints.maxWidth)
-                                          : null,
-                                      child: _dropdownTrigger(
-                                        value: _selectedTemplate?.templateName,
-                                        hint: _selectedDept == null
-                                            ? '— Select Department first —'
-                                            : '— Select Template —',
-                                        isOpen: _templateOverlay != null,
-                                        enabled: enabled,
-                                      ),
-                                    ),
+                            ? _errorField(() => _onDeptSelected(_selectedDept!))
+                            : CompositedTransformTarget(
+                                link: _templateLayerLink,
+                                child: GestureDetector(
+                                  onTap: enabled
+                                      ? () => _openTemplateOverlay(
+                                          constraints.maxWidth,
+                                        )
+                                      : null,
+                                  child: _dropdownTrigger(
+                                    value: _selectedTemplate?.templateName,
+                                    hint: _selectedDept == null
+                                        ? '— Select Department first —'
+                                        : '— Select Template —',
+                                    isOpen: _templateOverlay != null,
+                                    enabled: enabled,
                                   ),
+                                ),
+                              ),
                       ],
                     );
                   },
@@ -475,19 +478,12 @@ class _CheckerPageState extends State<CheckerPage> {
         ? _results
         : _results.where((item) {
             final q = _searchQuery.toLowerCase();
-            return (item['requestId']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['departmentName']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['templateName']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['makerBy']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['filename']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                _formatDate(
-                  item['makerDate']?.toString(),
-                ).toLowerCase().contains(q);
+            return (item.requestId?.toLowerCase().contains(q) ?? false) ||
+                item.departmentName.toLowerCase().contains(q) ||
+                (item.templateName?.toLowerCase().contains(q) ?? false) ||
+                item.makerBy.toLowerCase().contains(q) ||
+                (item.filename?.toLowerCase().contains(q) ?? false) ||
+                _formatDate(item.makerDate).toLowerCase().contains(q);
           }).toList();
 
     final totalPages = max(1, (filtered.length / _rowsPerPage).ceil());
@@ -615,22 +611,22 @@ class _CheckerPageState extends State<CheckerPage> {
     final q = query.toLowerCase();
     final matched = <String>{};
     for (final item in _results) {
-      if (item['requestId']?.toString().toLowerCase().contains(q) ?? false) {
+      if (item.requestId?.toLowerCase().contains(q) ?? false) {
         matched.add('Request ID');
       }
-      if (item['departmentName']?.toString().toLowerCase().contains(q) ?? false) {
+      if (item.departmentName.toLowerCase().contains(q)) {
         matched.add('Department');
       }
-      if (item['templateName']?.toString().toLowerCase().contains(q) ?? false) {
+      if (item.templateName?.toLowerCase().contains(q) ?? false) {
         matched.add('Template');
       }
-      if (item['makerBy']?.toString().toLowerCase().contains(q) ?? false) {
+      if (item.makerBy.toLowerCase().contains(q)) {
         matched.add('Created By');
       }
-      if (_formatDate(item['makerDate']?.toString()).toLowerCase().contains(q)) {
+      if (_formatDate(item.makerDate).toLowerCase().contains(q)) {
         matched.add('Created Date');
       }
-      if (item['filename']?.toString().toLowerCase().contains(q) ?? false) {
+      if (item.filename?.toLowerCase().contains(q) ?? false) {
         matched.add('Download');
       }
     }
@@ -660,7 +656,6 @@ class _CheckerPageState extends State<CheckerPage> {
                   ),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               if (isHit) ...[
                 Container(
@@ -673,13 +668,16 @@ class _CheckerPageState extends State<CheckerPage> {
                 ),
                 const SizedBox(width: 5),
               ],
-              Text(
-                col,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isHit ? AppColors.blue : AppColors.textDim,
-                  letterSpacing: 0.4,
+              Flexible(
+                child: Text(
+                  col,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isHit ? AppColors.blue : AppColors.textDim,
+                    letterSpacing: 0.4,
+                  ),
                 ),
               ),
             ],
@@ -691,17 +689,17 @@ class _CheckerPageState extends State<CheckerPage> {
 
   // ── table data row ────────────────────────────────────────────────────────
 
-  TableRow _buildTableRow(Map<String, dynamic> item, int index) {
-    final filename = item['filename']?.toString() ?? '—';
+  TableRow _buildTableRow(CheckerTrayItem item, int index) {
+    final filename = item.filename ?? '—';
     final ext = filename.contains('.')
         ? filename.split('.').last.toLowerCase()
         : '';
     final extColor = _extColor(ext);
-    final makerBy = item['makerBy']?.toString() ?? '—';
-    final makerDate = _formatDate(item['makerDate']?.toString());
-    final requestId = item['requestId']?.toString() ?? '—';
-    final templateName = item['templateName']?.toString() ?? '—';
-    final deptName = item['departmentName']?.toString() ?? '—';
+    final makerBy = item.makerBy.isEmpty ? '—' : item.makerBy;
+    final makerDate = _formatDate(item.makerDate);
+    final requestId = item.requestId ?? '—';
+    final templateName = item.templateName ?? '—';
+    final deptName = item.departmentName.isEmpty ? '—' : item.departmentName;
     final bg = index.isEven ? Colors.white : const Color(0xFFF9FAFC);
 
     return TableRow(
@@ -817,7 +815,12 @@ class _CheckerPageState extends State<CheckerPage> {
             message: 'Download $filename',
             child: InkWell(
               borderRadius: BorderRadius.circular(8),
-              onTap: () => _downloadFile(filename, item),
+              onTap: () => downloadCheckerFile(
+                context: context,
+                filename: item.filename ?? '',
+                templateId: item.templateId?.toString() ??
+                    _selectedTemplate?.templateId.toString() ?? '',
+              ),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
@@ -1015,30 +1018,11 @@ class _CheckerPageState extends State<CheckerPage> {
     );
   }
 
-  // ── download ──────────────────────────────────────────────────────────────
-
-  Future<void> _downloadFile(String filename, Map<String, dynamic> item) async {
-    final templateId =
-        item['template_id']?.toString() ??
-        _selectedTemplate?.templateId.toString() ??
-        '';
-    _snack('Downloading $filename…');
-    final result = await context.read<MasterDataService>().downloadCheckerFile(
-      filename: filename,
-      templateId: templateId,
-    );
-    if (!mounted) return;
-    if (result.success) {
-      await triggerFileDownload(filename, result.bytes);
-    } else {
-      _snack(result.message, isError: true);
-    }
-  }
 
   // ── remark dialog ─────────────────────────────────────────────────────────
 
   Future<void> _showRemarkDialog({
-    required Map<String, dynamic> item,
+    required CheckerTrayItem item,
     required bool isApproved,
   }) async {
     final remarkCtrl = TextEditingController();
@@ -1102,7 +1086,7 @@ class _CheckerPageState extends State<CheckerPage> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        item['requestId']?.toString() ?? '—',
+                        item.requestId ?? '—',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -1204,11 +1188,11 @@ class _CheckerPageState extends State<CheckerPage> {
     final auth = context.read<AuthProvider>();
     final checkerBy = auth.user?.user.employeeCode ?? '';
     final templateId =
-        item['template_id']?.toString() ??
+        item.templateId?.toString() ??
         _selectedTemplate?.templateId.toString() ??
         '';
     final deptId = (_deptMap[_selectedDept] ?? 0).toString();
-    final requestId = item['requestId']?.toString() ?? '';
+    final requestId = item.requestId ?? '';
 
     setState(() => _fetching = true);
     final result = await context
@@ -1246,18 +1230,21 @@ class _CheckerPageState extends State<CheckerPage> {
         borderRadius: BorderRadius.circular(6),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 11, color: Colors.white),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -1408,8 +1395,8 @@ class _CheckerPageState extends State<CheckerPage> {
           color: isOpen
               ? AppColors.violet
               : enabled
-                  ? AppColors.border2
-                  : AppColors.border,
+              ? AppColors.border2
+              : AppColors.border,
         ),
         color: enabled ? AppColors.surface : AppColors.bg,
       ),
@@ -1533,7 +1520,9 @@ class _SelectDropdownOverlayState extends State<_SelectDropdownOverlay> {
   List<_SelectItem> get _filtered {
     if (_query.isEmpty) return widget.items;
     final q = _query.toLowerCase();
-    return widget.items.where((i) => i.label.toLowerCase().contains(q)).toList();
+    return widget.items
+        .where((i) => i.label.toLowerCase().contains(q))
+        .toList();
   }
 
   @override
@@ -1572,27 +1561,47 @@ class _SelectDropdownOverlayState extends State<_SelectDropdownOverlay> {
                       child: TextField(
                         controller: _searchCtrl,
                         autofocus: true,
-                        style: const TextStyle(fontSize: 13, color: AppColors.text),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.text,
+                        ),
                         onChanged: (v) => setState(() => _query = v),
                         decoration: InputDecoration(
                           hintText: widget.searchHint,
-                          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                          prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textDim),
+                          hintStyle: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 16,
+                            color: AppColors.textDim,
+                          ),
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           filled: true,
                           fillColor: AppColors.surface2,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.violet, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: AppColors.violet,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -1604,22 +1613,30 @@ class _SelectDropdownOverlayState extends State<_SelectDropdownOverlay> {
                               padding: EdgeInsets.all(16),
                               child: Text(
                                 'No results found',
-                                style: TextStyle(fontSize: 12, color: AppColors.textDim),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textDim,
+                                ),
                               ),
                             )
                           : ListView.separated(
                               shrinkWrap: true,
                               itemCount: _filtered.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(height: 1, color: AppColors.border),
+                              separatorBuilder: (_, __) => const Divider(
+                                height: 1,
+                                color: AppColors.border,
+                              ),
                               itemBuilder: (_, i) {
                                 final item = _filtered[i];
                                 final isSel = widget.selectedId == item.id;
                                 return InkWell(
-                                  onTap: () => widget.onSelect(item.id, item.label),
+                                  onTap: () =>
+                                      widget.onSelect(item.id, item.label),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 10),
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
                                     child: Row(
                                       children: [
                                         Icon(
@@ -1627,7 +1644,9 @@ class _SelectDropdownOverlayState extends State<_SelectDropdownOverlay> {
                                               ? Icons.radio_button_checked
                                               : Icons.radio_button_unchecked,
                                           size: 18,
-                                          color: isSel ? AppColors.violet : AppColors.textDim,
+                                          color: isSel
+                                              ? AppColors.violet
+                                              : AppColors.textDim,
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(

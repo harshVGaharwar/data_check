@@ -40,5 +40,8 @@ class ExternalApi {
       '/api/template/UploadManualDataChecker';
   static const String approveCheckerTray = '/api/template/ApproveCheckerTray';
   static const String downloadFile = '/api/template/DownloadFile';
+  static const String getReport = '/api/template/GetReport';
+  static const String getJobExecutionLog = '/api/template/GetJobExecutionLog';
   static const String refreshToken = '/api/Account/refresh';
+  static const String getDashboardCount = '/api/template/GetDashboadCount';
 }

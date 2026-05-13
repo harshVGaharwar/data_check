@@ -636,7 +636,7 @@ class JoinNodeBody extends StatelessWidget {
       'Edges': edgeList,
       'connectedSources': connectedSourcesData,
       'outputColumns': outputColumns,
-      'Jsondata':""
+      'Jsondata': null,
     };
 
     // ── Collect file entries (column files + query files) ──

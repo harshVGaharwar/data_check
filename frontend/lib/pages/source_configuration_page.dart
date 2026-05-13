@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../models/master_models.dart';
+import '../models/source_config_request.dart';
 import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
+import '../widgets/select_dropdown_overlay.dart';
 
 class SourceConfigurationPage extends StatefulWidget {
   const SourceConfigurationPage({super.key});
@@ -43,6 +45,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
       TextEditingController(); // "App Name"    → API key: AppName
   final _itgrcCtrl = TextEditingController();
   final _dbVaultCtrl = TextEditingController();
+  final _svaluesCtrl = TextEditingController();
 
   bool _submitted = false;
   bool _saving = false;
@@ -105,6 +108,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
     _appNameCtrl.dispose();
     _itgrcCtrl.dispose();
     _dbVaultCtrl.dispose();
+    _svaluesCtrl.dispose();
     _shakeCtrl.dispose();
     super.dispose();
   }
@@ -146,7 +150,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
         _deptTriggerKey.currentContext?.findRenderObject() as RenderBox?;
     final width = renderBox?.size.width ?? 280.0;
     _deptOverlayEntry = OverlayEntry(
-      builder: (_) => _SelectDropdownOverlay(
+      builder: (_) => SelectDropdownOverlay(
         layerLink: _deptLayerLink,
         items: _departments.map((d) => (id: d.id, label: d.name)).toList(),
         selectedId: _selectedDepartment?.id,
@@ -193,13 +197,16 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
 
     final service = context.read<MasterDataService>();
     final result = await service.addSourceMaster(
-      sourceTypeId: _selectedSourceType!.id.toString(),
-      appName: _appNameCtrl.text.trim(),
-      itgrc: itgrc,
-      name: _sourceNameCtrl.text.trim(),
-      dbVault: _dbVaultCtrl.text.trim(),
-      createdBy: createdBy,
-      deptId: _selectedDepartment!.id,
+      SourceConfigRequest(
+        sourceTypeId: _selectedSourceType!.id.toString(),
+        appName: _appNameCtrl.text.trim(),
+        itgrc: itgrc,
+        name: _sourceNameCtrl.text.trim(),
+        dbVault: _dbVaultCtrl.text.trim(),
+        createdBy: createdBy,
+        deptId: _selectedDepartment!.id.toString(),
+        svalues: _svaluesCtrl.text.trim(),
+      ),
     );
 
     if (!mounted) return;
@@ -395,6 +402,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
     _appNameCtrl.clear();
     _itgrcCtrl.clear();
     _dbVaultCtrl.clear();
+    _svaluesCtrl.clear();
     setState(() => _submitted = false);
   }
 
@@ -454,7 +462,8 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                             'Register a new data source in the master list',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textDim,
+                              color: AppColors.blue,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -557,6 +566,14 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Row 4: SValues
+                      _field(
+                        label: 'SValues',
+                        hint: 'Enter SValues',
+                        controller: _svaluesCtrl,
                       ),
                     ],
                   ),
@@ -975,208 +992,7 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
   }
 }
 
-// ── Generic single-select searchable overlay ──────────────────────────────────
-
-typedef _SelectItem = ({int id, String label});
-
-class _SelectDropdownOverlay extends StatefulWidget {
-  final LayerLink layerLink;
-  final List<_SelectItem> items;
-  final int? selectedId;
-  final double dropdownWidth;
-  final String searchHint;
-  final VoidCallback onDismiss;
-  final void Function(int id, String label) onSelect;
-
-  const _SelectDropdownOverlay({
-    required this.layerLink,
-    required this.items,
-    required this.selectedId,
-    required this.dropdownWidth,
-    required this.searchHint,
-    required this.onDismiss,
-    required this.onSelect,
-  });
-
-  @override
-  State<_SelectDropdownOverlay> createState() => _SelectDropdownOverlayState();
-}
-
-class _SelectDropdownOverlayState extends State<_SelectDropdownOverlay> {
-  final _searchCtrl = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  List<_SelectItem> get _filtered {
-    if (_query.isEmpty) return widget.items;
-    final q = _query.toLowerCase();
-    return widget.items
-        .where((i) => i.label.toLowerCase().contains(q))
-        .toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: widget.onDismiss,
-            behavior: HitTestBehavior.translucent,
-            child: const SizedBox.expand(),
-          ),
-        ),
-        CompositedTransformFollower(
-          link: widget.layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 46),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(12),
-              color: AppColors.surface,
-              child: Container(
-                width: widget.dropdownWidth,
-                constraints: const BoxConstraints(maxHeight: 320),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: TextField(
-                        controller: _searchCtrl,
-                        autofocus: true,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.text,
-                        ),
-                        onChanged: (v) => setState(() => _query = v),
-                        decoration: InputDecoration(
-                          hintText: widget.searchHint,
-                          hintStyle: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 12,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            size: 16,
-                            color: AppColors.textDim,
-                          ),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surface2,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.border,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.border,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.violet,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Divider(height: 1, color: AppColors.border),
-                    Flexible(
-                      child: _filtered.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text(
-                                'No results found',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textDim,
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: _filtered.length,
-                              separatorBuilder: (_, __) => const Divider(
-                                height: 1,
-                                color: AppColors.border,
-                              ),
-                              itemBuilder: (_, i) {
-                                final item = _filtered[i];
-                                final isSel = widget.selectedId == item.id;
-                                return InkWell(
-                                  onTap: () =>
-                                      widget.onSelect(item.id, item.label),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          isSel
-                                              ? Icons.radio_button_checked
-                                              : Icons.radio_button_unchecked,
-                                          size: 18,
-                                          color: isSel
-                                              ? AppColors.violet
-                                              : AppColors.textDim,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            item.label,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: isSel
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w400,
-                                              color: isSel
-                                                  ? AppColors.violet
-                                                  : AppColors.text,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Single-select searchable overlay ─────────────────────────────────────────
+// ── Source-type-specific searchable overlay ───────────────────────────────────
 
 class _SourceTypeDropdownOverlay extends StatefulWidget {
   final LayerLink layerLink;
@@ -1227,7 +1043,6 @@ class _SourceTypeDropdownOverlayState
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Tap outside to dismiss
         Positioned.fill(
           child: GestureDetector(
             onTap: widget.onDismiss,
@@ -1235,7 +1050,6 @@ class _SourceTypeDropdownOverlayState
             child: const SizedBox.expand(),
           ),
         ),
-        // Dropdown card anchored below trigger
         CompositedTransformFollower(
           link: widget.layerLink,
           showWhenUnlinked: false,
@@ -1256,78 +1070,51 @@ class _SourceTypeDropdownOverlayState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Search bar
                     Padding(
                       padding: const EdgeInsets.all(10),
                       child: TextField(
                         controller: _searchCtrl,
                         autofocus: true,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.text,
-                        ),
+                        style: const TextStyle(fontSize: 13, color: AppColors.text),
                         onChanged: (v) => setState(() => _query = v),
                         decoration: InputDecoration(
                           hintText: 'Search source types...',
-                          hintStyle: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 12,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            size: 16,
-                            color: AppColors.textDim,
-                          ),
+                          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                          prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textDim),
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           filled: true,
                           fillColor: AppColors.surface2,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.border,
-                            ),
+                            borderSide: const BorderSide(color: AppColors.border),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.border,
-                            ),
+                            borderSide: const BorderSide(color: AppColors.border),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.violet,
-                              width: 1.5,
-                            ),
+                            borderSide: const BorderSide(color: AppColors.violet, width: 1.5),
                           ),
                         ),
                       ),
                     ),
                     const Divider(height: 1, color: AppColors.border),
-                    // Item list
                     Flexible(
                       child: _filtered.isEmpty
                           ? const Padding(
                               padding: EdgeInsets.all(16),
                               child: Text(
                                 'No results found',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textDim,
-                                ),
+                                style: TextStyle(fontSize: 12, color: AppColors.textDim),
                               ),
                             )
                           : ListView.separated(
                               shrinkWrap: true,
                               itemCount: _filtered.length,
-                              separatorBuilder: (_, __) => const Divider(
-                                height: 1,
-                                color: AppColors.border,
-                              ),
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1, color: AppColors.border),
                               itemBuilder: (_, i) {
                                 final item = _filtered[i];
                                 final isSel = widget.selected?.id == item.id;
@@ -1345,26 +1132,19 @@ class _SourceTypeDropdownOverlayState
                                               ? Icons.radio_button_checked
                                               : Icons.radio_button_unchecked,
                                           size: 18,
-                                          color: isSel
-                                              ? AppColors.violet
-                                              : AppColors.textDim,
+                                          color: isSel ? AppColors.violet : AppColors.textDim,
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 item.sourceName,
                                                 style: TextStyle(
                                                   fontSize: 13,
-                                                  fontWeight: isSel
-                                                      ? FontWeight.w600
-                                                      : FontWeight.w400,
-                                                  color: isSel
-                                                      ? AppColors.violet
-                                                      : AppColors.text,
+                                                  fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
+                                                  color: isSel ? AppColors.violet : AppColors.text,
                                                 ),
                                               ),
                                               if (item.sourceValue.isNotEmpty)

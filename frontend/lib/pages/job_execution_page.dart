@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
-import '../models/report_item.dart';
+import '../models/job_execution_log.dart';
 import '../models/template_info.dart';
 import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
-import '../utils/download_helper.dart';
 import '../widgets/data_result_table.dart';
 import '../widgets/select_dropdown_overlay.dart';
 
-class ReportPage extends StatefulWidget {
-  const ReportPage({super.key});
+class JobExecutionPage extends StatefulWidget {
+  const JobExecutionPage({super.key});
 
   @override
-  State<ReportPage> createState() => _ReportPageState();
+  State<JobExecutionPage> createState() => _JobExecutionPageState();
 }
 
-class _ReportPageState extends State<ReportPage> {
+class _JobExecutionPageState extends State<JobExecutionPage> {
   // ── filter state ──────────────────────────────────────────────────────────
   Map<String, int> _deptMap = {};
   bool _deptLoading = true;
@@ -30,7 +29,7 @@ class _ReportPageState extends State<ReportPage> {
   ManualTemplateInfo? _selectedTemplate;
 
   // ── results state ─────────────────────────────────────────────────────────
-  List<ReportItem> _results = [];
+  List<JobExecutionLog> _results = [];
   bool _fetching = false;
   bool _fetched = false;
 
@@ -43,22 +42,26 @@ class _ReportPageState extends State<ReportPage> {
   // ── columns ───────────────────────────────────────────────────────────────
   static const _columns = [
     '#',
-    'Request ID',
+    'Job Name',
+    'Run ID',
+    'Template ID',
     'Department',
-    'Template',
-    'Uploaded By',
-    'Upload Date',
-    'Download',
+    'Start Time',
+    'Last Updated',
+    'Status',
+    'Message',
   ];
 
   static const _columnWidths = {
     0: FixedColumnWidth(44),
-    1: FlexColumnWidth(1.6),
-    2: FlexColumnWidth(2.0),
-    3: FlexColumnWidth(2.0),
-    4: FlexColumnWidth(1.3),
-    5: FlexColumnWidth(1.7),
-    6: FixedColumnWidth(90),
+    1: FlexColumnWidth(1.8),
+    2: FlexColumnWidth(1.6),
+    3: FlexColumnWidth(1.2),
+    4: FlexColumnWidth(1.4),
+    5: FlexColumnWidth(1.6),
+    6: FlexColumnWidth(1.6),
+    7: FixedColumnWidth(110),
+    8: FlexColumnWidth(2.2),
   };
 
   @override
@@ -201,15 +204,13 @@ class _ReportPageState extends State<ReportPage> {
       _snack('Please select a template.', isError: true);
       return;
     }
-    final deptId = _deptMap[_selectedDept!]!;
     setState(() {
       _fetching = true;
       _results = [];
       _fetched = false;
     });
-    final results = await context.read<MasterDataService>().getReportList(
+    final results = await context.read<MasterDataService>().getJobExecutionLog(
       templateId: '${_selectedTemplate!.templateId}',
-      departmentId: '$deptId',
     );
     if (!mounted) return;
     setState(() {
@@ -253,18 +254,21 @@ class _ReportPageState extends State<ReportPage> {
             ),
           ] else if (_fetched) ...[
             const SizedBox(height: 20),
-            DataResultTable<ReportItem>(
+            DataResultTable<JobExecutionLog>(
               items: _results,
               columns: _columns,
               columnWidths: _columnWidths,
-              emptyMessage: 'No records found for the selected template.',
+              emptyMessage:
+                  'No execution logs found for the selected template.',
               searchFilter: (item, q) =>
-                  item.requestId.toLowerCase().contains(q) ||
-                  item.departmentName.toLowerCase().contains(q) ||
-                  item.templateName.toLowerCase().contains(q) ||
-                  item.makerBy.toLowerCase().contains(q) ||
-                  item.filename.toLowerCase().contains(q) ||
-                  formatTableDate(item.makerDate).toLowerCase().contains(q),
+                  item.jobName.toLowerCase().contains(q) ||
+                  item.runId.toLowerCase().contains(q) ||
+                  '${item.templateId}'.contains(q) ||
+                  item.deptName.toLowerCase().contains(q) ||
+                  item.status.toLowerCase().contains(q) ||
+                  item.message.toLowerCase().contains(q) ||
+                  formatTableDate(item.startTime).toLowerCase().contains(q) ||
+                  formatTableDate(item.lastUpdated).toLowerCase().contains(q),
               columnMatcher: _matchedColumns,
               rowBuilder: _buildTableRow,
             ),
@@ -287,17 +291,17 @@ class _ReportPageState extends State<ReportPage> {
             borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
               colors: [
-                AppColors.blue.withValues(alpha: 0.18),
-                AppColors.blue.withValues(alpha: 0.08),
+                AppColors.violet.withValues(alpha: 0.18),
+                AppColors.violet.withValues(alpha: 0.08),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            border: Border.all(color: AppColors.blue.withValues(alpha: 0.2)),
+            border: Border.all(color: AppColors.violet.withValues(alpha: 0.2)),
           ),
           child: const Icon(
-            Icons.bar_chart_rounded,
-            color: AppColors.blue,
+            Icons.play_circle_outline_rounded,
+            color: AppColors.violet,
             size: 22,
           ),
         ),
@@ -306,7 +310,7 @@ class _ReportPageState extends State<ReportPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Reports',
+              'Job Execution',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -316,7 +320,7 @@ class _ReportPageState extends State<ReportPage> {
             ),
             SizedBox(height: 2),
             Text(
-              'View upload history and status for manual data submissions',
+              'Track job run history and execution status for templates',
               style: TextStyle(
                 fontSize: 12,
                 color: AppColors.blue,
@@ -415,16 +419,16 @@ class _ReportPageState extends State<ReportPage> {
                     onPressed: _fetching ? null : _fetch,
                     icon: const Icon(Icons.search_rounded, size: 16),
                     label: const Text(
-                      'Fetch Report',
+                      'Fetch Logs',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.blue,
+                      backgroundColor: AppColors.violet,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.blue.withValues(
+                      disabledBackgroundColor: AppColors.violet.withValues(
                         alpha: 0.4,
                       ),
                       elevation: 0,
@@ -445,31 +449,29 @@ class _ReportPageState extends State<ReportPage> {
 
   // ── table: column matcher & row builder ───────────────────────────────────
 
-  Set<String> _matchedColumns(List<ReportItem> items, String query) {
+  Set<String> _matchedColumns(List<JobExecutionLog> items, String query) {
     if (query.isEmpty) return {};
     final q = query.toLowerCase();
     final matched = <String>{};
     for (final item in items) {
-      if (item.requestId.toLowerCase().contains(q)) matched.add('Request ID');
-      if (item.departmentName.toLowerCase().contains(q))
-        matched.add('Department');
-      if (item.templateName.toLowerCase().contains(q)) matched.add('Template');
-      if (item.makerBy.toLowerCase().contains(q)) matched.add('Uploaded By');
-      if (formatTableDate(item.makerDate).toLowerCase().contains(q))
-        matched.add('Upload Date');
-      if (item.filename.toLowerCase().contains(q)) matched.add('Download');
+      if (item.jobName.toLowerCase().contains(q)) matched.add('Job Name');
+      if (item.runId.toLowerCase().contains(q)) matched.add('Run ID');
+      if ('${item.templateId}'.contains(q)) matched.add('Template ID');
+      if (item.deptName.toLowerCase().contains(q)) matched.add('Department');
+      if (formatTableDate(item.startTime).toLowerCase().contains(q))
+        matched.add('Start Time');
+      if (formatTableDate(item.lastUpdated).toLowerCase().contains(q))
+        matched.add('Last Updated');
+      if (item.status.toLowerCase().contains(q)) matched.add('Status');
+      if (item.message.toLowerCase().contains(q)) matched.add('Message');
     }
     return matched;
   }
 
-  TableRow _buildTableRow(ReportItem item, int index) {
-    final filename = item.filename.isEmpty ? '—' : item.filename;
-    final ext = filename.contains('.')
-        ? filename.split('.').last.toLowerCase()
-        : '';
-    final extColor = _extColor(ext);
-    final makerBy = item.makerBy.isEmpty ? '—' : item.makerBy;
+  TableRow _buildTableRow(JobExecutionLog item, int index) {
     final bg = index.isEven ? Colors.white : const Color(0xFFF9FAFC);
+    final statusColor = _statusColor(item.status);
+    final statusLabel = _statusLabel(item.status);
 
     return TableRow(
       decoration: BoxDecoration(color: bg),
@@ -487,30 +489,10 @@ class _ReportPageState extends State<ReportPage> {
           ),
         ),
 
-        // Request ID
-        DataResultTable.tdCell(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: AppColors.blue.withValues(alpha: 0.09),
-            ),
-            child: Text(
-              item.requestId.isEmpty ? '—' : item.requestId,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.blue,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
-
-        // Department
+        // Job Name
         DataResultTable.tdCell(
           child: Text(
-            item.departmentName.isEmpty ? '—' : item.departmentName,
+            item.jobName.isEmpty ? '—' : item.jobName,
             style: const TextStyle(
               fontSize: 12,
               color: AppColors.text,
@@ -520,132 +502,150 @@ class _ReportPageState extends State<ReportPage> {
           ),
         ),
 
-        // Template
+        // Run ID
+        DataResultTable.tdCell(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: AppColors.blue.withValues(alpha: 0.09),
+            ),
+            child: Text(
+              item.runId.isEmpty ? '—' : item.runId,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.blue,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+
+        // Template ID
         DataResultTable.tdCell(
           child: Text(
-            item.templateName.isEmpty ? '—' : item.templateName,
-            style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+            '${item.templateId}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textDim,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+
+        // Department
+        DataResultTable.tdCell(
+          child: Text(
+            item.deptName.isEmpty ? '—' : item.deptName,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.text,
+              fontWeight: FontWeight.w500,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
 
-        // Uploaded By
-        DataResultTable.tdCell(
-          child: Row(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.blue.withValues(alpha: 0.1),
-                ),
-                child: Center(
-                  child: Text(
-                    makerBy.isNotEmpty ? makerBy[0].toUpperCase() : '?',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.blue,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  makerBy,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textDim,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Upload Date
+        // Start Time
         DataResultTable.tdCell(
           child: Text(
-            formatTableDate(item.makerDate),
+            formatTableDate(item.startTime),
             style: const TextStyle(fontSize: 11, color: AppColors.textDim),
           ),
         ),
 
-        // Download
+        // Last Updated
         DataResultTable.tdCell(
-          child: Tooltip(
-            message: 'Download $filename',
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => downloadCheckerFile(
-                context: context,
-                filename: item.filename,
-                templateId: item.templateId.isNotEmpty
-                    ? item.templateId
-                    : _selectedTemplate?.templateId.toString() ?? '',
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: AppColors.blue.withValues(alpha: 0.08),
-                  border: Border.all(
-                    color: AppColors.blue.withValues(alpha: 0.18),
+          child: Text(
+            formatTableDate(item.lastUpdated),
+            style: const TextStyle(fontSize: 11, color: AppColors.textDim),
+          ),
+        ),
+
+        // Status
+        DataResultTable.tdCell(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: statusColor.withValues(alpha: 0.1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: statusColor,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 3,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(3),
-                        color: extColor.withValues(alpha: 0.15),
-                      ),
-                      child: Text(
-                        ext.isEmpty ? 'FILE' : ext.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 7,
-                          fontWeight: FontWeight.w900,
-                          color: extColor,
-                        ),
-                      ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    statusLabel,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
                     ),
-                    const SizedBox(width: 5),
-                    const Icon(
-                      Icons.download_rounded,
-                      size: 13,
-                      color: AppColors.blue,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
+          ),
+        ),
+
+        // Message
+        DataResultTable.tdCell(
+          child: Text(
+            item.message.isEmpty ? '—' : item.message,
+            style: const TextStyle(fontSize: 11, color: AppColors.textDim),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
           ),
         ),
       ],
     );
   }
 
+  // ── status helpers ────────────────────────────────────────────────────────
 
-  Color _extColor(String ext) {
-    switch (ext) {
-      case 'csv':
-        return AppColors.green;
-      case 'xlsx':
-      case 'xls':
-        return AppColors.blue;
-      case 'json':
-        return AppColors.amber;
+  String _statusLabel(String raw) {
+    switch (raw.toUpperCase()) {
+      case 'IN_PROGRESS':
+        return 'In Progress';
+      case 'SUCCESS':
+      case 'COMPLETED':
+        return 'Success';
+      case 'FAILED':
+      case 'ERROR':
+        return 'Failed';
+      case 'PENDING':
+        return 'Pending';
       default:
-        return AppColors.slate;
+        return raw.isEmpty ? 'Unknown' : raw;
+    }
+  }
+
+  Color _statusColor(String raw) {
+    switch (raw.toUpperCase()) {
+      case 'IN_PROGRESS':
+        return AppColors.amber;
+      case 'SUCCESS':
+      case 'COMPLETED':
+        return AppColors.green;
+      case 'FAILED':
+      case 'ERROR':
+        return AppColors.red;
+      case 'PENDING':
+        return AppColors.blue;
+      default:
+        return AppColors.textDim;
     }
   }
 

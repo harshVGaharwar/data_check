@@ -262,6 +262,10 @@ class _ConfigPanelState extends State<ConfigPanel>
       'Pipe (|)',
       'Tab (\\t)',
       'Semicolon (;)',
+      'Colon (:)',
+      'Tilde (~)',
+      'Caret (^)',
+      'Hash (#)',
       'Space ( )',
     ];
 
@@ -314,17 +318,24 @@ class _ConfigPanelState extends State<ConfigPanel>
               enabled: !isLocked,
               onChanged: (v) {
                 if (v != null) {
-                  final sep = v.contains(',')
+                  final sep = v.contains('\\t')
+                      ? '\t'
+                      : v.contains(',')
                       ? ','
                       : v.contains('|')
                       ? '|'
-                      : v.contains('\\t')
-                      ? '\t'
                       : v.contains(';')
                       ? ';'
+                      : v.contains(':')
+                      ? ':'
+                      : v.contains('~')
+                      ? '~'
+                      : v.contains('^')
+                      ? '^'
+                      : v.contains('#')
+                      ? '#'
                       : ' ';
-                  ctrl.updateNodeSeparator(node.id, sep);
-                  setState(() => _sepAcknowledged = true);
+                  _onSeparatorChanged(context, ctrl, node, sep);
                 }
               },
             ),
@@ -422,7 +433,8 @@ class _ConfigPanelState extends State<ConfigPanel>
                           allowedExtensions: ['csv', 'txt'],
                           withData: true,
                         );
-                        if (result == null || result.files.single.bytes == null) {
+                        if (result == null ||
+                            result.files.single.bytes == null) {
                           return;
                         }
                         final bytes = result.files.single.bytes!;
@@ -434,13 +446,49 @@ class _ConfigPanelState extends State<ConfigPanel>
                             .toList();
                         if (lines.isEmpty) return;
                         final firstLine = lines.first;
-                        String sep = ',';
-                        if ('|'.allMatches(firstLine).length > 1) {
-                          sep = '|';
-                        } else if ('\t'.allMatches(firstLine).length > 1) {
-                          sep = '\t';
-                        } else if (';'.allMatches(firstLine).length > 1) {
-                          sep = ';';
+                        // For manual nodes, use the separator already chosen by
+                        // the user; for others, auto-detect from file content.
+                        String sep;
+                        if (isManual && node.separator.isNotEmpty) {
+                          sep = node.separator;
+                          // Only reject if the file clearly uses a DIFFERENT
+                          // separator. A single-column file has no separator
+                          // in the first line at all — that is valid.
+                          const _knownSeps = [',', '\t', '|', ';', ':', '~', '^', '#'];
+                          final usesOtherSep = _knownSeps.any(
+                            (s) => s != sep && firstLine.contains(s),
+                          );
+                          if (!firstLine.contains(sep) && usesOtherSep) {
+                            final sepLabel = _sepNames[sep] ?? sep;
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'The uploaded file does not contain the selected separator "$sepLabel". Please select the correct separator or upload a matching file.',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                        } else {
+                          sep = ',';
+                          if ('\t'.allMatches(firstLine).isNotEmpty) {
+                            sep = '\t';
+                          } else if ('|'.allMatches(firstLine).isNotEmpty) {
+                            sep = '|';
+                          } else if (';'.allMatches(firstLine).isNotEmpty) {
+                            sep = ';';
+                          } else if (':'.allMatches(firstLine).isNotEmpty) {
+                            sep = ':';
+                          } else if ('~'.allMatches(firstLine).isNotEmpty) {
+                            sep = '~';
+                          } else if ('^'.allMatches(firstLine).isNotEmpty) {
+                            sep = '^';
+                          } else if ('#'.allMatches(firstLine).isNotEmpty) {
+                            sep = '#';
+                          } else if (' '.allMatches(firstLine).isNotEmpty) {
+                            sep = ' ';
+                          }
                         }
                         final cols = firstLine
                             .split(sep)
@@ -564,6 +612,107 @@ class _ConfigPanelState extends State<ConfigPanel>
     return sqlKeywords.any((kw) => upper.startsWith(kw));
   }
 
+  static const _sepNames = {
+    ',': 'Comma (,)',
+    '|': 'Pipe (|)',
+    '\t': 'Tab (\\t)',
+    ';': 'Semicolon (;)',
+    ':': 'Colon (:)',
+    '~': 'Tilde (~)',
+    '^': 'Caret (^)',
+    '#': 'Hash (#)',
+    ' ': 'Space ( )',
+  };
+
+  /// Called when user changes the separator dropdown.
+  /// If a file is already uploaded, re-parses it with the new separator.
+  void _onSeparatorChanged(
+    BuildContext context,
+    PipelineController ctrl,
+    PipelineNode node,
+    String sep,
+  ) {
+    final messenger = ScaffoldMessenger.of(context);
+    final sepLabel = _sepNames[sep] ?? sep;
+
+    if (node.columnFileBytes == null) {
+      ctrl.updateNodeSeparator(node.id, sep);
+      setState(() => _sepAcknowledged = true);
+      return;
+    }
+
+    // File already uploaded — validate new separator against existing file
+    final text = utf8.decode(node.columnFileBytes!, allowMalformed: true);
+    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    if (lines.isEmpty) {
+      ctrl.updateNodeSeparator(node.id, sep);
+      setState(() => _sepAcknowledged = true);
+      return;
+    }
+
+    final firstLine = lines.first;
+    // Only clear the file if it clearly uses a DIFFERENT separator.
+    // A single-column file has no separator in the first line — keep it.
+    const _knownSeps = [',', '\t', '|', ';', ':', '~', '^', '#'];
+    final usesOtherSep = _knownSeps.any((s) => s != sep && firstLine.contains(s));
+    if (!firstLine.contains(sep) && usesOtherSep) {
+      // Separator doesn't match current file — update separator and clear
+      // the file so user can re-upload with the correct separator.
+      ctrl.updateNodeSeparator(node.id, sep);
+      ctrl.clearNodeColumnFile(node.id);
+      setState(() => _sepAcknowledged = true);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Separator changed to "$sepLabel". Previous file cleared — please re-upload a file with "$sepLabel" separator.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Re-parse columns and rows with new separator
+    final cols = firstLine
+        .split(sep)
+        .map((c) => c.trim().replaceAll('"', '').trim())
+        .where((c) => c.isNotEmpty)
+        .toList();
+    if (cols.isEmpty) return;
+
+    final rows = <Map<String, dynamic>>[];
+    for (int i = 1; i < lines.length; i++) {
+      final vals = lines[i]
+          .split(sep)
+          .map((v) => v.trim().replaceAll('"', '').trim())
+          .toList();
+      final row = <String, dynamic>{};
+      for (int j = 0; j < cols.length; j++) {
+        row[cols[j]] = j < vals.length ? vals[j] : '';
+      }
+      rows.add(row);
+    }
+
+    ctrl.updateNodeSeparator(node.id, sep);
+    ctrl.setNodeColumns(
+      node.id,
+      cols,
+      rows,
+      node.fileName!,
+      bytes: node.columnFileBytes!,
+    );
+    setState(() => _sepAcknowledged = true);
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'File re-parsed with "$sepLabel": ${cols.length} columns found.',
+        ),
+        backgroundColor: AppColors.green,
+      ),
+    );
+  }
+
   /// Map separator char → display label for the dropdown value.
   /// Returns null when sep is empty so the dropdown shows its hint text.
   String? _sepToLabel(String sep, List<String> separators) {
@@ -573,6 +722,10 @@ class _ConfigPanelState extends State<ConfigPanel>
       '|': 'Pipe (|)',
       '\t': 'Tab (\\t)',
       ';': 'Semicolon (;)',
+      ':': 'Colon (:)',
+      '~': 'Tilde (~)',
+      '^': 'Caret (^)',
+      '#': 'Hash (#)',
       ' ': 'Space ( )',
     };
     final label = map[sep];

@@ -4,7 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/api_response.dart';
+import '../models/checker_tray_item.dart';
 import '../models/master_models.dart';
+import '../models/job_execution_log.dart';
+import '../models/report_item.dart';
+import '../models/source_config_request.dart';
 import '../models/template_info.dart';
 import '../services/api_service.dart';
 
@@ -85,10 +89,10 @@ class MasterDataService {
   }
 
   /// Fetch templates for a given department ID
-  Future<List<TemplateInfo>> getTemplatesByDept(int deptId) async {
+  Future<List<TemplateInfo>> getTemplatesByDept(int deptId, int? flag) async {
     try {
       final data = await _api.getRawData(
-        '${ApiConfig.templatesEndpoint}?deptId=$deptId',
+        '${ApiConfig.templatesEndpoint}?deptId=$deptId&flag=$flag',
       );
       if (data is List) {
         return data
@@ -190,8 +194,8 @@ class MasterDataService {
     return [];
   }
 
-  /// Fetch checker task list
-  Future<List<Map<String, dynamic>>> getCheckerTayList({
+  /// Fetch checker task list — Manual Upload module
+  Future<List<CheckerTrayItem>> getCheckerTayList({
     required String templateId,
     required String departmentId,
     required String requestId,
@@ -204,7 +208,10 @@ class MasterDataService {
       };
       final data = await _api.postRawData(ApiConfig.checkerListEndpoint, body);
       if (data is List) {
-        return data.whereType<Map<String, dynamic>>().toList();
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(CheckerTrayItem.fromJson)
+            .toList();
       }
     } catch (e) {
       debugPrint('[MasterData] getCheckerTayList error: $e');
@@ -213,7 +220,7 @@ class MasterDataService {
   }
 
   /// Fetch checker task list with module
-  Future<List<Map<String, dynamic>>> getCheckerTayListWithModule({
+  Future<List<CheckerTrayItem>> getCheckerTayListWithModule({
     required String templateId,
     required String departmentId,
     required String requestId,
@@ -231,7 +238,10 @@ class MasterDataService {
         body,
       );
       if (data is List) {
-        return data.whereType<Map<String, dynamic>>().toList();
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(CheckerTrayItem.fromJson)
+            .toList();
       }
     } catch (e) {
       debugPrint('[MasterData] getCheckerTayListWithModule error: $e');
@@ -239,16 +249,20 @@ class MasterDataService {
     return [];
   }
 
-  /// Fetch source master checker tray (Source Configuration)
-  Future<List<Map<String, dynamic>>> getSourceMasterCheckerTray({
+  /// Fetch source master checker tray — Source Configuration module
+  Future<List<CheckerTrayItem>> getSourceMasterCheckerTray({
     required String deptId,
+    required String templateId,
   }) async {
     try {
       final data = await _api.getRawData(
-        '${ApiConfig.sourceMasterCheckerTrayEndpoint}?DeptId=$deptId',
+        '${ApiConfig.sourceMasterCheckerTrayEndpoint}?DeptId=$deptId&templateId=$templateId',
       );
       if (data is List) {
-        return data.whereType<Map<String, dynamic>>().toList();
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(CheckerTrayItem.fromJson)
+            .toList();
       }
     } catch (e) {
       debugPrint('[MasterData] getSourceMasterCheckerTray error: $e');
@@ -256,8 +270,8 @@ class MasterDataService {
     return [];
   }
 
-  /// Fetch template checker tray (Template Creation flag=4, Template Configuration flag=5)
-  Future<List<Map<String, dynamic>>> getTemplateCheckerTray({
+  /// Fetch template checker tray — Template Creation (flag=4) / Configuration (flag=5)
+  Future<List<CheckerTrayItem>> getTemplateCheckerTray({
     required String deptId,
     required int flag,
   }) async {
@@ -266,7 +280,10 @@ class MasterDataService {
         '${ApiConfig.templateCheckerTrayEndpoint}?DeptId=$deptId&flag=$flag',
       );
       if (data is List) {
-        return data.whereType<Map<String, dynamic>>().toList();
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(CheckerTrayItem.fromJson)
+            .toList();
       }
     } catch (e) {
       debugPrint('[MasterData] getTemplateCheckerTray error: $e');
@@ -275,7 +292,7 @@ class MasterDataService {
   }
 
   /// Fetch report list for a given template + department
-  Future<List<Map<String, dynamic>>> getReportList({
+  Future<List<ReportItem>> getReportList({
     required String templateId,
     required String departmentId,
   }) async {
@@ -283,10 +300,33 @@ class MasterDataService {
       final body = {'template_id': templateId, 'department_id': departmentId};
       final data = await _api.postRawData(ApiConfig.reportListEndpoint, body);
       if (data is List) {
-        return data.whereType<Map<String, dynamic>>().toList();
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(ReportItem.fromJson)
+            .toList();
       }
     } catch (e) {
       debugPrint('[MasterData] getReportList error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch job execution log for a given template
+  Future<List<JobExecutionLog>> getJobExecutionLog({
+    required String templateId,
+  }) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.jobExecutionLogEndpoint}?templateId=$templateId',
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(JobExecutionLog.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getJobExecutionLog error: $e');
     }
     return [];
   }
@@ -437,28 +477,13 @@ class MasterDataService {
   }
 
   /// Add a new source master record
-  Future<({bool success, String message, int reqId})> addSourceMaster({
-    required String sourceTypeId,
-    required String appName,
-    required int itgrc,
-    required String name,
-    required String dbVault,
-    required String createdBy,
-    required int deptId,
-  }) async {
+  Future<({bool success, String message, int reqId})> addSourceMaster(
+    SourceConfigRequest request,
+  ) async {
     try {
-      final body = {
-        'sourceType': sourceTypeId,
-        'AppName': appName,
-        'ITGRC': itgrc,
-        'Name': name,
-        'DBVault': dbVault,
-        'Createdby': createdBy,
-        'department_id': deptId,
-      };
       final res = await _api.post<AddSourceMasterResponse>(
         ApiConfig.addSourceMasterEndpoint,
-        body,
+        request.toJson(),
         fromData: AddSourceMasterResponse.fromJson,
       );
       final reqId = res.data?.reqId ?? 0;
@@ -524,6 +549,20 @@ class MasterDataService {
       debugPrint('[MasterData] getTemplateConfigurationList error: $e');
     }
     return [];
+  }
+
+  Future<DashboardDetails?> getDashboardCount() async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.getDashboardCount}?val1=1&val2=2&val3=3&val4=4',
+      );
+      if (data is Map<String, dynamic>) {
+        return DashboardDetails.fromJson(data);
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getDashboardCount error: $e');
+    }
+    return null;
   }
 
   /// Fetch the full saved pipeline configuration for a template.

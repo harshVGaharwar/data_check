@@ -129,7 +129,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     }
 
     final service = context.read<MasterDataService>();
-    final templates = await service.getTemplatesByDept(deptId);
+    final templates = await service.getTemplatesByDept(deptId, 2);
     if (!mounted) return;
     setState(() {
       _templates = templates;

@@ -11,9 +11,10 @@ import 'template_configuration_list_page.dart';
 import 'configuration_upload_page.dart';
 import 'source_configuration_page.dart';
 import 'manual_upload_page.dart';
-import 'checker_page.dart';
+// import 'checker_page.dart';
 import 'checker_module_page.dart';
 import 'report_page.dart';
+import 'job_execution_page.dart';
 import 'edit_template_configuration_page.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -38,9 +39,10 @@ class _DashboardPageState extends State<DashboardPage> {
     // 'Configuration Upload',
     'Source Configuration',
     'Manual Upload',
-    'Manual Upload Checker',
+    // 'Manual Upload Checker',
     'Checker Module',
     'Reports',
+    'Job Execution',
   ];
 
   final _icons = const [
@@ -53,9 +55,10 @@ class _DashboardPageState extends State<DashboardPage> {
     // Icons.cloud_upload_outlined,
     Icons.storage_rounded,
     Icons.upload_file_rounded,
-    Icons.fact_check_outlined,
+    // Icons.fact_check_outlined,
     Icons.rule_folder_outlined,
     Icons.bar_chart_rounded,
+    Icons.play_circle_outline_rounded,
   ];
 
   @override
@@ -71,9 +74,10 @@ class _DashboardPageState extends State<DashboardPage> {
       // const ConfigurationUploadPage(),
       const SourceConfigurationPage(),
       const ManualUploadPage(),
-      const CheckerPage(),
+      // const CheckerPage(),
       const CheckerModulePage(),
       const ReportPage(),
+      const JobExecutionPage(),
     ];
     _restorePageIndex();
   }

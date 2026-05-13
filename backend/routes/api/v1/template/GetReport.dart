@@ -6,56 +6,57 @@ import '../../../../lib/config/api_config.dart';
 import '../../../../lib/models/models.dart';
 
 Future<Response> onRequest(RequestContext context) async {
-  if (context.request.method != HttpMethod.get) {
+  if (context.request.method != HttpMethod.post) {
     return Response.json(
       statusCode: HttpStatus.methodNotAllowed,
-      body: ApiResponse.error(message: 'Only GET allowed').toJson(),
+      body: ApiResponse.error(message: 'Only POST allowed').toJson(),
     );
   }
 
-  final params = context.request.uri.queryParameters;
-  final deptId = params['DeptId'] ?? '';
-
-  if (deptId.isEmpty) {
+  Map<String, dynamic> body;
+  try {
+    final raw = await context.request.body();
+    body = jsonDecode(raw) as Map<String, dynamic>;
+  } catch (_) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: ApiResponse.error(message: 'DeptId is required').toJson(),
+      body: ApiResponse.error(message: 'Invalid JSON body').toJson(),
     );
   }
 
   if (kDevMode) {
-    final mockRows = [
+    final mockData = [
       {
-        'departmentId': 7,
-        'sourceName': 'test name',
-        'sourceID': 4,
-        'departmentName': 'RETAIL ASSETS',
+        'template_id': '14',
+        'templateName': 'test template',
+        'department_id': 'RETAIL ASSETS',
+        'filename': 'finalreport_20260512_105058.csv',
+        'requestId': 'REQ_00120',
         'makerBy': 'J3216',
-        'makerDate': '11/05/2026 11:35:40 AM',
-        'sourceType': 1,
-        'appName': 'test app name',
-        'itgrc': 91729,
-        'dbVault': 'test db',
-        'sourceTypeName': 'Manual',
+        'makerDate': '11/05/2026 5:34:31 PM',
       },
       {
-        'departmentId': 7,
-        'sourceName': 'Test Source',
-        'sourceID': 5,
-        'departmentName': 'RETAIL ASSETS',
+        'template_id': '14',
+        'templateName': 'test template',
+        'department_id': 'RETAIL ASSETS',
+        'filename': 'finalreport_20260512_105058.csv',
+        'requestId': 'REQ_00120',
         'makerBy': 'J3216',
-        'makerDate': '11/05/2026 2:56:37 PM',
-        'sourceType': 1,
-        'appName': 'Test app name',
-        'itgrc': 1872197,
-        'dbVault': 'dbvault',
-        'sourceTypeName': 'Manual',
+        'makerDate': '11/05/2026 5:34:31 PM',
+      },
+      {
+        'template_id': '14',
+        'templateName': 'test template',
+        'department_id': 'RETAIL ASSETS',
+        'filename': 'invalid_rowsright_20260512_104956.csv',
+        'requestId': 'REQ_00120',
+        'makerBy': 'J3216',
+        'makerDate': '11/05/2026 5:34:31 PM',
       },
     ];
-    return Response.json(body: mockRows);
+    return Response.json(body: mockData);
   }
 
-  // Production: forward to external API
   try {
     final httpClient = HttpClient()
       ..badCertificateCallback = (cert, host, port) => true;
@@ -66,20 +67,18 @@ Future<Response> onRequest(RequestContext context) async {
         '';
 
     final externalResponse = await client
-        .get(
-          Uri.parse(
-            '$kBaseUrl${ExternalApi.getSourceMasterCheckerTray}?DeptId=$deptId',
-          ),
+        .post(
+          Uri.parse('$kBaseUrl${ExternalApi.getReport}'),
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             if (authHeader.isNotEmpty) 'Authorization': authHeader,
           },
+          body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 30));
 
-    print('[SOURCE MASTER CHECKER TRAY] External API status: '
-        '${externalResponse.statusCode}');
+    print('[GET REPORT] External API status: ${externalResponse.statusCode}');
 
     if (externalResponse.statusCode >= 200 &&
         externalResponse.statusCode < 300) {
@@ -93,16 +92,13 @@ Future<Response> onRequest(RequestContext context) async {
 
     return Response.json(
       statusCode: externalResponse.statusCode,
-      body: ApiResponse.error(
-        message: 'Failed to fetch source master checker tray',
-      ).toJson(),
+      body: ApiResponse.error(message: 'Failed to fetch report list').toJson(),
     );
   } catch (e) {
     return Response.json(
       statusCode: HttpStatus.internalServerError,
-      body: ApiResponse.error(
-        message: 'Source master checker tray service unavailable: $e',
-      ).toJson(),
+      body: ApiResponse.error(message: 'Report service unavailable: $e')
+          .toJson(),
     );
   }
 }

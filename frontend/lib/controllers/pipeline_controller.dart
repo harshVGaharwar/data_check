@@ -694,6 +694,17 @@ class PipelineController extends ChangeNotifier {
     }
   }
 
+  void clearNodeColumnFile(String nodeId) {
+    final node = findNode(nodeId);
+    if (node == null) return;
+    node.fileName = null;
+    node.columnFileBytes = null;
+    node.cols = [];
+    node.selectedCols = [];
+    node.rows = [];
+    notifyListeners();
+  }
+
   void updateNodeSourceType(
     String nodeId,
     String sourceTypeValue, {

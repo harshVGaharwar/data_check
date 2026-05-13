@@ -115,6 +115,63 @@ class SourceMasterFilterItem {
   }
 }
 
+
+class DashboardCount {
+  final String count;
+  final String label;
+  final String lightColor;
+  final String icon;
+  final String darkColor;
+
+  DashboardCount({
+    required this.count,
+    required this.label,
+    required this.lightColor,
+    required this.icon,
+    required this.darkColor,
+  });
+
+  factory DashboardCount.fromJson(Map<String, dynamic> json) {
+    return DashboardCount(
+      count: json['count'] ?? '',
+      label: json['label'] ?? '',
+      lightColor: json['lightColor'] ?? '',
+      icon: json['icon'] ?? '',
+      darkColor: json['darkColor'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'count': count,
+      'label': label,
+      'lightColor': lightColor,
+      'icon': icon,
+      'darkColor': darkColor,
+    };
+  }
+}
+
+class DashboardDetails {
+  final List<DashboardCount> dashboardCount;
+
+  DashboardDetails({required this.dashboardCount});
+
+  factory DashboardDetails.fromJson(Map<String, dynamic> json) {
+    return DashboardDetails(
+      dashboardCount: (json['dashboardCount'] as List<dynamic>)
+          .map((item) => DashboardCount.fromJson(item))
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'dashboardCount': dashboardCount.map((e) => e.toJson()).toList(),
+    };
+  }
+}
+
 class SourceMasterItem {
   final int id;
   final String name;

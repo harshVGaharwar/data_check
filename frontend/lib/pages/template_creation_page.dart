@@ -113,7 +113,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   }
 
   Future<void> _loadDepartments() async {
-    setState(() { _deptLoading = true; _deptError = false; });
+    setState(() {
+      _deptLoading = true;
+      _deptError = false;
+    });
     await _waitForAuth();
     if (!mounted) return;
     final service = context.read<MasterDataService>();
@@ -128,7 +131,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   }
 
   Future<void> _loadApprovals() async {
-    setState(() { _approvalLoading = true; _approvalError = false; });
+    setState(() {
+      _approvalLoading = true;
+      _approvalError = false;
+    });
     await _waitForAuth();
     if (!mounted) return;
     final service = context.read<MasterDataService>();
@@ -143,7 +149,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   }
 
   Future<void> _loadSourceMasterList() async {
-    setState(() { _sourceMasterLoading = true; _sourceMasterError = false; });
+    setState(() {
+      _sourceMasterLoading = true;
+      _sourceMasterError = false;
+    });
     await _waitForAuth();
     if (!mounted) return;
     final service = context.read<MasterDataService>();
@@ -191,10 +200,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
         onDismiss: _closeSourceDropdown,
         onDone: (selected) {
           setState(() {
-            _model.sourceList = _sourceMasterList
+            final filterd = _sourceMasterList
                 .where((s) => selected.contains(s.id))
-                .map((s) => s.toJson())
                 .toList();
+            _model.sourceList = filterd.map((s) => s.toJson()).toList();
+            _model.sourceListName = filterd.map((s) => s.name).join(',');
           });
           _closeSourceDropdown();
         },
@@ -211,7 +221,6 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   }
 
   void _syncModel() {
-    
     _model.templateName = _nameCtrl.text.trim();
     _model.normalVolume = int.tryParse(_normalVolCtrl.text) ?? 0;
     _model.peakVolume = int.tryParse(_peakVolCtrl.text) ?? 0;
@@ -221,7 +230,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     _model.spocManager = _spocMgrCtrl.text.trim();
     _model.unitHead = _unitHeadCtrl.text.trim();
     _model.approvalFiles = Map<String, String>.from(_approvalFiles);
-    _model.createdBy = context.read<AuthProvider>().user?.user.employeeCode ?? '';
+    _model.createdBy =
+        context.read<AuthProvider>().user?.user.employeeCode ?? '';
   }
 
   bool get _allApprovalFilesUploaded =>
@@ -264,7 +274,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => _SuccessDialog(
+        builder: (ctx) => SuccessDialog(
           reqId: reqId,
           onDone: () {
             Navigator.of(ctx).pop();
@@ -357,7 +367,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                             'Fill in all required sections to create a template',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textDim,
+                              color: AppColors.blue,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -383,58 +394,59 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                         _deptLoading
                             ? _loadingField('Department *')
                             : _deptError
-                                ? _errorField('Department *', _loadDepartments)
-                                : _dd(
-                                    'Department *',
-                                    _departments.map((d) => d.name).toList(),
+                            ? _errorField('Department *', _loadDepartments)
+                            : SearchableStringDropdown(
+                                label: 'Department *',
+                                items: _departments.map((d) => d.name).toList(),
+                                value:
                                     _departments
-                                            .where(
-                                              (d) =>
-                                                  d.id.toString() ==
-                                                  _model.department,
-                                            )
-                                            .firstOrNull
-                                            ?.name ??
-                                        '',
-                                    (v) {
-                                      if (v == null) return;
-                                      final dept = _departments.firstWhere(
-                                        (d) => d.name == v,
-                                      );
-                                      setState(
-                                        () => _model.department =
-                                            dept.id.toString(),
-                                      );
-                                    },
-                                  ),
-                        _dd(
-                          'Frequency *',
-                          _frequencies,
-                          _model.frequency,
-                          (v) => setState(() => _model.frequency = v ?? ''),
+                                        .where(
+                                          (d) =>
+                                              d.id.toString() ==
+                                              _model.department,
+                                        )
+                                        .firstOrNull
+                                        ?.name ??
+                                    '',
+                                onChanged: (v) {
+                                  final dept = _departments.firstWhere(
+                                    (d) => d.name == v,
+                                  );
+                                  setState(() {
+                                    _model.department = dept.id.toString();
+                                    _model.departmentName = dept.name;
+                                  });
+                                },
+                              ),
+                        SearchableStringDropdown(
+                          label: 'Frequency *',
+                          items: _frequencies,
+                          value: _model.frequency,
+                          onChanged: (v) =>
+                              setState(() => _model.frequency = v),
                         ),
                       ]),
                       const SizedBox(height: 10),
                       _row([
-                        _dd(
-                          'Priority',
-                          _priorities,
-                          _model.priority,
-                          (v) =>
-                              setState(() => _model.priority = v ?? 'Medium'),
+                        SearchableStringDropdown(
+                          label: 'Priority',
+                          items: _priorities,
+                          value: _model.priority,
+                          onChanged: (v) => setState(() => _model.priority = v),
                         ),
                         _tf('Normal Volume', _normalVolCtrl, '0', num: true),
                         _tf('Peak Volume', _peakVolCtrl, '0', num: true),
                       ]),
                       const SizedBox(height: 10),
                       _row([
-                        _dd(
-                          'Source Count *',
-                          _sourceCountOptions,
-                          _model.sourceCount > 0 ? '${_model.sourceCount}' : '',
-                          (v) => setState(
-                            () =>
-                                _model.sourceCount = int.tryParse(v ?? '') ?? 0,
+                        SearchableStringDropdown(
+                          label: 'Source Count *',
+                          items: _sourceCountOptions,
+                          value: _model.sourceCount > 0
+                              ? '${_model.sourceCount}'
+                              : '',
+                          onChanged: (v) => setState(
+                            () => _model.sourceCount = int.tryParse(v) ?? 0,
                           ),
                         ),
                         _sourceMasterMultiSelect(),
@@ -457,11 +469,12 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                       ]),
                       const SizedBox(height: 10),
                       _row([
-                        _dd(
-                          'Benefit Type',
-                          _benefitTypes,
-                          _model.benefitType,
-                          (v) => setState(() => _model.benefitType = v ?? ''),
+                        SearchableStringDropdown(
+                          label: 'Benefit Type',
+                          items: _benefitTypes,
+                          value: _model.benefitType,
+                          onChanged: (v) =>
+                              setState(() => _model.benefitType = v),
                         ),
                         _tf(
                           'Benefit Amount (₹)',
@@ -627,14 +640,25 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 14,
+                                color: AppColors.red,
+                              ),
                               const SizedBox(width: 8),
                               const Text(
                                 'Failed to load. Tap to retry',
-                                style: TextStyle(fontSize: 12, color: AppColors.red),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.red,
+                                ),
                               ),
                               const SizedBox(width: 6),
-                              Icon(Icons.refresh_rounded, size: 14, color: AppColors.red),
+                              Icon(
+                                Icons.refresh_rounded,
+                                size: 14,
+                                color: AppColors.red,
+                              ),
                             ],
                           ),
                         )
@@ -1062,7 +1086,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
             ),
             child: Row(
               children: [
-                Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 14,
+                  color: AppColors.red,
+                ),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -1249,8 +1277,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
             onTap: _sourceMasterLoading
                 ? null
                 : _sourceMasterError
-                    ? _loadSourceMasterList
-                    : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
+                ? _loadSourceMasterList
+                : () => isOpen ? _closeSourceDropdown() : _openSourceDropdown(),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               constraints: const BoxConstraints(minHeight: 36),
@@ -1261,10 +1289,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                   color: _sourceMasterError
                       ? AppColors.red.withValues(alpha: 0.4)
                       : isOpen
-                          ? const Color(0xFF004C8F)
-                          : hasError
-                          ? AppColors.red
-                          : AppColors.border,
+                      ? const Color(0xFF004C8F)
+                      : hasError
+                      ? AppColors.red
+                      : AppColors.border,
                   width: isOpen || hasError ? 1.5 : 1,
                 ),
                 color: _sourceMasterError
@@ -1298,11 +1326,18 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                         : _sourceMasterError
                         ? Row(
                             children: [
-                              Icon(Icons.error_outline_rounded, size: 12, color: AppColors.red),
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 12,
+                                color: AppColors.red,
+                              ),
                               const SizedBox(width: 6),
                               const Text(
                                 'Failed to load. Tap to retry',
-                                style: TextStyle(fontSize: 12, color: AppColors.red),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.red,
+                                ),
                               ),
                             ],
                           )
@@ -1351,7 +1386,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                   ),
                   const SizedBox(width: 4),
                   _sourceMasterError
-                      ? Icon(Icons.refresh_rounded, size: 14, color: AppColors.red)
+                      ? Icon(
+                          Icons.refresh_rounded,
+                          size: 14,
+                          color: AppColors.red,
+                        )
                       : AnimatedRotation(
                           turns: isOpen ? 0.5 : 0,
                           duration: const Duration(milliseconds: 200),
@@ -1690,17 +1729,327 @@ class _SourceMultiSelectOverlayState extends State<_SourceMultiSelectOverlay> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Searchable single-select dropdown ─────────────────────────────────────────
 
-class _SuccessDialog extends StatefulWidget {
-  final VoidCallback onDone;
-  final String? reqId;
-  const _SuccessDialog({required this.onDone, this.reqId});
+class SearchableStringDropdown extends StatefulWidget {
+  final String label;
+  final List<String> items;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const SearchableStringDropdown({
+    required this.label,
+    required this.items,
+    required this.value,
+    required this.onChanged,
+  });
+
   @override
-  State<_SuccessDialog> createState() => _SuccessDialogState();
+  State<SearchableStringDropdown> createState() =>
+      SearchableStringDropdownState();
 }
 
-class _SuccessDialogState extends State<_SuccessDialog>
+class SearchableStringDropdownState extends State<SearchableStringDropdown> {
+  final _layerLink = LayerLink();
+  final _triggerKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+
+  bool get _isOpen => _overlayEntry != null;
+
+  void _open() {
+    _close();
+    final renderBox =
+        _triggerKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = renderBox?.size.width ?? 280.0;
+
+    _overlayEntry = OverlayEntry(
+      builder: (_) => StringSearchOverlay(
+        layerLink: _layerLink,
+        items: widget.items,
+        selected: widget.value,
+        dropdownWidth: width,
+        onDismiss: _close,
+        onSelect: (v) {
+          widget.onChanged(v);
+          _close();
+        },
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+    setState(() {});
+  }
+
+  void _close() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.label, style: AppTextStyles.fieldLabel),
+        const SizedBox(height: 4),
+        CompositedTransformTarget(
+          link: _layerLink,
+          child: InkWell(
+            key: _triggerKey,
+            onTap: _isOpen ? _close : _open,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _isOpen ? const Color(0xFF004C8F) : AppColors.border,
+                  width: _isOpen ? 1.5 : 1,
+                ),
+                color: AppColors.surface2,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.value.isEmpty ? 'Select' : widget.value,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: widget.value.isEmpty
+                            ? AppColors.textMuted
+                            : AppColors.text,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 18,
+                      color: AppColors.textDim,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class StringSearchOverlay extends StatefulWidget {
+  final LayerLink layerLink;
+  final List<String> items;
+  final String selected;
+  final double dropdownWidth;
+  final VoidCallback onDismiss;
+  final ValueChanged<String> onSelect;
+
+  const StringSearchOverlay({
+    required this.layerLink,
+    required this.items,
+    required this.selected,
+    required this.dropdownWidth,
+    required this.onDismiss,
+    required this.onSelect,
+  });
+
+  @override
+  State<StringSearchOverlay> createState() => _StringSearchOverlayState();
+}
+
+class _StringSearchOverlayState extends State<StringSearchOverlay> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<String> get _filtered {
+    if (_query.isEmpty) return widget.items;
+    final q = _query.toLowerCase();
+    return widget.items.where((s) => s.toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: widget.onDismiss,
+            behavior: HitTestBehavior.translucent,
+            child: const SizedBox.expand(),
+          ),
+        ),
+        CompositedTransformFollower(
+          link: widget.layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 40),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface,
+              child: Container(
+                width: widget.dropdownWidth,
+                constraints: const BoxConstraints(maxHeight: 320),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        autofocus: true,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.text,
+                        ),
+                        onChanged: (v) => setState(() => _query = v),
+                        decoration: InputDecoration(
+                          hintText: 'Search...',
+                          hintStyle: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 16,
+                            color: AppColors.textDim,
+                          ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface2,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF004C8F),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                    Flexible(
+                      child: _filtered.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                'No results found',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textDim,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: _filtered.length,
+                              separatorBuilder: (_, __) => const Divider(
+                                height: 1,
+                                color: AppColors.border,
+                              ),
+                              itemBuilder: (_, i) {
+                                final item = _filtered[i];
+                                final isSel = widget.selected == item;
+                                return InkWell(
+                                  onTap: () => widget.onSelect(item),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isSel
+                                              ? Icons.radio_button_checked
+                                              : Icons.radio_button_unchecked,
+                                          size: 18,
+                                          color: isSel
+                                              ? const Color(0xFF004C8F)
+                                              : AppColors.textDim,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            item,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: isSel
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w400,
+                                              color: isSel
+                                                  ? const Color(0xFF004C8F)
+                                                  : AppColors.text,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class SuccessDialog extends StatefulWidget {
+  final VoidCallback onDone;
+  final String? reqId;
+  const SuccessDialog({required this.onDone, this.reqId});
+  @override
+  State<SuccessDialog> createState() => SuccessDialogState();
+}
+
+class SuccessDialogState extends State<SuccessDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scale, _opacity;

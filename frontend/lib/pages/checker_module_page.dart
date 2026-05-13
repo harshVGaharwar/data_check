@@ -1,10 +1,14 @@
 import 'dart:math';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vizualizer/widgets/pipeline_summary_dialog.dart';
+import '../utils/functions.dart';
+import '../utils/download_helper.dart';
+import '../models/checker_tray_item.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
+import '../widgets/select_dropdown_overlay.dart';
 import 'source_configuration_view_page.dart';
 import 'template_creation_view_page.dart';
 
@@ -27,10 +31,11 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     (id: '2', label: 'Source Configuration'),
     (id: '1', label: 'Template Creation'),
     (id: '3', label: 'Template Configuration'),
+    (id: '7', label: 'Manual Upload'),
   ];
 
   // ── results state ─────────────────────────────────────────────────────────
-  List<Map<String, dynamic>> _results = [];
+  List<CheckerTrayItem> _results = [];
   bool _fetching = false;
   bool _fetched = false;
 
@@ -75,7 +80,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
         .map((k) => (id: _deptMap[k]!, label: k))
         .toList();
     _deptOverlay = OverlayEntry(
-      builder: (_) => _SelectDropdownOverlay(
+      builder: (_) => SelectDropdownOverlay(
         layerLink: _deptLayerLink,
         items: items,
         selectedId: _selectedDept != null ? _deptMap[_selectedDept] : null,
@@ -106,7 +111,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
         .map((e) => (id: e.key, label: e.value.label))
         .toList();
     _moduleOverlay = OverlayEntry(
-      builder: (_) => _SelectDropdownOverlay(
+      builder: (_) => SelectDropdownOverlay(
         layerLink: _moduleLayerLink,
         items: items,
         selectedId: _selectedModuleId != null
@@ -170,35 +175,56 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
       _snack('Please select a department.', isError: true);
       return;
     }
-    final deptId = _deptMap[_selectedDept!]!;
+
+    final deptId = _deptMap[_selectedDept!]!.toString();
+    final moduleId = _selectedModuleId!;
+    final service = context.read<MasterDataService>();
+
     setState(() {
       _fetching = true;
       _results = [];
       _fetched = false;
     });
 
-    List<Map<String, dynamic>> results;
-    if (_selectedModuleId == '2') {
-      results = await context
-          .read<MasterDataService>()
-          .getSourceMasterCheckerTray(deptId: '$deptId');
-    } else {
-      final flag = _selectedModuleId == '1' ? 4 : 5;
-      results = await context.read<MasterDataService>().getTemplateCheckerTray(
-        deptId: '$deptId',
-        flag: flag,
-      );
-    }
+    try {
+      final List<CheckerTrayItem> results;
 
-    if (!mounted) return;
-    setState(() {
-      _results = results;
-      _fetching = false;
-      _fetched = true;
-      _searchQuery = '';
-      _searchCtrl.clear();
-      _currentPage = 0;
-    });
+      switch (moduleId) {
+        case '2':
+          results = await service.getSourceMasterCheckerTray(
+            deptId: deptId,
+            templateId: '',
+          );
+        case '7':
+          results = await service.getCheckerTayList(
+            templateId: '',
+            departmentId: deptId,
+            requestId: '',
+          );
+        case '1':
+        case '3':
+          results = await service.getTemplateCheckerTray(
+            deptId: deptId,
+            flag: moduleId == '1' ? 4 : 5,
+          );
+        default:
+          results = [];
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _fetching = false;
+        _fetched = true;
+        _searchQuery = '';
+        _searchCtrl.clear();
+        _currentPage = 0;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _fetching = false);
+      _snack('Failed to fetch data. Please try again.', isError: true);
+    }
   }
 
   void _snack(String msg, {bool isError = false}) {
@@ -285,13 +311,14 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
             const SizedBox(height: 2),
             Text(
               'Review and approve manual data by module',
-              style: TextStyle(fontSize: 12, color: AppColors.textDim),
+              style: TextStyle(fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w600),
             ),
           ],
         ),
       ],
     );
   }
+  // ── download ──────────────────────────────────────────────────────────────
 
   // ── filter card ───────────────────────────────────────────────────────────
 
@@ -340,8 +367,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
               Expanded(
                 child: LayoutBuilder(
                   builder: (ctx, constraints) {
-                    final enabled =
-                        _selectedModuleId != null && !_deptLoading;
+                    final enabled = _selectedModuleId != null && !_deptLoading;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -464,37 +490,20 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
         ? _results
         : _results.where((item) {
             final q = _searchQuery.toLowerCase();
-            return (item['requestId']?.toString().toLowerCase().contains(q) ??
+            return (item.requestId?.toLowerCase().contains(q) ?? false) ||
+                (item.templateId?.toString().contains(q) ?? false) ||
+                (item.sourceId?.toString().contains(q) ?? false) ||
+                item.departmentName.toLowerCase().contains(q) ||
+                (item.templateName?.toLowerCase().contains(q) ?? false) ||
+                (item.sourceName?.toLowerCase().contains(q) ?? false) ||
+                (item.sourceTypeName?.toLowerCase().contains(q) ?? false) ||
+                (item.appName?.toLowerCase().contains(q) ?? false) ||
+                (item.itgrc?.toLowerCase().contains(q) ?? false) ||
+                (item.dbVault?.toLowerCase().contains(q) ?? false) ||
+                item.makerBy.toLowerCase().contains(q) ||
+                (item.jsonData?.toString().toLowerCase().contains(q) ??
                     false) ||
-                (item['templateId']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['sourceID']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['departmentName']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['templateName']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['sourceName']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['sourceTypeName']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['appName']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['itgrc']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['dbVault']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['makerBy']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['payload']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['payloadJson']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                (item['jsonData']?.toString().toLowerCase().contains(q) ??
-                    false) ||
-                _formatDate(
-                  item['makerDate']?.toString(),
-                ).toLowerCase().contains(q);
+                _formatDate(item.makerDate).toLowerCase().contains(q);
           }).toList();
 
     final totalPages = max(1, (filtered.length / _rowsPerPage).ceil());
@@ -590,7 +599,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                   3: FlexColumnWidth(2),
                   4: FlexColumnWidth(1.3),
                   5: FlexColumnWidth(1.7),
-                  6: FixedColumnWidth(84),
+                  6: FixedColumnWidth(110),
                   7: FlexColumnWidth(2.4),
                 },
                 children: [
@@ -624,39 +633,32 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     if (query.isEmpty) return {};
     final q = query.toLowerCase();
     final matched = <String>{};
-    final isSourceConfig = _selectedModuleId == '2';
     for (final item in _results) {
-      if (isSourceConfig) {
-        if (item['sourceID']?.toString().toLowerCase().contains(q) ?? false)
+      if (_isSourceConfigModule) {
+        if (item.sourceId?.toString().contains(q) ?? false)
           matched.add('Source ID');
-        if (item['sourceName']?.toString().toLowerCase().contains(q) ?? false)
+        if (item.sourceName?.toLowerCase().contains(q) ?? false)
           matched.add('Source Name');
-        if ((item['sourceTypeName']?.toString().toLowerCase().contains(q) ??
-                false) ||
-            (item['appName']?.toString().toLowerCase().contains(q) ?? false) ||
-            (item['itgrc']?.toString().toLowerCase().contains(q) ?? false) ||
-            (item['dbVault']?.toString().toLowerCase().contains(q) ?? false))
+        if ((item.sourceTypeName?.toLowerCase().contains(q) ?? false) ||
+            (item.appName?.toLowerCase().contains(q) ?? false) ||
+            (item.itgrc?.contains(q) ?? false) ||
+            (item.dbVault?.toLowerCase().contains(q) ?? false)) {
           matched.add('View');
+        }
       } else {
-        if ((item['requestId']?.toString().toLowerCase().contains(q) ??
-                false) ||
-            (item['templateId']?.toString().toLowerCase().contains(q) ?? false))
+        if ((item.requestId?.toLowerCase().contains(q) ?? false) ||
+            (item.templateId?.toString().contains(q) ?? false)) {
           matched.add('ID');
-        if (item['templateName']?.toString().toLowerCase().contains(q) ?? false)
+        }
+        if (item.templateName?.toLowerCase().contains(q) ?? false)
           matched.add('Template');
-        final payload = item['payload'];
-        final payloadJson = item['payloadJson'];
-        final jsonData = item['jsonData'];
-        if ((payload != null && '$payload'.toLowerCase().contains(q)) ||
-            (payloadJson != null && '$payloadJson'.toLowerCase().contains(q)) ||
-            (jsonData != null && '$jsonData'.toLowerCase().contains(q)))
+        if (item.jsonData?.toString().toLowerCase().contains(q) ?? false)
           matched.add('View');
       }
-      if (item['departmentName']?.toString().toLowerCase().contains(q) ?? false)
+      if (item.departmentName.toLowerCase().contains(q))
         matched.add('Department');
-      if (item['makerBy']?.toString().toLowerCase().contains(q) ?? false)
-        matched.add('Created By');
-      if (_formatDate(item['makerDate']?.toString()).toLowerCase().contains(q))
+      if (item.makerBy.toLowerCase().contains(q)) matched.add('Created By');
+      if (_formatDate(item.makerDate).toLowerCase().contains(q))
         matched.add('Created Date');
     }
     return matched;
@@ -685,7 +687,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                   ),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               if (isHit) ...[
                 Container(
@@ -698,13 +699,16 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                 ),
                 const SizedBox(width: 5),
               ],
-              Text(
-                col,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isHit ? AppColors.blue : AppColors.textDim,
-                  letterSpacing: 0.4,
+              Flexible(
+                child: Text(
+                  col,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isHit ? AppColors.blue : AppColors.textDim,
+                    letterSpacing: 0.4,
+                  ),
                 ),
               ),
             ],
@@ -716,19 +720,23 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
 
   // ── table data row ────────────────────────────────────────────────────────
 
-  TableRow _buildTableRow(Map<String, dynamic> item, int index) {
-    final makerBy = item['makerBy']?.toString() ?? '—';
-    final makerDate = _formatDate(item['makerDate']?.toString());
-    final isSourceConfig = _selectedModuleId == '2';
-    final rowId = isSourceConfig
-        ? item['sourceID']?.toString() ?? '—'
-        : item['requestId']?.toString().isNotEmpty == true
-        ? item['requestId'].toString()
-        : item['templateId']?.toString() ?? '—';
-    final nameCol = isSourceConfig
-        ? item['sourceName']?.toString() ?? '—'
-        : item['templateName']?.toString() ?? '—';
-    final deptName = item['departmentName']?.toString() ?? '—';
+  TableRow _buildTableRow(CheckerTrayItem item, int index) {
+    final filename = item.filename ?? '—';
+    final ext = filename.contains('.')
+        ? filename.split('.').last.toLowerCase()
+        : '';
+    final extColor = _extColor(ext);
+    final makerBy = item.makerBy.isEmpty ? '—' : item.makerBy;
+    final makerDate = _formatDate(item.makerDate);
+    final rowId = _isSourceConfigModule
+        ? item.sourceId?.toString() ?? '—'
+        : item.requestId?.isNotEmpty == true
+        ? item.requestId!
+        : item.templateId?.toString() ?? '—';
+    final nameCol = _isSourceConfigModule
+        ? item.sourceName ?? '—'
+        : item.templateName ?? '—';
+    final deptName = item.departmentName.isEmpty ? '—' : item.departmentName;
     final bg = index.isEven ? Colors.white : const Color(0xFFF9FAFC);
 
     return TableRow(
@@ -838,54 +846,115 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
           ),
         ),
 
-        // View
-        _tdCell(
-          child: Tooltip(
-            message: _viewTooltip(item),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => _viewSourceConfig(item),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: _canViewItem(item)
-                      ? AppColors.blue.withValues(alpha: 0.08)
-                      : AppColors.textMuted.withValues(alpha: 0.1),
-                  border: Border.all(
-                    color: _canViewItem(item)
-                        ? AppColors.blue.withValues(alpha: 0.18)
-                        : AppColors.border2,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.visibility_rounded,
-                      size: 13,
-                      color: _canViewItem(item)
-                          ? AppColors.blue
-                          : AppColors.textMuted,
+        (_selectedModuleId == '7')
+            ? _tdCell(
+                child: Tooltip(
+                  message: 'Download $filename',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => downloadCheckerFile(
+                      context: context,
+                      filename: item.filename ?? '—',
+                      templateId: item.templateId?.toString() ?? '',
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'View',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: _canViewItem(item)
-                            ? AppColors.blue
-                            : AppColors.textMuted,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.blue.withValues(alpha: 0.08),
+                        border: Border.all(
+                          color: AppColors.blue.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 3,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(3),
+                              color: extColor.withValues(alpha: 0.15),
+                            ),
+                            child: Text(
+                              ext.isEmpty ? 'FILE' : ext.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 7,
+                                fontWeight: FontWeight.w900,
+                                color: extColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Icon(
+                            Icons.download_rounded,
+                            size: 13,
+                            color: AppColors.blue,
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
+                ),
+              )
+            :
+              // View
+              _tdCell(
+                child: Tooltip(
+                  message: _viewTooltip(item),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => _viewSourceConfig(item),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: _canViewItem(item)
+                            ? AppColors.blue.withValues(alpha: 0.08)
+                            : AppColors.textMuted.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: _canViewItem(item)
+                              ? AppColors.blue.withValues(alpha: 0.18)
+                              : AppColors.border2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.visibility_rounded,
+                            size: 13,
+                            color: _canViewItem(item)
+                                ? AppColors.blue
+                                : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'View',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _canViewItem(item)
+                                  ? AppColors.blue
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ),
 
         // Approval
         _tdCell(
@@ -1009,6 +1078,22 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     );
   }
 
+  Color _extColor(String ext) {
+    switch (ext) {
+      case 'csv':
+        return AppColors.green;
+      case 'xlsx':
+      case 'xls':
+        return AppColors.blue;
+      case 'json':
+        return AppColors.amber;
+      case 'txt':
+        return AppColors.slate;
+      default:
+        return AppColors.slate;
+    }
+  }
+
   Widget _pageButton({
     required IconData icon,
     required bool enabled,
@@ -1040,80 +1125,26 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     );
   }
 
-  bool _isSourceConfigModule(Map<String, dynamic> item) {
-    return _selectedModuleId == '2';
-  }
+  bool get _isSourceConfigModule => _selectedModuleId == '2';
+  bool get _isTemplateCreationModule => _selectedModuleId == '1';
+  bool get _isTemplateConfigModule => _selectedModuleId == '3';
 
-  bool _isTemplateCreationModule(Map<String, dynamic> item) {
-    return _selectedModuleId == '1';
-  }
-
-  bool _isTemplateConfigModule(Map<String, dynamic> item) {
-    return _selectedModuleId == '3';
-  }
-
-  bool _canViewItem(Map<String, dynamic> item) {
-    if (_isSourceConfigModule(item)) {
-      // Row data is the view data — always viewable
-      return true;
-    }
-    if (_isTemplateCreationModule(item) || _isTemplateConfigModule(item)) {
-      final jsonData = item['jsonData'];
-      if (jsonData is Map) return (jsonData as Map).isNotEmpty;
-      return jsonData?.toString().trim().isNotEmpty ?? false;
+  bool _canViewItem(CheckerTrayItem item) {
+    if (_isSourceConfigModule) return true;
+    if (_isTemplateCreationModule || _isTemplateConfigModule) {
+      return extractPayload(item.toMap()) != null;
     }
     return false;
   }
 
-  String _viewTooltip(Map<String, dynamic> item) {
-    if (!(_isSourceConfigModule(item) ||
-        _isTemplateCreationModule(item) ||
-        _isTemplateConfigModule(item))) {
+  String _viewTooltip(CheckerTrayItem item) {
+    if (!(_isSourceConfigModule ||
+        _isTemplateCreationModule ||
+        _isTemplateConfigModule)) {
       return 'View supported only for Source Configuration, Template Creation and Template Configuration';
     }
     if (!_canViewItem(item)) return 'Details unavailable';
     return 'View submitted details';
-  }
-
-  Map<String, dynamic>? _extractPayload(Map<String, dynamic> item) {
-    final jsonData = item['jsonData'];
-    if (jsonData is Map<String, dynamic> && jsonData.isNotEmpty)
-      return jsonData;
-    if (jsonData is Map && (jsonData as Map).isNotEmpty) {
-      return jsonData.map((k, v) => MapEntry(k.toString(), v));
-    }
-    if (jsonData is String && jsonData.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(jsonData);
-        if (decoded is Map<String, dynamic>) return decoded;
-        if (decoded is Map) {
-          return decoded.map((k, v) => MapEntry(k.toString(), v));
-        }
-      } catch (_) {}
-    }
-
-    final responseData = item['responseData'];
-    if (responseData is Map<String, dynamic>) return responseData;
-    if (responseData is Map) {
-      return responseData.map((k, v) => MapEntry(k.toString(), v));
-    }
-
-    final payload = item['payload'];
-    if (payload is Map<String, dynamic>) return payload;
-    if (payload is Map) {
-      return payload.map((k, v) => MapEntry(k.toString(), v));
-    }
-
-    final payloadJson = item['payloadJson']?.toString().trim() ?? '';
-    if (payloadJson.isEmpty) return null;
-    try {
-      final decoded = jsonDecode(payloadJson);
-      if (decoded is Map<String, dynamic>) return decoded;
-      if (decoded is Map) {
-        return decoded.map((k, v) => MapEntry(k.toString(), v));
-      }
-    } catch (_) {}
-    return null;
   }
 
   // TemplateCreationViewPage reads all fields from data['Template'][0].
@@ -1148,11 +1179,12 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     // Flatten Benefit sub-object
     final benefit = data['Benefit'];
     if (benefit is Map) {
-      if (benefit['BenefitAmount'] != null)
+      if (benefit['BenefitAmount'] != null) {
         templateMap.putIfAbsent(
           'BenefitAmount',
           () => benefit['BenefitAmount'],
         );
+      }
       // API sends BenefitInTAT, view reads BenefitInTat
       final inTat = benefit['BenefitInTAT'] ?? benefit['BenefitInTat'];
       if (inTat != null) templateMap.putIfAbsent('BenefitInTat', () => inTat);
@@ -1170,47 +1202,98 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
       templateMap['NumberOfOutputs'] = templateMap['NumberOfOutput'];
     }
 
+    // Real API sends output format names under 'Approvals' (with FormatName key).
+    // TemplateCreationViewPage reads 'OutputFormats'. Map them here if missing.
+    final rawApprovals = data['Approvals'];
+    final List approvalsArr = rawApprovals is List ? rawApprovals : const [];
+
+    final hasOutputFormats = data['OutputFormats'] != null;
+    final approvalsAreFormats = approvalsArr.isNotEmpty &&
+        approvalsArr.first is Map &&
+        (approvalsArr.first as Map).containsKey('FormatName');
+
+    final outputFormats = hasOutputFormats
+        ? data['OutputFormats']
+        : approvalsAreFormats
+            ? approvalsArr
+            : const [];
+
+    // Real API sends a single ApprovalType + ApprovalFile at root level.
+    // TemplateCreationViewPage reads 'Approvals' with Approval_Type items.
+    final approvalType = data['ApprovalType']?.toString() ?? '';
+    final approvalFile = data['ApprovalFile']?.toString() ?? '';
+    final alreadyNormalized = approvalsArr.isNotEmpty &&
+        approvalsArr.first is Map &&
+        (approvalsArr.first as Map).containsKey('Approval_Type');
+    final approvals = alreadyNormalized
+        ? approvalsArr
+        : approvalType.isNotEmpty
+            ? [{'Approval_Type': approvalType, 'ApprovalFile': approvalFile}]
+            : const [];
+
     return {
       ...data,
       'Template': [templateMap],
+      'OutputFormats': outputFormats,
+      'Approvals': approvals,
     };
   }
 
-  Future<void> _viewSourceConfig(Map<String, dynamic> item) async {
-    if (!(_isSourceConfigModule(item) ||
-        _isTemplateCreationModule(item) ||
-        _isTemplateConfigModule(item))) {
-      _snack(
-        'View is currently available only for Source Configuration, Template Creation and Template Configuration.',
-        isError: true,
-      );
-      return;
-    }
+  Future<void> _viewSourceConfig(CheckerTrayItem item) async {
+    switch (_selectedModuleId) {
+      case '2': // Source Configuration
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SourceConfigurationViewPage(data: item.toMap()),
+          ),
+        );
 
-    final payload = _isSourceConfigModule(item) ? null : _extractPayload(item);
-    if (!_isSourceConfigModule(item) && payload == null) {
-      _snack('Details unavailable for this request.', isError: true);
-      return;
-    }
+      case '1':
 
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _isSourceConfigModule(item)
-            ? SourceConfigurationViewPage(
-                data: {...item, 'Name': item['sourceName'] ?? ''},
-              )
-            : TemplateCreationViewPage(
-                data: _normalizeTemplatePayload(payload!),
-              ),
-      ),
-    );
+        // Template Creation
+        if (item.jsonData == null) {
+          _snack('Details unavailable for this request.', isError: true);
+          return;
+        }
+
+        final create = extractPayload(item.toMap());
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => TemplateCreationViewPage(
+              data: _normalizeTemplatePayload(create!),
+            ),
+          ),
+        );
+
+      case '3': // Template Configuration
+        final config = extractPayload(item.toMap());
+        print('[extractPayload] config: $config');
+        if (config == null) {
+          _snack(
+            'Pipeline details unavailable for this request.',
+            isError: true,
+          );
+          return;
+        }
+        if (!mounted) return;
+        await showPipelineSummaryDialog(
+          context,
+          config: config,
+          templateName: item.templateName ?? '',
+          deptName: item.departmentName,
+        );
+
+      default:
+        _snack('View not available for this module.', isError: true);
+    }
   }
 
   // ── remark dialog ─────────────────────────────────────────────────────────
 
   Future<void> _showRemarkDialog({
-    required Map<String, dynamic> item,
+    required CheckerTrayItem item,
     required bool isApproved,
   }) async {
     final remarkCtrl = TextEditingController();
@@ -1274,12 +1357,11 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        (_selectedModuleId == '2'
-                                ? item['sourceID']?.toString()
-                                : item['requestId']?.toString().isNotEmpty ==
-                                      true
-                                ? item['requestId'].toString()
-                                : item['templateId']?.toString()) ??
+                        (_isSourceConfigModule
+                                ? item.sourceId?.toString()
+                                : item.requestId?.isNotEmpty == true
+                                ? item.requestId
+                                : item.templateId?.toString()) ??
                             '—',
                         style: const TextStyle(
                           fontSize: 11,
@@ -1381,18 +1463,15 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     final remark = remarkCtrl.text.trim();
     final auth = context.read<AuthProvider>();
     final checkerBy = auth.user?.user.employeeCode ?? '';
-    final templateId =
-        item['template_id']?.toString() ??
-        item['templateId']?.toString() ??
-        '';
+    final templateId = item.templateId?.toString() ?? '';
     final deptId = (_deptMap[_selectedDept] ?? 0).toString();
-    final requestId = _selectedModuleId == '2'
-        ? item['sourceID']?.toString() ?? ''
-        : item['requestId']?.toString().isNotEmpty == true
-        ? item['requestId'].toString()
-        : item['templateId']?.toString() ?? '';
-    final moduleId = item['module']?.toString().trim().isNotEmpty == true
-        ? item['module'].toString().trim()
+    final requestId = _isSourceConfigModule
+        ? item.sourceId?.toString() ?? ''
+        : item.requestId?.isNotEmpty == true
+        ? item.requestId!
+        : item.templateId?.toString() ?? '';
+    final moduleId = item.module?.trim().isNotEmpty == true
+        ? item.module!.trim()
         : (_selectedModuleId ?? '');
 
     if (moduleId.isEmpty) {
@@ -1404,7 +1483,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     final result = await context
         .read<MasterDataService>()
         .submitCheckerApprovalWithModule(
-          templateId: templateId,
+          templateId: _selectedModuleId == '7' ? templateId : requestId,
           departmentId: deptId,
           requestId: requestId,
           checkerBy: checkerBy,
@@ -1437,18 +1516,21 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
         borderRadius: BorderRadius.circular(6),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 11, color: Colors.white),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -1498,17 +1580,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
             letterSpacing: 0.8,
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _labelledField({required String label, required Widget child}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.fieldLabel),
-        const SizedBox(height: 6),
-        child,
       ],
     );
   }
@@ -1666,205 +1737,6 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
           ),
         ],
       ),
-    );
-  }
-}
-
-typedef _SelectItem = ({int id, String label});
-
-class _SelectDropdownOverlay extends StatefulWidget {
-  final LayerLink layerLink;
-  final List<_SelectItem> items;
-  final int? selectedId;
-  final double dropdownWidth;
-  final String searchHint;
-  final VoidCallback onDismiss;
-  final void Function(int id, String label) onSelect;
-
-  const _SelectDropdownOverlay({
-    required this.layerLink,
-    required this.items,
-    required this.selectedId,
-    required this.dropdownWidth,
-    required this.searchHint,
-    required this.onDismiss,
-    required this.onSelect,
-  });
-
-  @override
-  State<_SelectDropdownOverlay> createState() => _SelectDropdownOverlayState();
-}
-
-class _SelectDropdownOverlayState extends State<_SelectDropdownOverlay> {
-  final _searchCtrl = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  List<_SelectItem> get _filtered {
-    if (_query.isEmpty) return widget.items;
-    final q = _query.toLowerCase();
-    return widget.items
-        .where((i) => i.label.toLowerCase().contains(q))
-        .toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: widget.onDismiss,
-            behavior: HitTestBehavior.translucent,
-            child: const SizedBox.expand(),
-          ),
-        ),
-        CompositedTransformFollower(
-          link: widget.layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 46),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(12),
-              color: AppColors.surface,
-              child: Container(
-                width: widget.dropdownWidth,
-                constraints: const BoxConstraints(maxHeight: 320),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: TextField(
-                        controller: _searchCtrl,
-                        autofocus: true,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.text,
-                        ),
-                        onChanged: (v) => setState(() => _query = v),
-                        decoration: InputDecoration(
-                          hintText: widget.searchHint,
-                          hintStyle: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 12,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            size: 16,
-                            color: AppColors.textDim,
-                          ),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surface2,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.border,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.border,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(
-                              color: AppColors.violet,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Divider(height: 1, color: AppColors.border),
-                    Flexible(
-                      child: _filtered.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text(
-                                'No results found',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textDim,
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: _filtered.length,
-                              separatorBuilder: (_, __) => const Divider(
-                                height: 1,
-                                color: AppColors.border,
-                              ),
-                              itemBuilder: (_, i) {
-                                final item = _filtered[i];
-                                final isSel = widget.selectedId == item.id;
-                                return InkWell(
-                                  onTap: () =>
-                                      widget.onSelect(item.id, item.label),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          isSel
-                                              ? Icons.radio_button_checked
-                                              : Icons.radio_button_unchecked,
-                                          size: 18,
-                                          color: isSel
-                                              ? AppColors.violet
-                                              : AppColors.textDim,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            item.label,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: isSel
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w400,
-                                              color: isSel
-                                                  ? AppColors.violet
-                                                  : AppColors.text,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

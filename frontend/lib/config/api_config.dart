@@ -19,6 +19,10 @@ class ApiConfig {
   static const String sourceTypeEndpoint = 'template/GetSourceType';
   static const String operationsEndpoint = 'template/GetOperations';
 
+  // dashboard api
+
+  static const String getDashboardCount = 'template/GetDashboadCount';
+
   // Template Creation
   static const String templateCreateEndpoint = 'template/AddTemplate';
 
@@ -50,7 +54,10 @@ class ApiConfig {
   static const String downloadFileEndpoint = 'template/DownloadFile';
 
   // report page
-  static const String reportListEndpoint = 'template/GetReportList';
+  static const String reportListEndpoint = 'template/GetReport';
+
+  // job execution page
+  static const String jobExecutionLogEndpoint = 'template/GetJobExecutionLog';
 
   // Edit Template Configuration
   static const String approvedTemplatesEndpoint =

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_theme.dart';
-import '../providers/auth_provider.dart';
+import 'package:vizualizer/models/master_models.dart';
+import 'package:vizualizer/services/master_data_service.dart';
+import '../../theme/app_theme.dart';
+import '../../providers/auth_provider.dart';
 
 class WelcomePage extends StatefulWidget {
   final void Function(int index) onNavigate;
@@ -15,6 +17,7 @@ class _WelcomePageState extends State<WelcomePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _fade;
+  DashboardDetails? _dashboardDetails;
 
   @override
   void initState() {
@@ -24,6 +27,33 @@ class _WelcomePageState extends State<WelcomePage>
       duration: const Duration(milliseconds: 600),
     )..forward();
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _loadDashboard();
+  }
+
+  Future<void> _waitForAuth() async {
+    final auth =
+        context.read<AuthProvider>(); // Replace with your actual provider type
+    if (!auth.initialized) {
+      await Future.doWhile(() async {
+        await Future.delayed(const Duration(milliseconds: 50));
+        return mounted && !context.read<AuthProvider>().initialized;
+      });
+    }
+  }
+
+  Future<void> _loadDashboard() async {
+    await _waitForAuth();
+    if (!mounted) return;
+
+    final service = context
+        .read<MasterDataService>(); // Replace with your actual service type
+    final dashboardData = await service.getDashboardCount();
+
+    if (mounted) {
+      setState(() {
+        _dashboardDetails = dashboardData; // Store the fetched data
+      });
+    }
   }
 
   @override
@@ -34,21 +64,35 @@ class _WelcomePageState extends State<WelcomePage>
 
   @override
   Widget build(BuildContext context) {
-    context.watch<AuthProvider>().user?.user;
-
     return FadeTransition(
       opacity: _fade,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             // 1 — KPI tiles
-            _KpiRow(),
+            _KpiRow(
+              dashboardData: _dashboardDetails?.dashboardCount ?? [],
+            ),
             SizedBox(height: 20),
             // 2 — Horizontal data flow
             _DataFlowCard(),
             SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _UserInstructionCard()),
+                SizedBox(width: 16),
+                Expanded(child: _AdminInstructionCard()),
+              ],
+            ),
+            // // 3 — Recent template configurations
+            // _RecentConfigCard(),
+            // SizedBox(height: 16),
+            // // 4 — Upload breakdown
+            // _UploadBreakdownCard(),
+            // SizedBox(height: 8),
           ],
         ),
       ),
@@ -59,58 +103,58 @@ class _WelcomePageState extends State<WelcomePage>
 // ── 1. KPI Row ────────────────────────────────────────────────────────────────
 
 class _KpiRow extends StatelessWidget {
-  static const _kpis = [
-    _KpiData(
-      'Total Templates',
-      '24',
-      Icons.layers_rounded,
-      AppColors.blue,
-      AppColors.blueDim,
-      '+3 this month',
-    ),
-    _KpiData(
-      'Manual Uploads',
-      '147',
-      Icons.upload_file_rounded,
-      AppColors.violet,
-      Color(0xFFEDE9FE),
-      '+12 this week',
-    ),
-    _KpiData(
-      'Auto Generated',
-      '89',
-      Icons.auto_fix_high_rounded,
-      AppColors.cyan,
-      Color(0xFFCFFAFE),
-      '+5 today',
-    ),
-    _KpiData(
-      'Success',
-      '201',
-      Icons.check_circle_outline_rounded,
-      AppColors.green,
-      AppColors.greenDim,
-      '92.0% rate',
-    ),
-    _KpiData(
-      'Failed',
-      '12',
-      Icons.cancel_outlined,
-      AppColors.red,
-      Color(0xFFFEE2E2),
-      '5.5% rate',
-    ),
-    _KpiData(
-      'Pending Review',
-      '8',
-      Icons.pending_actions_rounded,
-      AppColors.amber,
-      AppColors.amberDim,
-      'Awaiting QA',
-    ),
-  ];
-
-  const _KpiRow();
+  final List<DashboardCount> dashboardData;
+  // static const _kpis = [
+  //   _KpiData(
+  //     'Total Templates',
+  //     '24',
+  //     Icons.layers_rounded,
+  //     AppColors.blue,
+  //     AppColors.blueDim,
+  //     '+3 this month',
+  //   ),
+  //   _KpiData(
+  //     'Manual Uploads',
+  //     '147',
+  //     Icons.upload_file_rounded,
+  //     AppColors.violet,
+  //     Color(0xFFEDE9FE),
+  //     '+12 this week',
+  //   ),
+  //   _KpiData(
+  //     'Pending Review',
+  //     '8',
+  //     Icons.pending_actions_rounded,
+  //     AppColors.amber,
+  //     AppColors.amberDim,
+  //     'Awaiting Approval',
+  //   ),
+  //   _KpiData(
+  //     'Auto Generated',
+  //     '89',
+  //     Icons.auto_fix_high_rounded,
+  //     AppColors.cyan,
+  //     Color(0xFFCFFAFE),
+  //     '+5 today',
+  //   ),
+  //   _KpiData(
+  //     'Success',
+  //     '201',
+  //     Icons.check_circle_outline_rounded,
+  //     AppColors.green,
+  //     AppColors.greenDim,
+  //     '92.0% rate',
+  //   ),
+  //   _KpiData(
+  //     'Failed',
+  //     '12',
+  //     Icons.cancel_outlined,
+  //     AppColors.red,
+  //     Color(0xFFFEE2E2),
+  //     '5.5% rate',
+  //   ),
+  // ];
+  const _KpiRow({Key? key, required this.dashboardData}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -121,11 +165,17 @@ class _KpiRow extends StatelessWidget {
           spacing: 12,
           runSpacing: 12,
           children: [
-            for (var i = 0; i < _kpis.length; i++)
+            for (var i = 0; i < dashboardData.length; i++)
               SizedBox(
                 width: cardWidth,
                 child: _KpiCard(
-                  data: _kpis[i],
+                  data: _KpiData(
+                      dashboardData[i].label,
+                      dashboardData[i].count,
+                      dashboardData[i].icon,
+                      dashboardData[i].darkColor,
+                      dashboardData[i].lightColor,
+                      ''),
                   delay: Duration(milliseconds: i * 70),
                 ),
               ),
@@ -138,17 +188,17 @@ class _KpiRow extends StatelessWidget {
 
 class _KpiData {
   final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-  final Color bg;
+  final String count;
+  final String icon;
+  final String darkColor;
+  final String lightColor;
   final String sub;
   const _KpiData(
     this.label,
-    this.value,
+    this.count,
     this.icon,
-    this.color,
-    this.bg,
+    this.darkColor,
+    this.lightColor,
     this.sub,
   );
 }
@@ -169,6 +219,25 @@ class _KpiCardState extends State<_KpiCard>
   late Animation<double> _fade;
   bool _hovered = false;
 
+  late int darkColor;
+  late int lightColor;
+  late int iconId;
+  int parseIcon(String code) {
+    code = code.replaceAll("0x", "");
+    return int.parse(code, radix: 16);
+  }
+
+  int parseColor(String hex) {
+    hex = hex.replaceAll("#", "").replaceAll("0x", "");
+
+    // API sends 6-digit hex → add FF
+    if (hex.length == 6) {
+      hex = "FF$hex";
+    }
+
+    return int.parse(hex, radix: 16);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -184,6 +253,10 @@ class _KpiCardState extends State<_KpiCard>
     Future.delayed(widget.delay, () {
       if (mounted) _ctrl.forward();
     });
+
+    darkColor = parseColor(widget.data.darkColor);
+    lightColor = parseColor(widget.data.lightColor);
+    iconId = parseIcon(widget.data.icon);
   }
 
   @override
@@ -194,7 +267,6 @@ class _KpiCardState extends State<_KpiCard>
 
   @override
   Widget build(BuildContext context) {
-    final d = widget.data;
     return SlideTransition(
       position: _slide,
       child: FadeTransition(
@@ -207,17 +279,17 @@ class _KpiCardState extends State<_KpiCard>
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _hovered ? d.bg : AppColors.surface,
+              color: _hovered ? Color(lightColor!) : AppColors.surface,
               borderRadius: BorderRadius.circular(13),
               border: Border.all(
                 color: _hovered
-                    ? d.color.withValues(alpha: 0.4)
+                    ? Color(darkColor!).withValues(alpha: 0.4)
                     : AppColors.border,
               ),
               boxShadow: _hovered
                   ? [
                       BoxShadow(
-                        color: d.color.withValues(alpha: 0.14),
+                        color: Color(darkColor!).withValues(alpha: 0.14),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
@@ -240,15 +312,16 @@ class _KpiCardState extends State<_KpiCard>
                     Container(
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: d.color.withValues(alpha: 0.12),
+                        color: Color(darkColor!).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(d.icon, color: d.color, size: 15),
+                      child: Icon(Icons.layers_rounded,
+                          color: Color(darkColor), size: 15),
                     ),
                     TweenAnimationBuilder<double>(
                       tween: Tween(
                         begin: 0,
-                        end: double.tryParse(d.value) ?? 0,
+                        end: double.tryParse(widget.data.count) ?? 0,
                       ),
                       duration: const Duration(milliseconds: 1100),
                       curve: Curves.easeOut,
@@ -257,7 +330,7 @@ class _KpiCardState extends State<_KpiCard>
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
-                          color: d.color,
+                          color: Color(darkColor),
                           fontFamily: AppTextStyles.monoFamily,
                           height: 1,
                         ),
@@ -267,21 +340,21 @@ class _KpiCardState extends State<_KpiCard>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  d.label,
+                  widget.data.label,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: AppColors.text,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  d.sub,
-                  style: const TextStyle(
-                    fontSize: 9.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
+                // const SizedBox(height: 2),
+                // Text(
+                //   d.sub,
+                //   style: const TextStyle(
+                //     fontSize: 9.5,
+                //     color: AppColors.textMuted,
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -297,12 +370,14 @@ class _FlowStepData {
   final IconData icon;
   final String label;
   final String desc;
+  final String team;
   final Color color;
   final Color bg;
   const _FlowStepData({
     required this.icon,
     required this.label,
     required this.desc,
+    required this.team,
     required this.color,
     required this.bg,
   });
@@ -314,6 +389,7 @@ class _DataFlowCard extends StatelessWidget {
       icon: Icons.storage_rounded,
       label: 'Source\nConfiguration',
       desc: 'Register DB, Manual,\nQRS, FC & Laser',
+      team: 'Admin Team',
       color: AppColors.blue,
       bg: AppColors.blueDim,
     ),
@@ -321,6 +397,7 @@ class _DataFlowCard extends StatelessWidget {
       icon: Icons.layers_rounded,
       label: 'Template\nCreation',
       desc: 'Schema, SPOC,\napprovals & schedule',
+      team: 'Admin Team',
       color: AppColors.violet,
       bg: Color(0xFFEDE9FE),
     ),
@@ -328,6 +405,7 @@ class _DataFlowCard extends StatelessWidget {
       icon: Icons.account_tree_rounded,
       label: 'Template\nConfiguration',
       desc: 'Drag-and-drop nodes\n& join mappings',
+      team: 'Admin Team',
       color: AppColors.cyan,
       bg: Color(0xFFCFFAFE),
     ),
@@ -335,6 +413,7 @@ class _DataFlowCard extends StatelessWidget {
       icon: Icons.upload_file_rounded,
       label: 'Manual\nUpload',
       desc: 'Upload per-slot\ndata files',
+      team: 'Authorized User Team',
       color: AppColors.amber,
       bg: AppColors.amberDim,
     ),
@@ -342,6 +421,7 @@ class _DataFlowCard extends StatelessWidget {
       icon: Icons.fact_check_rounded,
       label: 'QA\nChecker',
       desc: 'Review, approve\nor reject output',
+      team: 'Authorized Operation Team',
       color: AppColors.green,
       bg: AppColors.greenDim,
     ),
@@ -349,6 +429,7 @@ class _DataFlowCard extends StatelessWidget {
       icon: Icons.bar_chart_rounded,
       label: 'Reports &\nAnalytics',
       desc: 'Status, success\nrates & metrics',
+      team: 'User and Admin Team',
       color: Color(0xFF6366F1),
       bg: Color(0xFFEEF2FF),
     ),
@@ -455,9 +536,8 @@ class _HorizontalFlowStepState extends State<_HorizontalFlowStep> {
           borderRadius: BorderRadius.circular(12),
           color: _hovered ? d.bg : Colors.transparent,
           border: Border.all(
-            color: _hovered
-                ? d.color.withValues(alpha: 0.3)
-                : Colors.transparent,
+            color:
+                _hovered ? d.color.withValues(alpha: 0.3) : Colors.transparent,
           ),
         ),
         child: Column(
@@ -538,6 +618,15 @@ class _HorizontalFlowStepState extends State<_HorizontalFlowStep> {
                 height: 1.45,
               ),
             ),
+            Text(
+              d.team,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 9.5,
+                color: AppColors.text,
+                height: 1.45,
+              ),
+            ),
           ],
         ),
       ),
@@ -556,13 +645,140 @@ class _HorizontalConnector extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 10, height: 1.5, color: AppColors.border),
+          Container(width: 10, height: 3.5, color: AppColors.border),
           const Icon(
             Icons.chevron_right_rounded,
-            size: 16,
+            size: 56,
             color: AppColors.textMuted,
           ),
-          Container(width: 10, height: 1.5, color: AppColors.border),
+          Container(width: 10, height: 3.5, color: AppColors.border),
+        ],
+      ),
+    );
+  }
+}
+
+class _UserInstructionCard extends StatelessWidget {
+  const _UserInstructionCard();
+
+  static const _points = [
+    "Upload manual data files as per the template schedule.",
+    "Ensure file naming conventions strictly follow the configured rules.",
+    "Validate uploaded data using the QA Checker before submission.",
+    "Monitor submission status in Reports & Analytics.",
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.person_rounded, size: 18, color: AppColors.blue),
+              SizedBox(width: 8),
+              Text("USER INSTRUCTIONS", style: AppTextStyles.sectionLabel),
+            ],
+          ),
+          const SizedBox(height: 18),
+          for (var p in _points) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("• ", style: TextStyle(fontSize: 13)),
+                Expanded(
+                  child: Text(
+                    p,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.text,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminInstructionCard extends StatelessWidget {
+  const _AdminInstructionCard();
+
+  static const _points = [
+    "Configure data sources and maintain template versioning.",
+    "Review and approve new template requests from users.",
+    "Monitor system health, failed uploads, and processing delays.",
+    "Oversee analytics dashboards and manage user access roles.",
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.admin_panel_settings_rounded,
+                  size: 18, color: AppColors.violet),
+              SizedBox(width: 8),
+              Text("ADMIN INSTRUCTIONS", style: AppTextStyles.sectionLabel),
+            ],
+          ),
+          const SizedBox(height: 18),
+          for (var p in _points) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("• ", style: TextStyle(fontSize: 13)),
+                Expanded(
+                  child: Text(
+                    p,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.text,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
         ],
       ),
     );

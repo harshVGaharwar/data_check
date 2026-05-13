@@ -401,7 +401,7 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
             SizedBox(height: 2),
             Text(
               'Select department & template, then upload files per source',
-              style: TextStyle(fontSize: 12, color: AppColors.textDim),
+              style: TextStyle(fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w600),
             ),
           ],
         ),

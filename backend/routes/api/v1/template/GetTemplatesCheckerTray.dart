@@ -27,78 +27,133 @@ Future<Response> onRequest(RequestContext context) async {
   }
 
   if (kDevMode) {
-    // Fixed mock data — mirrors the real external API response format.
-    // jsonData arrives as a JSON-encoded string from the real API;
-    // items without data use an empty string.
-    final mockRows = [
-      {
-        'templateId': '6',
-        'departmentId': '7',
-        'templateName': 'akj',
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '02/05/2026 5:56:38 PM',
-        'jsonData': '',
-      },
-      {
-        'templateId': '7',
-        'departmentId': '7',
-        'templateName': 'akj',
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '02/05/2026 6:24:14 PM',
-        'jsonData': '',
-      },
-      {
-        'templateId': '11',
-        'departmentId': '7',
-        'templateName': 'test',
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '02/05/2026 6:34:07 PM',
-        'jsonData': '',
-      },
-      {
-        'templateId': '13',
-        'departmentId': '7',
-        'templateName': 'Test Manual',
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '04/05/2026 12:18:38 PM',
-        'jsonData': jsonEncode({
-          'Template': {
-            'TemplateName': 'Test Manual',
-            'Department': '7',
-            'Frequency': 'Daily',
-            'NormalVolume': 1000,
-            'PeakVolume': 10000,
-            'SourceCount': 2,
-            'NumberOfOutput': 1,
+    // flag=4 → Template Creation, flag=5 → Template Configuration
+    if (flag == 4) {
+      return Response.json(body: [
+        {
+          'templateId': '21',
+          'departmentId': '7',
+          'templateName': 'asd',
+          'departmentName': 'RETAIL ASSETS',
+          'makerBy': 'J3216',
+          'makerDate': '11/05/2026 3:21:50 PM',
+          'jsonData': {
+            'Template': [
+              {
+                'TemplateName': 'asd',
+                'Department': '7',
+                'Frequency': 'Bi-Weekly',
+                'NormalVolume': 1,
+                'PeakVolume': 1,
+                'SourceCount': 5,
+                'NumberOfOutputs': 2,
+                'BenefitType': 'Efficiency Improvement',
+                'BenefitAmount': 1,
+                'BenefitInTat': '2',
+                'GoLiveDate': '2026-05-11',
+                'DeactivateDate': '2026-05-27',
+                'SpocPerson': 's',
+                'SpocManager': 's',
+                'UnitHead': 's',
+                'Priority': 'Medium',
+                'SourceList': 'J1',
+              },
+            ],
+            'Approvals': [
+              {'TemplateTempId': null, 'FormatName': 'Unimailing'},
+            ],
+            'ApprovalType': 'UAT test',
+            'ApprovalFile': 'bank_logo.png',
+            'CreatedBy': 'J3216',
+            'JsonData': '',
+            'DepartmentName': 'RETAIL ASSETS',
+            'SourceListNames': 'csdccsd',
           },
-          'Benefit': {
-            'BenefitAmount': 10000,
-            'BenefitInTAT': '1%',
-          },
-          'OutputFormats': [
-            {'TemplateTempId': null, 'FormatName': 'User Defined'},
-          ],
-          'AdditionalData': {'ActivatedDate': '2026-05-04'},
-          'SpocPerson': 'Abc',
-          'SpocManager': 'abd',
-          'UnitHead': 'doli',
-          'Priority': 'Medium',
-          'Approvals': [
+        },
+      ]);
+    }
+
+    // flag=5: Template Configuration
+    return Response.json(body: [
+      {
+        'templateId': 18,
+        'departmentId': 7,
+        'templateName': 'Test 1',
+        'departmentName': 'RETAIL ASSETS',
+        'makerBy': 'J3216',
+        'makerDate': '11/05/2026 1:24:10 PM',
+        'jsonData': {
+          'TemplateId': 18,
+          'createdBy': 'J3216',
+          'templateMode': 0,
+          'Sources': [
             {
-              'TemplateTempId': null,
-              'Approval_Type': 'UAT test',
-              'ApprovalFile': 'uatApproval.pdf',
+              'TemplateId': 18,
+              'SourceId': '1',
+              'SourceName': 'huiu',
+              'SourceType': '1',
+              'Department': '7',
+              'Template': '18 - Test 1',
+              'Separator': '\t',
+              'ColumnFile': 'customers_csvdatatesttab.csv',
+              'QueryFile': '',
+              'Columns': 'ID,NAME',
+              'SelectedColumns': 'NAME',
+              'SourceSeqNo': null,
+            },
+            {
+              'TemplateId': 18,
+              'SourceId': '1',
+              'SourceName': 'kjn',
+              'SourceType': '1',
+              'Department': '7',
+              'Template': '18 - Test 1',
+              'Separator': '\t',
+              'ColumnFile': 'customers_csvdatatesttab.csv',
+              'QueryFile': '',
+              'Columns': 'ID,NAME',
+              'SelectedColumns': '',
+              'SourceSeqNo': null,
             },
           ],
-          'createdBy': 'J3216',
-        }),
+          'JoinMappings': [
+            {
+              'Id': 0,
+              'TemplateId': 18,
+              'Department': '7',
+              'JoinNodeId': 'n3',
+              'LeftSourceId': 'n1',
+              'LeftSourceName': 'huiu',
+              'LeftColumn': 'ID',
+              'JoinType': 'left_join',
+              'RightSourceId': 'n2',
+              'RightSourceName': 'kjn',
+              'RightColumn': 'ID',
+              'CreatedOn': '2026-05-11T00:00:00',
+            },
+          ],
+          'Edges': [
+            {'template_id': 18, 'department': '7', 'From': 'n1', 'To': 'n3'},
+            {'template_id': 18, 'department': '7', 'From': 'n2', 'To': 'n3'},
+          ],
+          'connectedSources': [
+            {'TemplateId': 18, 'Department': '7', 'JoinNodeId': 'n3', 'SourceId': 'n1'},
+            {'TemplateId': 18, 'Department': '7', 'JoinNodeId': 'n3', 'SourceId': 'n2'},
+          ],
+          'outputColumns': [
+            {
+              'template_id': 18,
+              'department': '7',
+              'sourceid': '1',
+              'sourceName': 'huiu',
+              'SourceColName': 'NAME',
+              'ColumnName': 'name',
+            },
+          ],
+          'Jsondata': null,
+        },
       },
-    ];
-    return Response.json(body: mockRows);
+    ]);
   }
 
   // Production: forward to external API
