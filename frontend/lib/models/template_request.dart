@@ -52,6 +52,7 @@ class TemplateRequest {
   String spocManager;
   String unitHead;
   String priority;
+  String templateType;
   String createdBy;
   List<String> outputFormats;
   List<String> approvals;
@@ -82,6 +83,7 @@ class TemplateRequest {
     this.spocManager = '',
     this.unitHead = '',
     this.priority = 'Medium',
+    this.templateType = '',
     this.createdBy = '',
     this.sourceListName = "",
     this.departmentName = "",
@@ -104,7 +106,6 @@ class TemplateRequest {
         'NormalVolume': normalVolume,
         'PeakVolume': peakVolume,
         'SourceCount': sourceCount,
-        'NumberOfOutputs': numberOfOutputs,
         'BenefitType': benefitType,
         'BenefitAmount': benefitAmount,
         'BenefitInTat': benefitInTAT,
@@ -114,6 +115,10 @@ class TemplateRequest {
         'SpocManager': spocManager,
         'UnitHead': unitHead,
         'Priority': priority,
+        'TemplateType': templateType,
+        'NumberOfOutputs': templateType == '1 - Static'
+            ? null
+            : numberOfOutputs,
         'SourceList': sourceList.map((m) => m['id']).join(','),
       },
     ],
@@ -141,10 +146,12 @@ class TemplateRequest {
       frequency.isNotEmpty &&
       spocPerson.isNotEmpty &&
       sourceCount > 0 &&
-      numberOfOutputs > 0 &&
       sourceList.isNotEmpty;
 
-  bool get isOutputFormatValid => outputFormats.isNotEmpty;
+  bool get isOutputFormatValid =>
+      templateType.isNotEmpty &&
+      (templateType == '1 - Static' || numberOfOutputs > 0) &&
+      outputFormats.isNotEmpty;
 
   bool get isApprovalValid => approvals.isNotEmpty;
 
@@ -173,6 +180,7 @@ class TemplateRequest {
     spocManager = '';
     unitHead = '';
     priority = 'Medium';
+    templateType = '';
     createdBy = '';
     outputFormats = [];
     approvals = [];

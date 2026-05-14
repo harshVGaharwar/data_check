@@ -79,7 +79,19 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     '9',
     '10',
   ];
-  static const _numOutputOptions = ['1 - Static', '2 - Dynamic'];
+  static const _numOutputOptions = [
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '10',
+  ];
+  static const _templateTypeOptions = ['1 - Static', '2 - Dynamic'];
 
   // Per-approval file uploads: { "Unit Head": "approval_uh.pdf", ... }
   final Map<String, String> _approvalFiles = {};
@@ -308,8 +320,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     }
     _approvalFiles.clear();
     _approvalFileBytes.clear();
+    selectedFormat = null;
     setState(() => _submitted = false);
-    // sourceList is cleared via _model.reset()
+    // sourceList and templateType are cleared via _model.reset()
   }
 
   @override
@@ -450,25 +463,6 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           ),
                         ),
                         _sourceMasterMultiSelect(),
-                        _dd(
-                          'Number of Outputs *',
-                          _numOutputOptions,
-                          _model.numberOfOutputs > 0
-                              ? (_model.numberOfOutputs == 1
-                                    ? '1 - Static'
-                                    : '2 - Dynamic')
-                              : '',
-                          (v) => setState(
-                            () => _model.numberOfOutputs = v == '1 - Static'
-                                ? 1
-                                : v == '2 - Dynamic'
-                                ? 2
-                                : 0,
-                          ),
-                        ),
-                      ]),
-                      const SizedBox(height: 10),
-                      _row([
                         SearchableStringDropdown(
                           label: 'Benefit Type',
                           items: _benefitTypes,
@@ -476,6 +470,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           onChanged: (v) =>
                               setState(() => _model.benefitType = v),
                         ),
+                      ]),
+                      const SizedBox(height: 10),
+                      _row([
                         _tf(
                           'Benefit Amount (₹)',
                           _benefitAmtCtrl,
@@ -483,25 +480,26 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           num: true,
                         ),
                         _tf('Benefit in TAT', _tatCtrl, 'e.g. 2 hours'),
-                      ]),
-                      const SizedBox(height: 10),
-                      _row([
                         _dp(
                           'Go Live Date',
                           _model.goLiveDate,
                           (v) => setState(() => _model.goLiveDate = v),
                         ),
+                      ]),
+                      const SizedBox(height: 10),
+                      _row([
                         _dp(
                           'Deactivate Date',
                           _model.deactivateDate,
                           (v) => setState(() => _model.deactivateDate = v),
                         ),
                         _tf('SPOC Person *', _spocCtrl, 'Enter name'),
+                        _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
                       ]),
                       const SizedBox(height: 10),
                       _row([
-                        _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
                         _tf('Unit Head', _unitHeadCtrl, 'Enter name'),
+                        const SizedBox(),
                         const SizedBox(),
                       ]),
                     ],
@@ -517,81 +515,189 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Select at least one output format',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textDim,
+                      // ── Template Type + Number of Outputs ──
+                      _row([
+                        SearchableStringDropdown(
+                          label: 'Template Type *',
+                          items: _templateTypeOptions,
+                          value: _model.templateType,
+                          onChanged: (v) => setState(() {
+                            _model.templateType = v;
+                            if (v == '2 - Dynamic') {
+                              selectedFormat = 'Unimailing';
+                              _model.outputFormats = ['Unimailing'];
+                            } else {
+                              selectedFormat = null;
+                              _model.outputFormats = [];
+                              _model.numberOfOutputs = 0;
+                            }
+                          }),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: _outputFormats.map((f) {
-                          final sel = selectedFormat == f;
+                        if (_model.templateType == '2 - Dynamic')
+                          SearchableStringDropdown(
+                            label: 'Number of Outputs *',
+                            items: _numOutputOptions,
+                            value: _model.numberOfOutputs > 0
+                                ? '${_model.numberOfOutputs}'
+                                : '',
+                            onChanged: (v) => setState(
+                              () => _model.numberOfOutputs =
+                                  int.tryParse(v) ?? 0,
+                            ),
+                          )
+                        else
+                          const SizedBox(),
+                        const SizedBox(),
+                      ]),
+                      if (_submitted &&
+                          (_model.templateType.isEmpty ||
+                              (_model.templateType == '2 - Dynamic' &&
+                                  _model.numberOfOutputs == 0)))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_model.templateType.isEmpty)
+                                _err('Please select a template type'),
+                              if (_model.templateType == '2 - Dynamic' &&
+                                  _model.numberOfOutputs == 0)
+                                _err('Please select number of outputs'),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: AppColors.border),
+                      const SizedBox(height: 16),
 
-                          return InkWell(
-                            onTap: () {
-                              setState(() {
-                                selectedFormat = f;
-                                _model.outputFormats = [f];
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                color: sel
-                                    ? const Color(
-                                        0xFF004C8F,
-                                      ).withValues(alpha: 0.08)
-                                    : AppColors.surface2,
-                                border: Border.all(
-                                  color: sel
-                                      ? const Color(0xFF004C8F)
-                                      : AppColors.border,
-                                  width: sel ? 1.5 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    sel
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_off,
-                                    size: 18,
-                                    color: sel
-                                        ? const Color(0xFF004C8F)
-                                        : AppColors.textDim,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    f,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: sel
-                                          ? FontWeight.w700
-                                          : FontWeight.w300,
-                                      color: sel
-                                          ? const Color(0xFF004C8F)
-                                          : AppColors.text,
-                                    ),
-                                  ),
-                                ],
+                      // ── Format chips ──
+                      if (_model.templateType.isEmpty)
+                        const Text(
+                          'Select a template type above to choose output format',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        )
+                      else ...[
+                        const Text(
+                          'Select at least one output format',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textDim,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_model.templateType == '2 - Dynamic')
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: const Color(
+                                0xFF004C8F,
+                              ).withValues(alpha: 0.08),
+                              border: Border.all(
+                                color: const Color(0xFF004C8F),
+                                width: 1.5,
                               ),
                             ),
-                          );
-                        }).toList(),
-                      ),
-                      if (_submitted && !_model.isOutputFormatValid)
-                        _err('Please select at least one output format'),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.radio_button_checked,
+                                  size: 18,
+                                  color: Color(0xFF004C8F),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Unimailing',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF004C8F),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.lock_outline_rounded,
+                                  size: 13,
+                                  color: const Color(
+                                    0xFF004C8F,
+                                  ).withValues(alpha: 0.6),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: _outputFormats.map((f) {
+                              final sel = selectedFormat == f;
+                              return InkWell(
+                                onTap: () => setState(() {
+                                  selectedFormat = f;
+                                  _model.outputFormats = [f];
+                                }),
+                                borderRadius: BorderRadius.circular(10),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: sel
+                                        ? const Color(
+                                            0xFF004C8F,
+                                          ).withValues(alpha: 0.08)
+                                        : AppColors.surface2,
+                                    border: Border.all(
+                                      color: sel
+                                          ? const Color(0xFF004C8F)
+                                          : AppColors.border,
+                                      width: sel ? 1.5 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        sel
+                                            ? Icons.radio_button_checked
+                                            : Icons.radio_button_off,
+                                        size: 18,
+                                        color: sel
+                                            ? const Color(0xFF004C8F)
+                                            : AppColors.textDim,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        f,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: sel
+                                              ? FontWeight.w700
+                                              : FontWeight.w300,
+                                          color: sel
+                                              ? const Color(0xFF004C8F)
+                                              : AppColors.text,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        if (_submitted && _model.outputFormats.isEmpty)
+                          _err('Please select at least one output format'),
+                      ],
                     ],
                   ),
                 ),
@@ -1151,54 +1257,6 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
               ),
               filled: true,
               fillColor: AppColors.surface2,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _dd(
-    String label,
-    List<String> items,
-    String value,
-    ValueChanged<String?> onChanged,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.fieldLabel),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 36,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-              color: AppColors.surface2,
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                isDense: true,
-                value: items.contains(value) ? value : null,
-                hint: const Text(
-                  'Select',
-                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                ),
-                dropdownColor: AppColors.surface,
-                style: const TextStyle(fontSize: 13, color: AppColors.text),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 18,
-                  color: AppColors.textDim,
-                ),
-                items: items
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
-                onChanged: onChanged,
-              ),
             ),
           ),
         ),

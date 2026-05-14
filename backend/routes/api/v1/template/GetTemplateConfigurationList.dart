@@ -29,7 +29,7 @@ Future<Response> onRequest(RequestContext context) async {
 
       final templates = db.templatesByDept[deptId] ?? const [];
       final template = templates.firstWhere(
-        (t) => t['templateId'] == templateId,
+        (t) => t['TemplateId'] == templateId,
         orElse: () => <String, dynamic>{},
       );
       final sources = (cfg['Sources'] as List?) ?? const [];
@@ -38,10 +38,10 @@ Future<Response> onRequest(RequestContext context) async {
 
       list.add({
         'templateId': templateId,
-        'templateName': template['templateName'] ?? '—',
-        'department': template['department'] ?? '—',
+        'templateName': template['TemplateName'] ?? '—',
+        'department': template['DepartmentName'] ?? template['Department'] ?? '—',
         'departmentId': deptId,
-        'frequency': template['frequency'] ?? '—',
+        'frequency': template['Frequency'] ?? '—',
         'sourceCount': sources.length,
         'joinCount': joins.length,
         'outputCount': outputs.length,

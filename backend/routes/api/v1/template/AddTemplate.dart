@@ -6,6 +6,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import '../../../../lib/config/api_config.dart';
 import '../../../../lib/models/models.dart';
+import '../../../../lib/services/database.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method != HttpMethod.post) {
@@ -72,14 +73,46 @@ Future<Response> onRequest(RequestContext context) async {
       context.request.headers['authorization'] ??
       '';
 
-  // Dev mode: return mock response
+  // Dev mode: save to in-memory DB and return mock response
   if (kDevMode) {
-    print('[TEMPLATE CREATE - DEV] Config: ${const JsonEncoder.withIndent('  ').convert(body)}');
+    final db = Database();
+
+    final templateArr = body['Template'] as List?;
+    final tplMap = (templateArr != null && templateArr.isNotEmpty)
+        ? Map<String, dynamic>.from(templateArr[0] as Map<dynamic, dynamic>)
+        : <String, dynamic>{};
+
+    final deptId = int.tryParse(tplMap['Department']?.toString() ?? '') ?? 0;
+
+    // Generate next TemplateId
+    final allIds = db.templatesByDept.values
+        .expand((list) => list)
+        .map((t) => t['TemplateId'] as int? ?? 0)
+        .toList();
+    final newTemplateId =
+        (allIds.isEmpty ? 0 : allIds.reduce((a, b) => a > b ? a : b)) + 1;
+
+    // Flat entry: all template fields at root + OutputFormats/Approvals at root
+    final savedEntry = <String, dynamic>{
+      ...tplMap,
+      'TemplateId': newTemplateId,
+      'OutputFormats': body['OutputFormats'] ?? [],
+      'Approvals': body['Approvals'] ?? [],
+      'CreatedBy': body['CreatedBy'] ?? '',
+      'jsonData': body['jsonData'] ?? '',
+      'DepartmentName': body['DepartmentName'] ?? '',
+      'SourceListNames': body['SourceListNames'] ?? '',
+    };
+
+    db.templatesByDept.putIfAbsent(deptId, () => []);
+    db.templatesByDept[deptId]!.add(savedEntry);
+
+    print('[TEMPLATE CREATE - DEV] Saved templateId=$newTemplateId to dept $deptId');
     print('[TEMPLATE CREATE - DEV] Files: ${uploadedFiles.map((f) => f.filename).toList()}');
     return Response.json(
       body: ApiResponse.success(
         message: 'Template created successfully (dev mock)',
-        data: {'templateId': 'MOCK-${DateTime.now().millisecondsSinceEpoch}'},
+        data: {'templateId': newTemplateId},
       ).toJson(),
     );
   }
