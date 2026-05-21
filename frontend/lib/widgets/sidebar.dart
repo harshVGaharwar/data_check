@@ -10,6 +10,8 @@ import '../providers/auth_provider.dart';
 import '../services/master_data_service.dart';
 import 'searchable_dropdown.dart';
 
+part 'sidebar_widgets.dart';
+
 class Sidebar extends StatefulWidget {
   const Sidebar({super.key});
 
@@ -225,21 +227,25 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
           if (mounted) _resetAnimations();
         });
       } else {
-        // Between output keys: ensure source types are loaded so the user
-        // can drag nodes for the next key without re-selecting the template.
+        // Between output keys: refresh source types for the auto-advanced key.
+        // _onOutputKeySelected reads from dynamicTemplates (not API), so it
+        // gives the correct sources for whichever key was auto-selected.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          if (_filteredSourceTypes.isEmpty &&
+          if (ctrl.selectedOutputKey.isNotEmpty) {
+            // Re-run key selection to populate sources + animations for new key.
+            _onOutputKeySelected(ctrl.selectedOutputKey, ctrl);
+          } else if (_filteredSourceTypes.isEmpty &&
               ctrl.sidebarTemplateId > 0 &&
               ctrl.sidebarDeptId.isNotEmpty) {
+            // Fallback for non-dynamic templates.
             _loadFilteredSourceTypes(
               templateId: ctrl.sidebarTemplateId.toString(),
               departmentId: ctrl.sidebarDeptId,
             );
-          }
-          // Restart source-type pulse so the user sees they need to drag sources.
-          if (!_sourceTypePulse.isAnimating) {
-            _sourceTypePulse.repeat(reverse: true);
+            if (!_sourceTypePulse.isAnimating) {
+              _sourceTypePulse.repeat(reverse: true);
+            }
           }
         });
       }
@@ -353,17 +359,24 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                         outputFormats: [],
                                       ),
                                     );
-                                    final dynEntry0 = info.dynamicTemplates.isNotEmpty
+                                    final dynEntry0 =
+                                        info.dynamicTemplates.isNotEmpty
                                         ? info.dynamicTemplates[0]
                                         : null;
-                                    final dynSourceCount = int.tryParse(
-                                            dynEntry0?['sourceCount']?.toString() ?? '') ??
+                                    final dynSourceCount =
+                                        int.tryParse(
+                                          dynEntry0?['sourceCount']
+                                                  ?.toString() ??
+                                              '',
+                                        ) ??
                                         0;
                                     ctrl.setSidebarTemplate(
                                       v,
                                       sourceCount: dynSourceCount > 0
                                           ? dynSourceCount
-                                          : (info.sourceCount > 0 ? info.sourceCount : null),
+                                          : (info.sourceCount > 0
+                                                ? info.sourceCount
+                                                : null),
                                       templateId: info.templateId,
                                       templateType: info.templateType,
                                       outputFormats: info.outputFormats,
@@ -402,14 +415,24 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                       // Static template (User Defined or UniMailing):
                                       // sourceMasterList and sourceCount come from
                                       // dynamicTemplate[0].
-                                      final rawList = dynEntry0?['sourceMasterList'] as List?;
-                                      final sources = rawList
-                                              ?.whereType<Map<String, dynamic>>()
-                                              .map(SourceMasterFilterItem.fromJson)
+                                      final rawList =
+                                          dynEntry0?['sourceMasterList']
+                                              as List?;
+                                      final sources =
+                                          rawList
+                                              ?.whereType<
+                                                Map<String, dynamic>
+                                              >()
+                                              .map(
+                                                SourceMasterFilterItem.fromJson,
+                                              )
                                               .toList() ??
                                           [];
-                                      if (dynEntry0 != null && dynSourceCount > 0) {
-                                        ctrl.setOutputKeySourceCount(dynSourceCount);
+                                      if (dynEntry0 != null &&
+                                          dynSourceCount > 0) {
+                                        ctrl.setOutputKeySourceCount(
+                                          dynSourceCount,
+                                        );
                                         setState(() {
                                           _filteredSourceTypes = sources;
                                           _sourceCountError = false;
@@ -421,19 +444,25 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                         });
                                       }
 
-                                      final effectiveCount = ctrl.requiredSourceCount;
+                                      final effectiveCount =
+                                          ctrl.requiredSourceCount;
                                       if (effectiveCount == 0) {
                                         _sourceTypePulse.stop();
                                         _sourceTypePulse.value = 0;
                                         _sourceCountPulse.repeat(reverse: true);
                                       } else {
                                         _sourceCountPulse.repeat(reverse: true);
-                                        Timer(const Duration(milliseconds: 1000), () {
-                                          if (!mounted) return;
-                                          _sourceCountPulse.stop();
-                                          _sourceCountPulse.value = 0;
-                                          _sourceTypePulse.repeat(reverse: true);
-                                        });
+                                        Timer(
+                                          const Duration(milliseconds: 1000),
+                                          () {
+                                            if (!mounted) return;
+                                            _sourceCountPulse.stop();
+                                            _sourceCountPulse.value = 0;
+                                            _sourceTypePulse.repeat(
+                                              reverse: true,
+                                            );
+                                          },
+                                        );
                                       }
                                     }
                                   },
@@ -944,488 +973,6 @@ class DynamicPaletteItem extends StatelessWidget {
       ),
       childWhenDragging: Opacity(opacity: 0.3, child: content()),
       child: content(),
-    );
-  }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// JOIN PALETTE ITEM — locked until all source nodes are confirmed
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-class _JoinPaletteItem extends StatefulWidget {
-  final PipelineController ctrl;
-  const _JoinPaletteItem({required this.ctrl});
-
-  @override
-  State<_JoinPaletteItem> createState() => _JoinPaletteItemState();
-}
-
-class _JoinPaletteItemState extends State<_JoinPaletteItem>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseCtrl;
-  late final Animation<double> _pulseAnim;
-  bool _lastUnlocked = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _pulseAnim = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
-    _lastUnlocked = widget.ctrl.shouldAnimateJoin;
-    if (_lastUnlocked) _pulseCtrl.repeat(reverse: true);
-  }
-
-  /// Sync every build:
-  /// - sources confirmed + no join on canvas → animate
-  /// - join dropped on canvas → stop
-  /// - join deleted from canvas → restart
-  void _syncAnimation(bool shouldAnimate) {
-    if (shouldAnimate && !_pulseCtrl.isAnimating) {
-      _pulseCtrl.repeat(reverse: true);
-    } else if (!shouldAnimate && _pulseCtrl.isAnimating) {
-      _pulseCtrl.stop();
-      _pulseCtrl.value = 0;
-    }
-    _lastUnlocked = shouldAnimate;
-  }
-
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final unlocked = widget.ctrl.allSourceNodesConfirmed;
-    final shouldAnimate = widget.ctrl.shouldAnimateJoin;
-    // Sync every build: join on canvas → stop, join deleted → restart
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncAnimation(shouldAnimate);
-    });
-    const type = NodeType.join;
-    const color = AppColors.blue;
-
-    Widget content({double glowAlpha = 0, double borderAlpha = 1}) => Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: unlocked
-              ? color.withValues(alpha: 0.4 + borderAlpha * 0.6)
-              : AppColors.border2,
-          width: unlocked ? 1.8 : 1.0,
-        ),
-        color: unlocked
-            ? color.withValues(alpha: 0.04 + glowAlpha * 0.08)
-            : AppColors.surface2,
-        boxShadow: unlocked && glowAlpha > 0
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: glowAlpha * 0.35),
-                  blurRadius: 8 + glowAlpha * 10,
-                  spreadRadius: glowAlpha * 2,
-                ),
-              ]
-            : null,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              color: color.withValues(
-                alpha: unlocked ? 0.12 + glowAlpha * 0.1 : 0.07,
-              ),
-            ),
-            child: Icon(
-              unlocked ? type.icon : Icons.lock_outline_rounded,
-              color: unlocked ? color : AppColors.textMuted,
-              size: 14,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  type.label,
-                  style: TextStyle(
-                    color: unlocked ? AppColors.text : AppColors.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  unlocked ? '✦ Ready to drag' : 'Confirm all sources first',
-                  style: TextStyle(
-                    color: unlocked
-                        ? color.withValues(alpha: 0.8)
-                        : AppColors.textMuted,
-                    fontSize: 10,
-                    fontWeight: unlocked ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (unlocked)
-            AnimatedBuilder(
-              animation: _pulseAnim,
-              builder: (_, __) => Icon(
-                Icons.arrow_forward_rounded,
-                color: color.withValues(alpha: 0.4 + _pulseAnim.value * 0.6),
-                size: 14,
-              ),
-            ),
-        ],
-      ),
-    );
-
-    if (!unlocked) {
-      return GestureDetector(
-        onTap: () {
-          final sources = widget.ctrl.nodes
-              .where((n) => n.type.isSource)
-              .toList();
-          final required = widget.ctrl.requiredSourceCount;
-          final confirmed = sources
-              .where((n) => n.confirmState == NodeConfirmState.confirmed)
-              .length;
-          final String msg;
-          if (required > 0 && sources.length < required) {
-            msg =
-                'Add all $required required source nodes first'
-                ' (${sources.length}/$required added).';
-          } else {
-            msg =
-                'Configure all source nodes first'
-                ' ($confirmed/${sources.length} confirmed).';
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg), backgroundColor: Colors.orange),
-          );
-        },
-        child: Opacity(opacity: 0.5, child: content()),
-      );
-    }
-
-    return AnimatedBuilder(
-      animation: _pulseAnim,
-      builder: (context, _) => Draggable<DragNodeData>(
-        data: DragNodeData(type),
-        feedback: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: color),
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 16),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(type.icon, color: color, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  type.label,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        childWhenDragging: Opacity(opacity: 0.3, child: content()),
-        child: content(
-          glowAlpha: _pulseAnim.value,
-          borderAlpha: _pulseAnim.value,
-        ),
-      ),
-    );
-  }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// STEP HIGHLIGHT — animated glowing border + bg around a sidebar section
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-class _StepHighlight extends AnimatedWidget {
-  final Color color;
-  final Widget child;
-
-  const _StepHighlight({
-    required Animation<double> animation,
-    required this.color,
-    required this.child,
-  }) : super(listenable: animation);
-
-  Animation<double> get _anim => listenable as Animation<double>;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = _anim.value;
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: color.withValues(alpha: t * 0.6), width: 1.5),
-        boxShadow: t > 0.1
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: t * 0.25),
-                  blurRadius: 6,
-                  spreadRadius: 3,
-                ),
-              ]
-            : null,
-      ),
-      child: child,
-    );
-  }
-}
-
-// ── Template config badge ─────────────────────────────────────────────────────
-
-class _TemplateConfigBadge extends StatelessWidget {
-  final String templateType;
-  final List<String> outputFormats;
-
-  const _TemplateConfigBadge({
-    required this.templateType,
-    required this.outputFormats,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isStatic =
-        templateType.toLowerCase().contains('static') ||
-        templateType == '1' ||
-        templateType == '2';
-    final typeLabel = isStatic ? 'Static' : 'Dynamic';
-    final typeColor = isStatic ? AppColors.green : AppColors.blue;
-    final typeIcon = isStatic ? Icons.lock_outline_rounded : Icons.sync_rounded;
-
-    final isUniMailing = outputFormats.any(
-      (f) => f.toLowerCase().contains('unimailing'),
-    );
-    final isUserDefined = outputFormats.any(
-      (f) => f.toLowerCase().replaceAll(' ', '').contains('userdefined'),
-    );
-
-    final formatLabel = isUniMailing
-        ? 'UniMailing'
-        : isUserDefined
-        ? 'User Defined'
-        : outputFormats.where((f) => f.isNotEmpty).join(', ');
-    final formatColor = isUniMailing
-        ? AppColors.amber
-        : isUserDefined
-        ? AppColors.violet
-        : AppColors.textDim;
-    final formatIcon = isUniMailing
-        ? Icons.email_rounded
-        : isUserDefined
-        ? Icons.tune_rounded
-        : Icons.description_rounded;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Section header ──
-        const Text('TEMPLATE CONFIG', style: AppTextStyles.sectionLabel),
-        const SizedBox(height: 5),
-
-        // ── Info card ──
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              // Type row
-              _ConfigRow(
-                icon: typeIcon,
-                header: 'Template Type',
-                value: typeLabel,
-                color: typeColor,
-                isFirst: true,
-              ),
-              // Divider
-              Divider(height: 1, color: AppColors.border),
-              // Format row
-              if (formatLabel.isNotEmpty)
-                _ConfigRow(
-                  icon: formatIcon,
-                  header: 'Output Format',
-                  value: formatLabel,
-                  color: formatColor,
-                  isLast: true,
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ConfigRow extends StatelessWidget {
-  final IconData icon;
-  final String header;
-  final String value;
-  final Color color;
-  final bool isFirst;
-  final bool isLast;
-
-  const _ConfigRow({
-    required this.icon,
-    required this.header,
-    required this.value,
-    required this.color,
-    this.isFirst = false,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.vertical(
-          top: isFirst ? const Radius.circular(10) : Radius.zero,
-          bottom: isLast ? const Radius.circular(10) : Radius.zero,
-        ),
-        color: color.withValues(alpha: 0.04),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.12),
-            ),
-            child: Icon(icon, size: 12, color: color),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  header,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Output Key selector ───────────────────────────────────────────────────────
-
-class _OutputKeySelector extends StatelessWidget {
-  final PipelineController ctrl;
-  final void Function(String key, PipelineController ctrl) onOutputKeySelected;
-
-  const _OutputKeySelector({
-    required this.ctrl,
-    required this.onOutputKeySelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final items = ctrl.dynamicUniMailingOutputKeys;
-    final selected = ctrl.selectedOutputKey;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('OUTPUT KEY', style: AppTextStyles.sectionLabel),
-            const SizedBox(width: 3),
-            const Text(
-              '*',
-              style: TextStyle(
-                color: Color(0xFFE53935),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        SearchableDropdownField(
-          value: (selected.isEmpty || !items.contains(selected))
-              ? null
-              : selected,
-          hint: '— Select Output Key —',
-          items: items,
-          disabledItems: ctrl.savedOutputKeyConfigs.keys.toSet(),
-          leadingBuilder: (item) {
-            final isDone = ctrl.savedOutputKeyConfigs.containsKey(item);
-            return Icon(
-              isDone
-                  ? Icons.check_circle_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              size: 13,
-              color: isDone ? AppColors.green : AppColors.textDim,
-            );
-          },
-          onChanged: (v) {
-            if (v == null) return;
-            ctrl.setSelectedOutputKey(v);
-            onOutputKeySelected(v, ctrl);
-          },
-        ),
-      ],
     );
   }
 }

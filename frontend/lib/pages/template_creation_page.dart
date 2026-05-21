@@ -20,6 +20,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   final _model = TemplateRequest();
   final _scrollCtrl = ScrollController();
   bool _submitted = false;
+  bool _saving = false;
 
   final _nameCtrl = TextEditingController();
   final _normalVolCtrl = TextEditingController();
@@ -258,6 +259,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       _model.approvals.every((a) => _approvalFiles.containsKey(a));
 
   void _save() async {
+    if (_saving) return;
     _syncModel();
     setState(() => _submitted = true);
 
@@ -281,6 +283,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       return;
     }
 
+    setState(() => _saving = true);
+
     // Use TemplateProvider to save
     final provider = context.read<TemplateProvider>();
     final success = await provider.saveTemplate(
@@ -288,6 +292,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       fileBytes: _approvalFileBytes,
       fileNames: _approvalFiles,
     );
+
+    if (mounted) setState(() => _saving = false);
 
     if (mounted && success) {
       final reqId = context.read<TemplateProvider>().reqId;
@@ -329,7 +335,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     _approvalFiles.clear();
     _approvalFileBytes.clear();
     selectedFormat = null;
-    setState(() => _submitted = false);
+    setState(() {
+      _submitted = false;
+      _saving = false;
+    });
     // sourceList and templateType are cleared via _model.reset()
   }
 
@@ -1199,11 +1208,20 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: _save,
-                    icon: const Icon(Icons.save_rounded, size: 20),
-                    label: const Text(
-                      'Save Template',
-                      style: TextStyle(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_rounded, size: 20),
+                    label: Text(
+                      _saving ? 'Saving...' : 'Save Template',
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1211,6 +1229,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF004C8F),
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          const Color(0xFF004C8F).withValues(alpha: 0.6),
+                      disabledForegroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

@@ -111,7 +111,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
       canSubmit = ctrl.allDynamicUniMailingKeysConfigured && !_submitting;
       if (!ctrl.allDynamicUniMailingKeysConfigured) {
         final done = ctrl.savedOutputKeyConfigs.length;
-        final total = ctrl.numberOfOutputs + 1;
+        final total = ctrl.dynamicUniMailingOutputKeys.length;
         validationMessage = 'Configure all output keys ($done / $total done)';
       } else {
         validationMessage = '';

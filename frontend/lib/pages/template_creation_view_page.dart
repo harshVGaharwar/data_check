@@ -32,10 +32,58 @@ class TemplateCreationViewPage extends StatelessWidget {
         .toList();
   }
 
+  List<Map<String, dynamic>> get _dynamicTemplates {
+    final raw = data['DynamicTemplate'] ?? data['dynamicTemplate'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+  }
+
   String _v(String key, {String fallback = '—'}) {
     final value = _template[key];
     if (value == null || value.toString().trim().isEmpty) return fallback;
     return value.toString();
+  }
+
+  // API codes: "1" = Static+UserDefined, "2" = Static+Unimailing, "3" = Dynamic
+  bool get _isDynamic => _v('TemplateType') == '3';
+
+  String get _templateTypeLabel {
+    switch (_v('TemplateType')) {
+      case '1':
+      case '2':
+        return '1 - Static';
+      case '3':
+        return '2 - Dynamic';
+      default:
+        return _v('TemplateType');
+    }
+  }
+
+  String get _staticSourceNames {
+    final fromRoot = data['SourceListNames']?.toString() ?? '';
+    if (fromRoot.isNotEmpty) return fromRoot;
+    return _v('SourceList');
+  }
+
+  String _sourceNamesFromEntry(Map<String, dynamic> entry) {
+    final sml = entry['sourceMasterList'];
+    if (sml is List && sml.isNotEmpty) {
+      final names = sml
+          .whereType<Map>()
+          .map(
+            (m) =>
+                (m['name'] ?? m['sourceName'] ?? m['SourceName'] ?? '')
+                    .toString(),
+          )
+          .where((s) => s.isNotEmpty)
+          .join(', ');
+      if (names.isNotEmpty) return names;
+    }
+    final sl = entry['sourceList']?.toString() ?? '';
+    return sl.isNotEmpty ? sl : '—';
   }
 
   @override
@@ -52,6 +100,13 @@ class TemplateCreationViewPage extends StatelessWidget {
     final selectedOutput = outputFormatNames.isEmpty
         ? ''
         : outputFormatNames.first.toLowerCase();
+
+    // Dynamic template: first entry (sourceType=1) is Static 1, rest are Dynamic 1..N
+    final staticEntry =
+        _dynamicTemplates.isNotEmpty ? _dynamicTemplates.first : null;
+    final dynamicEntries = _dynamicTemplates.length > 1
+        ? _dynamicTemplates.sublist(1)
+        : <Map<String, dynamic>>[];
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -177,25 +232,22 @@ class TemplateCreationViewPage extends StatelessWidget {
             children: [
               _header(),
               const SizedBox(height: 16),
+
+              // A) General Information
               _card(
                 title: 'General Information',
                 icon: Icons.info_outline_rounded,
                 child: Column(
                   children: [
                     _three(
-                      _field('Template Name *', _v('TemplateName')),
-                      _field('Department *', _v('Department')),
-                      _field('Frequency *', _v('Frequency')),
+                      _field('Template Name', _v('TemplateName')),
+                      _field('Department', _v('Department')),
+                      _field('Frequency', _v('Frequency')),
                     ),
                     _three(
                       _field('Priority', _v('Priority')),
                       _field('Normal Volume', _v('NormalVolume')),
                       _field('Peak Volume', _v('PeakVolume')),
-                    ),
-                    _three(
-                      _field('Source Count *', _v('SourceCount')),
-                      _field('Source Type *', _v('SourceList')),
-                      _field('Number of Outputs *', _v('NumberOfOutputs')),
                     ),
                     _three(
                       _field('Benefit Type', _v('BenefitType')),
@@ -205,7 +257,7 @@ class TemplateCreationViewPage extends StatelessWidget {
                     _three(
                       _field('Go Live Date', _v('GoLiveDate')),
                       _field('Deactivate Date', _v('DeactivateDate')),
-                      _field('SPOC Person *', _v('SpocPerson')),
+                      _field('SPOC Person', _v('SpocPerson')),
                     ),
                     _three(
                       _field('SPOC Manager', _v('SpocManager')),
@@ -216,27 +268,129 @@ class TemplateCreationViewPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
+
+              // B) Output Format
               _card(
                 title: 'Output Format',
                 icon: Icons.output_rounded,
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _togglePill(
-                      label: 'Unimailing',
-                      selected: selectedOutput == 'unimailing',
+                    // Template Type + Dynamic Count
+                    _three(
+                      _field('Template Type', _templateTypeLabel),
+                      _isDynamic
+                          ? _field('Dynamic Count', _v('NumberOfOutputs'))
+                          : const SizedBox.shrink(),
+                      const SizedBox.shrink(),
                     ),
-                    _togglePill(
-                      label: 'User Defined',
-                      selected:
-                          selectedOutput == 'user defined' ||
-                          selectedOutput == 'user_defined',
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: AppColors.border),
+                    const SizedBox(height: 16),
+
+                    // Static: Source Count + Source Type inline
+                    if (!_isDynamic) ...[
+                      _three(
+                        _field('Source Count', _v('SourceCount')),
+                        _field('Source Type', _staticSourceNames),
+                        const SizedBox.shrink(),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: AppColors.border),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Dynamic: Static 1 + Dynamic 1..N
+                    if (_isDynamic && _dynamicTemplates.isNotEmpty) ...[
+                      if (staticEntry != null) ...[
+                        const Text(
+                          'Static 1',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.text,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _three(
+                          _field(
+                            'Source Count',
+                            staticEntry['sourceCount']?.toString() ?? '—',
+                          ),
+                          _field('Source Type', _sourceNamesFromEntry(staticEntry)),
+                          const SizedBox.shrink(),
+                        ),
+                      ],
+                      ...dynamicEntries.asMap().entries.map((e) {
+                        final idx = e.key + 1;
+                        final entry = e.value;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 12),
+                            Text(
+                              'Dynamic $idx',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _three(
+                              _field(
+                                'Source Count',
+                                entry['sourceCount']?.toString() ?? '—',
+                              ),
+                              _field(
+                                'Source Type',
+                                _sourceNamesFromEntry(entry),
+                              ),
+                              const SizedBox.shrink(),
+                            ),
+                          ],
+                        );
+                      }),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: AppColors.border),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Output format pills
+                    const Text(
+                      'Output Format',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDim,
+                      ),
                     ),
+                    const SizedBox(height: 10),
+                    if (_isDynamic)
+                      _togglePill(label: 'Unimailing', selected: true)
+                    else
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          _togglePill(
+                            label: 'Unimailing',
+                            selected: selectedOutput == 'unimailing',
+                          ),
+                          _togglePill(
+                            label: 'User Defined',
+                            selected:
+                                selectedOutput == 'user defined' ||
+                                selectedOutput == 'user_defined',
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
               const SizedBox(height: 14),
+
+              // C) Approval List
               _card(
                 title: 'Approval List',
                 icon: Icons.verified_user_outlined,
@@ -249,6 +403,8 @@ class TemplateCreationViewPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
+
+              // D) Approval File Upload
               _card(
                 title: 'Approval File Upload',
                 icon: Icons.attach_file_rounded,
@@ -257,10 +413,7 @@ class TemplateCreationViewPage extends StatelessWidget {
                       ? [_fileRow('—', 'No file')]
                       : _approvals.map((a) {
                           final name =
-                              a['Approval_Type']
-                                      ?.toString()
-                                      .trim()
-                                      .isNotEmpty ==
+                              a['Approval_Type']?.toString().trim().isNotEmpty ==
                                   true
                               ? a['Approval_Type'].toString()
                               : 'Approval';
