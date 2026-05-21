@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
@@ -6,9 +5,6 @@ import '../../models/pipeline_models.dart';
 import '../../models/pipeline_config.dart';
 import '../../controllers/pipeline_controller.dart';
 import '../../providers/pipeline_master_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../services/pipeline_service.dart';
-import '../mapping_preview_dialog.dart';
 import '../searchable_dropdown.dart';
 
 class JoinNodeBody extends StatelessWidget {
@@ -364,48 +360,84 @@ class JoinNodeBody extends StatelessWidget {
                   defaultJoinType: node.joinType,
                 ),
 
-              // ── Submit Mapping Button ──
+              // ── Submit Mapping / Output preview button ──
               if (validMappings.isNotEmpty || isSingleSourceReady) ...[
                 const SizedBox(height: 10),
-                InkWell(
-                  onTap: () => _submitMapping(context, ctrl, node),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
+                if (ctrl.hasOutputNode)
+                  Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.green,
-                          AppColors.green.withValues(alpha: 0.8),
-                        ],
+                      color: AppColors.green.withValues(alpha: 0.08),
+                      border: Border.all(
+                        color: AppColors.green.withValues(alpha: 0.4),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.green.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.send_rounded, size: 16, color: Colors.white),
-                        SizedBox(width: 8),
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 14,
+                          color: AppColors.green,
+                        ),
+                        SizedBox(width: 6),
                         Text(
-                          'Submit Mapping',
+                          'Output Preview Open →',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
+                            color: AppColors.green,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
+                  )
+                else
+                  InkWell(
+                    onTap: () => _submitMapping(context, ctrl, node),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.green,
+                            AppColors.green.withValues(alpha: 0.8),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.green.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.send_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Submit Mapping',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
               ],
             ],
           ),
@@ -418,14 +450,7 @@ class JoinNodeBody extends StatelessWidget {
     BuildContext context,
     PipelineController ctrl,
     PipelineNode node,
-  ) async {
-    final master = Provider.of<PipelineMasterProvider>(context, listen: false);
-    final authUser = context.read<AuthProvider>().user?.user;
-    final userName = authUser?.employeeCode ?? '';
-    debugPrint(
-      '[SUBMIT] authUser=$authUser name=${authUser?.name} empCode=${authUser?.employeeCode}',
-    );
-
+  ) {
     // ── Validate: all required source nodes must be connected ──
     final inEdges = ctrl.edges.where((e) => e.toNodeId == node.id).toList();
     final connectedSources = inEdges
@@ -502,546 +527,8 @@ class JoinNodeBody extends StatelessWidget {
       return;
     }
 
-    // ── Build sourceNodes early (needed for preview dialog) ──
-    final connectedSourceIds = ctrl.edges
-        .where(
-          (e) => ctrl.nodes.any(
-            (n) => n.id == e.toNodeId && n.type == NodeType.join,
-          ),
-        )
-        .map((e) => e.fromNodeId)
-        .toSet();
-    final sourceNodes = ctrl.nodes
-        .where((n) => n.type.isSource && connectedSourceIds.contains(n.id))
-        .toList();
-
-    // ── Show preview dialog — only proceed if user confirms ──
-    final confirmed = await showMappingPreview(
-      context,
-      ctrl: ctrl,
-      sourceNodes: sourceNodes,
-    );
-    if (confirmed != true) return;
-
-    if (!context.mounted) return;
-
-    final templateId = ctrl.sidebarTemplateId;
-    final deptId = ctrl.sidebarDeptId;
-    final templateName = ctrl.sidebarTemplate;
-
-    // ── 1. Sources (only those connected to a join node via edges) ──
-    const sourceTypeValueToId = {'Manual': 1, 'QRS': 2, 'FC': 3};
-    final sources = sourceNodes.asMap().entries.map((entry) {
-      final s = entry.value;
-      final sourceId = sourceTypeValueToId[s.sourceTypeValue] ?? 0;
-      return {
-        'TemplateId': templateId,
-        'SourceId': s.sourceTypeId > 0 ? s.sourceTypeId.toString() : "",
-
-        /// jo source master se ID mil rahi hai wo
-        'SourceName': s.name,
-        'SourceType': sourceId.toString(),
-
-        /// jo drag kiye ho wo pass hoga
-        'Department': deptId,
-        'Template': templateName,
-        'Separator': s.separator,
-        'ColumnFile': s.fileName ?? '',
-        'QueryFile': s.queryFileName ?? '',
-        'Columns': s.cols.join(','),
-        'SelectedColumns': s.selectedCols.join(','),
-        'SourceSeqNo': null,
-      };
-    }).toList();
-
-    // ── 2. Join Mappings (flat list across all join nodes) ──
-    final joinMappings = <Map<String, dynamic>>[];
-    int mappingIdx = 0;
-    for (final j in ctrl.nodes.where((n) => n.type == NodeType.join)) {
-      for (final m in j.mappings.where((m) => m.isValid)) {
-        final lSrc = ctrl.findNode(m.leftSourceId);
-        final rSrc = ctrl.findNode(m.rightSourceId);
-        joinMappings.add({
-          'Id': mappingIdx++,
-          'TemplateId': templateId,
-          'Department': deptId,
-          'JoinNodeId': j.id,
-          'LeftSourceId': m.leftSourceId,
-          'LeftSourceName': lSrc?.name ?? '',
-          'LeftColumn': m.leftCol,
-          'JoinType': master.operations
-              .where((o) => o.operationName == m.joinType)
-              .map((o) => o.operationValue)
-              .firstOrNull,
-          'RightSourceId': m.rightSourceId,
-          'RightSourceName': rSrc?.name ?? '',
-          'RightColumn': m.rightCol,
-          'CreatedOn':
-              '${DateTime.now().toIso8601String().split('T').first}T00:00:00',
-        });
-      }
-    }
-
-    // ── 3. Edges ──
-    final edgeList = ctrl.edges
-        .map(
-          (e) => {
-            'template_id': templateId,
-            'department': deptId,
-            'From': e.fromNodeId,
-            'To': e.toNodeId,
-          },
-        )
-        .toList();
-
-    // ── 4. Connected Sources (join node ↔ source node pairs) ──
-    final connectedSourcesData = <Map<String, dynamic>>[];
-    for (final j in ctrl.nodes.where((n) => n.type == NodeType.join)) {
-      for (final edge in ctrl.edges.where((e) => e.toNodeId == j.id)) {
-        connectedSourcesData.add({
-          'TemplateId': templateId,
-          'Department': deptId,
-          'JoinNodeId': j.id,
-          'SourceId': edge.fromNodeId,
-        });
-      }
-    }
-
-    // ── 5. Output Columns (source col → user-defined output col name) ──
-    final deptIdInt = int.tryParse(deptId) ?? 0;
-    final outputColumns = <Map<String, dynamic>>[];
-    for (final s in sourceNodes) {
-      for (final col in s.selectedCols) {
-        final outputName = (s.columnAliases[col] ?? '').isNotEmpty
-            ? s.columnAliases[col]!
-            : col;
-        outputColumns.add({
-          'template_id': templateId,
-          'department': deptIdInt.toString(),
-          'sourceid': sourceTypeValueToId[s.sourceTypeValue].toString(),
-          'sourceName': s.name,
-          'SourceColName': col,
-          'ColumnName': outputName,
-        });
-      }
-    }
-
-    // ── Full payload ──
-    final payload = {
-      'TemplateId': templateId,
-      'createdBy': userName,
-      'templateMode': ctrl.templateMode.value,
-      'Sources': sources,
-      'JoinMappings': joinMappings,
-      'Edges': edgeList,
-      'connectedSources': connectedSourcesData,
-      'outputColumns': outputColumns,
-      'Jsondata': null,
-    };
-
-    // ── Collect file entries (column files + query files) ──
-    // Re-uploaded file → actual bytes.
-    // Not re-uploaded but filename exists (loaded from config) → empty bytes so
-    // the filename is still present in Files and the backend can reference it.
-    final fileEntries = <({String key, List<int> bytes, String filename})>[];
-    for (final s in sourceNodes) {
-      if (s.fileName != null && s.fileName!.isNotEmpty) {
-        fileEntries.add((
-          key: 'Files',
-          bytes: s.columnFileBytes ?? [],
-          filename: s.fileName!,
-        ));
-      }
-      if (s.queryFileName != null && s.queryFileName!.isNotEmpty) {
-        fileEntries.add((
-          key: 'Files',
-          bytes: s.queryFileBytes ?? [],
-          filename: s.queryFileName!,
-        ));
-      }
-    }
-
-    // ── Print full log ──
-    final jsonStr = const JsonEncoder.withIndent('  ').convert(payload);
-    debugPrint('═══════════════════════════════════════════════');
-    debugPrint('SUBMIT MAPPING — FULL PIPELINE CONFIGURATION');
-    debugPrint('═══════════════════════════════════════════════');
-    debugPrint(jsonStr);
-    debugPrint('Files: ${fileEntries.map((f) => f.filename).toList()}');
-    debugPrint('═══════════════════════════════════════════════');
-
-    // Show loader
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: AppColors.green),
-      ),
-    );
-
-    // Call API
-    bool submitSuccess = false;
-    String submitMessage = '';
-    int? submitTemplateId;
-    try {
-      final service = context.read<PipelineService>();
-      final response = await service.submitMapping(
-        payload,
-        fileEntries: fileEntries,
-      );
-      submitSuccess = response.success;
-      submitMessage = response.message;
-      submitTemplateId = response.data?.templateId;
-      debugPrint(
-        '[SUBMIT MAPPING] Response: status=${response.success}, templateId=${response.data?.templateId}, configId=${response.data?.configId}',
-      );
-    } catch (e) {
-      submitSuccess = false;
-      submitMessage = 'Network error. Please try again.';
-      debugPrint('[SUBMIT MAPPING] Exception: $e');
-    }
-
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (context.mounted) Navigator.of(context).pop();
-
-    if (!context.mounted) return;
-
-    if (submitSuccess) {
-      // Success dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: 340,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.green.withValues(alpha: 0.18),
-                  blurRadius: 48,
-                  offset: const Offset(0, 16),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ── Top banner with icon ──
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 28),
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.green.withValues(alpha: 0.18),
-                        AppColors.green.withValues(alpha: 0.05),
-                      ],
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 92,
-                            height: 92,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.green.withValues(alpha: 0.07),
-                            ),
-                          ),
-                          Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.green.withValues(alpha: 0.12),
-                            ),
-                          ),
-                          Container(
-                            width: 54,
-                            height: 54,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppColors.green,
-                                  AppColors.green.withValues(alpha: 0.7),
-                                ],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.green.withValues(
-                                    alpha: 0.45,
-                                  ),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: 30,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'Mapping Submitted!',
-                        style: TextStyle(
-                          color: AppColors.text,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        'Pipeline configuration saved successfully.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textDim.withValues(alpha: 0.8),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ── Body ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                  child: Column(
-                    children: [
-                      if (submitTemplateId != null) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: AppColors.green.withValues(alpha: 0.06),
-                            border: Border.all(
-                              color: AppColors.green.withValues(alpha: 0.22),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: AppColors.green.withValues(
-                                    alpha: 0.14,
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.tag_rounded,
-                                  color: AppColors.green,
-                                  size: 18,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Template Request ID',
-                                    style: TextStyle(
-                                      color: AppColors.textDim,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 1),
-                                  Text(
-                                    submitTemplateId.toString(),
-                                    style: const TextStyle(
-                                      color: AppColors.green,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(6),
-                                  color: AppColors.green.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                ),
-                                child: const Text(
-                                  'SAVED',
-                                  style: TextStyle(
-                                    color: AppColors.green,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // Done button
-                      InkWell(
-                        onTap: () {
-                          Navigator.of(ctx).pop();
-                          ctrl.clearCanvas();
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.green,
-                                AppColors.green.withValues(alpha: 0.72),
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.green.withValues(alpha: 0.38),
-                                blurRadius: 14,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.check_circle_outline_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Done',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    } else {
-      // Error dialog
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.red.withValues(alpha: 0.15),
-                ),
-                child: const Icon(
-                  Icons.error_rounded,
-                  color: AppColors.red,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Submission Failed',
-                style: TextStyle(
-                  color: AppColors.text,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (submitMessage.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  submitMessage,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.textDim,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: () => Navigator.of(ctx).pop(),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: AppColors.red,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'OK',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    // ── Open output preview node on canvas ──
+    ctrl.addOutputNode(node.id);
   }
 }
 

@@ -4,6 +4,17 @@ import '../models/pipeline_models.dart';
 import '../controllers/pipeline_controller.dart';
 import 'nodes/join_node_body.dart' show JoinVennIcon;
 
+// ── UniMailing mandatory field list ──────────────────────────────────────────
+const _kMandatoryFields = [
+  'Mail To',
+  'Mail CC',
+  'Mail BCC',
+  'Subject',
+  'Attachment',
+  'SMS To',
+  'Barcode',
+];
+
 // ── Source color palette ─────────────────────────────────────────────────────
 const _palette = [
   Color(0xFF10B981),
@@ -80,14 +91,41 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
     final deptId = ctrl.sidebarDeptId;
     final joinNodes = ctrl.nodes.where((n) => n.type == NodeType.join).toList();
 
-    // Source index map for consistent color lookup
     final srcIndex = {
       for (var i = 0; i < sourceNodes.length; i++) sourceNodes[i].id: i,
     };
 
-    final confirmEnabled = sourceNodes
+    final sourcesWithCols = sourceNodes
         .where((n) => n.cols.isNotEmpty)
-        .any((n) => n.selectedCols.any((c) => n.columnAliases.containsKey(c)));
+        .toList();
+    // Section turns blue + submit enabled when every source with cols has ≥1 col selected
+    // (selected cols always carry priorities via auto-defaults, alias is optional)
+    final allPrioritiesProvided =
+        sourcesWithCols.isNotEmpty &&
+        sourcesWithCols.every((n) => n.selectedCols.isNotEmpty);
+
+    // UniMailing section — shown only for Static + UniMailing templates
+    final isStaticUniMailing =
+        ctrl.templateType.toLowerCase().contains('static') &&
+        ctrl.outputFormats.any((f) => f.toLowerCase().contains('unimailing'));
+    final uniMailingComplete =
+        !isStaticUniMailing ||
+        _kMandatoryFields.every(
+          (f) => (ctrl.uniMailingMandatory[f] ?? '').isNotEmpty,
+        );
+
+    // Context-aware validation message for SnackBar
+    final String validationMessage;
+    if (!allPrioritiesProvided) {
+      validationMessage = 'Select at least one output column for every source';
+    } else if (!uniMailingComplete) {
+      validationMessage =
+          'Map all 7 mandatory UniMailing fields before submitting';
+    } else {
+      validationMessage = '';
+    }
+
+    final confirmEnabled = allPrioritiesProvided && uniMailingComplete;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -109,6 +147,7 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
                       templateId: templateId,
                       deptName: deptName,
                       deptId: deptId,
+                      outputFormats: ctrl.outputFormats,
                     ),
                     secondChild: const SizedBox(width: double.infinity),
                     crossFadeState: _headerVisible
@@ -122,86 +161,20 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
               ),
             ),
 
-            // ── Scrollable page body ──────────────────────────────────────────
+            // ── Scrollable body ───────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 controller: _scrollCtrl,
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Output Format section ──
-                    if (sourceNodes.any((n) => n.cols.isNotEmpty)) ...[
-                      _SectionCard(
-                        title: 'Output Format Selection',
-                        icon: Icons.tune_rounded,
-                        accentColor: confirmEnabled
-                            ? AppColors.blue
-                            : AppColors.red,
-                        badge:
-                            '${sourceNodes.where((n) => n.cols.isNotEmpty).length} sources',
-                        selected: true,
-                        child: Column(
-                          children: [
-                            for (final src in sourceNodes.where(
-                              (n) => n.cols.isNotEmpty,
-                            )) ...[
-                              _OutputFormatCard(node: src, ctrl: ctrl),
-                              if (src !=
-                                  sourceNodes
-                                      .where((n) => n.cols.isNotEmpty)
-                                      .last)
-                                const SizedBox(height: 12),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // ── Source Nodes section ──
-                    _SectionCard(
-                      title: 'Source Nodes',
-                      icon: Icons.storage_rounded,
-                      accentColor: AppColors.green,
-                      badge: '${sourceNodes.length} sources',
-                      child: SizedBox(
-                        height: 218,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: sourceNodes.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 14),
-                          itemBuilder: (_, i) => _SourceCard(
-                            node: sourceNodes[i],
-                            color: _srcColor(i),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ── Join Operation section (only when 2+ sources) ──
-                    if (sourceNodes.length > 1) ...[
-                      for (final j in joinNodes) ...[
-                        _SectionCard(
-                          title: 'Join Operation',
-                          icon: Icons.merge_type_rounded,
-                          accentColor: AppColors.violet,
-                          badge:
-                              '${j.mappings.where((m) => m.isValid).length} conditions',
-                          child: _JoinCard(
-                            joinNode: j,
-                            sourceNodes: sourceNodes,
-                            srcIndex: srcIndex,
-                            ctrl: ctrl,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ],
-                  ],
+                child: _buildBody(
+                  sourceNodes,
+                  joinNodes,
+                  srcIndex,
+                  ctrl,
+                  confirmEnabled,
+                  allPrioritiesProvided,
+                  isStaticUniMailing,
+                  uniMailingComplete,
                 ),
               ),
             ),
@@ -213,11 +186,94 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
                 onEdit: () => Navigator.of(context).pop(false),
                 onConfirm: () => Navigator.of(context).pop(true),
                 confirmEnabled: confirmEnabled,
+                validationMessage: validationMessage,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBody(
+    List<PipelineNode> sourceNodes,
+    List<PipelineNode> joinNodes,
+    Map<String, int> srcIndex,
+    PipelineController ctrl,
+    bool confirmEnabled,
+    bool allPrioritiesProvided,
+    bool isStaticUniMailing,
+    bool uniMailingComplete,
+  ) {
+    // Priority shown only when Static + User Defined
+    final isStaticUserDefined =
+        ctrl.templateType.toLowerCase().contains('static') &&
+        ctrl.outputFormats.any(
+          (f) => f.toLowerCase().replaceAll(' ', '').contains('userdefined'),
+        );
+
+    final mandatoryFilled = _kMandatoryFields
+        .where((f) => (ctrl.uniMailingMandatory[f] ?? '').isNotEmpty)
+        .length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (sourceNodes.any((n) => n.cols.isNotEmpty)) ...[
+          _SectionCard(
+            title: 'Column Selection',
+            icon: Icons.checklist_rounded,
+            accentColor: allPrioritiesProvided ? AppColors.blue : AppColors.red,
+            badge:
+                '${sourceNodes.where((n) => n.cols.isNotEmpty).length} sources',
+            selected: true,
+            child: Column(
+              children: [
+                for (final src in sourceNodes.where(
+                  (n) => n.cols.isNotEmpty,
+                )) ...[
+                  _OutputFormatCard(
+                    node: src,
+                    ctrl: ctrl,
+                    hidePriority: !isStaticUserDefined,
+                  ),
+                  if (src != sourceNodes.where((n) => n.cols.isNotEmpty).last)
+                    const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (sourceNodes.length > 1) ...[
+          for (final j in joinNodes) ...[
+            _SectionCard(
+              title: 'Join Operation',
+              icon: Icons.merge_type_rounded,
+              accentColor: AppColors.violet,
+              badge: '${j.mappings.where((m) => m.isValid).length} conditions',
+              child: _JoinCard(
+                joinNode: j,
+                sourceNodes: sourceNodes,
+                srcIndex: srcIndex,
+                ctrl: ctrl,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ],
+        if (isStaticUniMailing) ...[
+          _SectionCard(
+            title: 'UniMailing Format',
+            icon: Icons.email_rounded,
+            accentColor: uniMailingComplete ? AppColors.blue : AppColors.amber,
+            badge: '$mandatoryFilled / 7 required',
+            selected: true,
+            child: _UniMailingSection(ctrl: ctrl, sourceNodes: sourceNodes),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ],
     );
   }
 }
@@ -350,11 +406,13 @@ class _Header extends StatelessWidget {
   final int templateId;
   final String deptName;
   final String deptId;
+  final List<String> outputFormats;
   const _Header({
     required this.templateName,
     required this.templateId,
     required this.deptName,
     required this.deptId,
+    this.outputFormats = const [],
   });
 
   @override
@@ -440,35 +498,79 @@ class _Header extends StatelessWidget {
             ),
           ),
 
-          // ── Review badge ──
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: AppColors.violet,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.violet.withValues(alpha: 0.30),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          // ── Output format badges + review badge ──
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (outputFormats.isNotEmpty) ...[
+                Wrap(
+                  spacing: 4,
+                  children: outputFormats
+                      .map(
+                        (f) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.amber.withValues(alpha: 0.12),
+                            border: Border.all(
+                              color: AppColors.amber.withValues(alpha: 0.30),
+                            ),
+                          ),
+                          child: Text(
+                            f,
+                            style: const TextStyle(
+                              color: AppColors.amber,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
+                const SizedBox(height: 6),
               ],
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.checklist_rounded, size: 13, color: Colors.white),
-                SizedBox(width: 5),
-                Text(
-                  'Review & Submit',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
                 ),
-              ],
-            ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.violet,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.violet.withValues(alpha: 0.30),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.checklist_rounded,
+                      size: 13,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 5),
+                    Text(
+                      'Review & Submit',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1010,36 +1112,6 @@ class _JoinCard extends StatelessWidget {
       ],
     );
   }
-
-  Widget _sourceNode(PipelineNode src, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: color.withValues(alpha: 0.10),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            src.name,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ── Mapping row ───────────────────────────────────────────────────────────────
@@ -1305,7 +1377,12 @@ class _MappingRow extends StatelessWidget {
 class _OutputFormatCard extends StatelessWidget {
   final PipelineNode node;
   final PipelineController ctrl;
-  const _OutputFormatCard({required this.node, required this.ctrl});
+  final bool hidePriority;
+  const _OutputFormatCard({
+    required this.node,
+    required this.ctrl,
+    this.hidePriority = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1393,7 +1470,11 @@ class _OutputFormatCard extends StatelessWidget {
           // ── Selector body ──
           Padding(
             padding: const EdgeInsets.all(14),
-            child: _OutputColumnSelector(node: node, ctrl: ctrl),
+            child: _OutputColumnSelector(
+              node: node,
+              ctrl: ctrl,
+              hidePriority: hidePriority,
+            ),
           ),
         ],
       ),
@@ -1461,8 +1542,13 @@ class _CountBadgeState extends State<_CountBadge> {
 class _OutputColumnSelector extends StatefulWidget {
   final PipelineNode node;
   final PipelineController ctrl;
+  final bool hidePriority;
 
-  const _OutputColumnSelector({required this.node, required this.ctrl});
+  const _OutputColumnSelector({
+    required this.node,
+    required this.ctrl,
+    this.hidePriority = false,
+  });
 
   @override
   State<_OutputColumnSelector> createState() => _OutputColumnSelectorState();
@@ -1497,6 +1583,25 @@ class _OutputColumnSelectorState extends State<_OutputColumnSelector> {
     final total = node.cols.length;
     final selCount = node.selectedCols.length;
     final progress = total > 0 ? selCount / total : 0.0;
+
+    // Global unique default priorities across all source nodes (prevents duplicate defaults)
+    final allSrcNodes = ctrl.nodes
+        .where((n) => n.type != NodeType.join)
+        .toList();
+    int _g = 0;
+    final _globalDefault = <String, int>{};
+    for (final n in allSrcNodes) {
+      for (final c in n.selectedCols) {
+        _g++;
+        _globalDefault['${n.id}_$c'] = _g;
+      }
+    }
+    final totalSelected = _g > 0 ? _g : 1;
+
+    // Effective priority = user-set OR unique global default
+    int effPri(PipelineNode n, String c) => n.columnPriorities.containsKey(c)
+        ? n.columnPriorities[c]!
+        : (_globalDefault['${n.id}_$c'] ?? 1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1685,7 +1790,7 @@ class _OutputColumnSelectorState extends State<_OutputColumnSelector> {
                 }).toList(),
               ),
 
-        // ── Alias table ──
+        // ── Alias + Priority table ──
         if (node.selectedCols.isNotEmpty) ...[
           const SizedBox(height: 14),
           Container(
@@ -1718,26 +1823,47 @@ class _OutputColumnSelectorState extends State<_OutputColumnSelector> {
                         color: AppColors.blue,
                       ),
                       const SizedBox(width: 6),
-                      const Text(
-                        'Source column',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
+                      const Expanded(
+                        child: Text(
+                          'Source column',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
                         ),
                       ),
-                      const Spacer(),
-                      const Text(
-                        'Output alias',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
+                      if (!widget.hidePriority) ...[
+                        const SizedBox(width: 8),
+                        const SizedBox(
+                          width: 64,
+                          child: Text(
+                            'Priority',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.violet,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      const SizedBox(
+                        width: 130,
+                        child: Text(
+                          'Output alias',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 4),
                     ],
                   ),
                 ),
@@ -1746,6 +1872,13 @@ class _OutputColumnSelectorState extends State<_OutputColumnSelector> {
                   final i = e.key;
                   final col = e.value;
                   final isLast = i == node.selectedCols.length - 1;
+
+                  // All 1..N options shown; swap on conflict
+                  final available = List.generate(
+                    totalSelected,
+                    (idx) => idx + 1,
+                  );
+                  final myPri = effPri(node, col);
                   return Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -1792,9 +1925,99 @@ class _OutputColumnSelectorState extends State<_OutputColumnSelector> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        if (!widget.hidePriority) ...[
+                          const SizedBox(width: 8),
+                          // Priority dropdown — only shows slots not taken by other columns
+                          SizedBox(
+                            width: 64,
+                            height: 30,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.violet.withValues(
+                                    alpha: 0.30,
+                                  ),
+                                ),
+                                color: AppColors.violet.withValues(alpha: 0.05),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: DropdownButton<int>(
+                                value: available.contains(myPri)
+                                    ? myPri
+                                    : available.first,
+                                items: available
+                                    .map(
+                                      (p) => DropdownMenuItem(
+                                        value: p,
+                                        child: Text(
+                                          '$p',
+                                          style: const TextStyle(
+                                            color: AppColors.violet,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  // Recompute fresh inside onChanged — avoids stale closures
+                                  final freshNodes = ctrl.nodes
+                                      .where((n) => n.type != NodeType.join)
+                                      .toList();
+                                  int gi = 0;
+                                  final freshDefault = <String, int>{};
+                                  for (final n in freshNodes) {
+                                    for (final c in n.selectedCols) {
+                                      gi++;
+                                      freshDefault['${n.id}_$c'] = gi;
+                                    }
+                                  }
+                                  int fp(PipelineNode n, String c) =>
+                                      n.columnPriorities.containsKey(c)
+                                      ? n.columnPriorities[c]!
+                                      : (freshDefault['${n.id}_$c'] ?? 1);
+
+                                  final oldPri = fp(node, col);
+                                  if (oldPri == v) return; // no-op
+
+                                  // Find conflicting column and swap — labeled break
+                                  search:
+                                  for (final n2 in freshNodes) {
+                                    for (final c2 in n2.selectedCols) {
+                                      if (n2.id == node.id && c2 == col)
+                                        continue;
+                                      if (fp(n2, c2) == v) {
+                                        ctrl.setColumnPriority(
+                                          n2.id,
+                                          c2,
+                                          oldPri,
+                                        );
+                                        break search;
+                                      }
+                                    }
+                                  }
+                                  ctrl.setColumnPriority(node.id, col, v);
+                                },
+                                underline: const SizedBox.shrink(),
+                                isDense: true,
+                                isExpanded: true,
+                                icon: const Icon(
+                                  Icons.arrow_drop_down_rounded,
+                                  size: 16,
+                                  color: AppColors.violet,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ], // end if (!widget.hidePriority)
+                        const SizedBox(width: 8),
                         SizedBox(
-                          width: 160,
+                          width: 130,
                           height: 30,
                           child: TextFormField(
                             key: ValueKey('dlg_alias_${node.id}_$col'),
@@ -1906,10 +2129,12 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onConfirm;
   final bool confirmEnabled;
+  final String validationMessage;
   const _ActionRow({
     required this.onEdit,
     required this.onConfirm,
     required this.confirmEnabled,
+    this.validationMessage = 'Please complete all required fields',
   });
 
   @override
@@ -1955,69 +2180,503 @@ class _ActionRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          // Confirm button
+          // Confirm button — always tappable; shows SnackBar if validation fails
           Expanded(
             flex: 2,
-            child: Tooltip(
-              message: confirmEnabled
-                  ? ''
-                  : 'Please provide at least one output column rename',
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: confirmEnabled ? 1.0 : 0.45,
-                child: InkWell(
-                  onTap: confirmEnabled ? onConfirm : null,
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      gradient: LinearGradient(
-                        colors: confirmEnabled
-                            ? [
-                                AppColors.green,
-                                AppColors.green.withValues(alpha: 0.8),
-                              ]
-                            : [AppColors.border2, AppColors.border2],
-                      ),
-                      boxShadow: confirmEnabled
-                          ? [
-                              BoxShadow(
-                                color: AppColors.green.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: confirmEnabled ? 1.0 : 0.55,
+              child: InkWell(
+                onTap: () {
+                  if (!confirmEnabled) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                validationMessage,
+                                style: const TextStyle(fontSize: 12),
                               ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: AppColors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        margin: const EdgeInsets.all(16),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                    return;
+                  }
+                  onConfirm();
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      colors: confirmEnabled
+                          ? [
+                              AppColors.green,
+                              AppColors.green.withValues(alpha: 0.8),
                             ]
-                          : null,
+                          : [AppColors.border2, AppColors.border2],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          size: 15,
+                    boxShadow: confirmEnabled
+                        ? [
+                            BoxShadow(
+                              color: AppColors.green.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 15,
+                        color: confirmEnabled
+                            ? Colors.white
+                            : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Confirm & Submit',
+                        style: TextStyle(
                           color: confirmEnabled
                               ? Colors.white
                               : AppColors.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Confirm & Submit',
-                          style: TextStyle(
-                            color: confirmEnabled
-                                ? Colors.white
-                                : AppColors.textMuted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── UniMailing section ────────────────────────────────────────────────────────
+
+class _UniMailingSection extends StatefulWidget {
+  final PipelineController ctrl;
+  final List<PipelineNode> sourceNodes;
+  const _UniMailingSection({required this.ctrl, required this.sourceNodes});
+
+  @override
+  State<_UniMailingSection> createState() => _UniMailingSectionState();
+}
+
+class _UniMailingSectionState extends State<_UniMailingSection> {
+  late int _customCount;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.ctrl.addListener(_onCtrlChange);
+    _customCount = _deriveCustomCount();
+  }
+
+  void _onCtrlChange() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.ctrl.removeListener(_onCtrlChange);
+    super.dispose();
+  }
+
+  int _deriveCustomCount() {
+    if (widget.ctrl.uniMailingCustom.isEmpty) return 0;
+    return widget.ctrl.uniMailingCustom.keys
+        .map((k) => int.tryParse(k.substring(1)) ?? 0)
+        .reduce((a, b) => a > b ? a : b);
+  }
+
+  // Build flat list: nodeId::colName  →  display label
+  ({List<String> keys, Map<String, String> labels}) _buildAvailable() {
+    final srcNodes = widget.sourceNodes
+        .where((n) => n.selectedCols.isNotEmpty)
+        .toList();
+    final multi = srcNodes.length > 1;
+    final keys = <String>[];
+    final labels = <String, String>{};
+    for (final n in srcNodes) {
+      for (final c in n.selectedCols) {
+        final k = '${n.id}::$c';
+        keys.add(k);
+        labels[k] = multi ? '${n.name} › $c' : c;
+      }
+    }
+    return (keys: keys, labels: labels);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = widget.ctrl;
+    final avail = _buildAvailable();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Mandatory Fields ──────────────────────────────────────────────
+        _uniSubHeader('MANDATORY FIELDS', Icons.star_rounded, AppColors.red),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: _kMandatoryFields.asMap().entries.map((e) {
+              final idx = e.key;
+              final field = e.value;
+              final isLast = idx == _kMandatoryFields.length - 1;
+              final current = ctrl.uniMailingMandatory[field] ?? '';
+              final isMapped = avail.keys.contains(current);
+              return _UniMappingRow(
+                label: field,
+                labelColor: AppColors.red,
+                currentKey: isMapped ? current : null,
+                availableKeys: avail.keys,
+                colLabels: avail.labels,
+                isLast: isLast,
+                isRequired: true,
+                isMapped: isMapped,
+                onChanged: (v) => ctrl.setUniMailingMandatory(field, v ?? ''),
+              );
+            }).toList(),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Custom Columns ────────────────────────────────────────────────
+        Row(
+          children: [
+            _uniSubHeader(
+              'CUSTOM COLUMNS (C1–C50)',
+              Icons.add_box_outlined,
+              AppColors.violet,
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: AppColors.violet.withValues(alpha: 0.08),
+              ),
+              child: const Text(
+                'optional',
+                style: TextStyle(
+                  color: AppColors.violet,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const Spacer(),
+            if (_customCount < 50)
+              GestureDetector(
+                onTap: () => setState(() => _customCount++),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                    color: AppColors.violet.withValues(alpha: 0.10),
+                    border: Border.all(
+                      color: AppColors.violet.withValues(alpha: 0.30),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.add_rounded,
+                        size: 12,
+                        color: AppColors.violet,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Add C${_customCount + 1}',
+                        style: const TextStyle(
+                          color: AppColors.violet,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+
+        if (_customCount == 0)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: AppColors.surface2,
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Center(
+              child: Text(
+                'No custom columns added — tap Add C1 to begin',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: List.generate(_customCount, (i) {
+                final slot = i + 1;
+                final key = 'C$slot';
+                final current = ctrl.uniMailingCustom[key] ?? '';
+                final isMapped = avail.keys.contains(current);
+                final isLast = slot == _customCount;
+                return _UniMappingRow(
+                  label: key,
+                  labelColor: AppColors.violet,
+                  currentKey: isMapped ? current : null,
+                  availableKeys: avail.keys,
+                  colLabels: avail.labels,
+                  isLast: isLast,
+                  isRequired: false,
+                  isMapped: isMapped,
+                  onChanged: (v) => ctrl.setUniMailingCustom(key, v ?? ''),
+                  onDelete: isLast
+                      ? () {
+                          ctrl.setUniMailingCustom(key, '');
+                          setState(() => _customCount--);
+                        }
+                      : null,
+                );
+              }),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _uniSubHeader(String title, IconData icon, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 11, color: color),
+        const SizedBox(width: 5),
+        Text(
+          title,
+          style: TextStyle(
+            color: color,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.9,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── UniMailing mapping row ────────────────────────────────────────────────────
+
+class _UniMappingRow extends StatelessWidget {
+  final String label;
+  final Color labelColor;
+  final String? currentKey;
+  final List<String> availableKeys;
+  final Map<String, String> colLabels;
+  final bool isLast;
+  final bool isRequired;
+  final bool isMapped;
+  final ValueChanged<String?> onChanged;
+  final VoidCallback? onDelete;
+
+  const _UniMappingRow({
+    required this.label,
+    required this.labelColor,
+    required this.currentKey,
+    required this.availableKeys,
+    required this.colLabels,
+    required this.isLast,
+    required this.isRequired,
+    required this.isMapped,
+    required this.onChanged,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = !isMapped && isRequired
+        ? AppColors.red.withValues(alpha: 0.45)
+        : isMapped
+        ? labelColor.withValues(alpha: 0.28)
+        : AppColors.border2;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: isLast
+            ? const BorderRadius.vertical(bottom: Radius.circular(10))
+            : null,
+        border: isLast
+            ? null
+            : const Border(
+                bottom: BorderSide(color: AppColors.border, width: 0.8),
+              ),
+        color: isMapped
+            ? labelColor.withValues(alpha: 0.03)
+            : AppColors.surface,
+      ),
+      child: Row(
+        children: [
+          // Label badge
+          Container(
+            constraints: const BoxConstraints(minWidth: 70),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              color: isMapped
+                  ? labelColor.withValues(alpha: 0.12)
+                  : AppColors.surface2,
+              border: Border.all(
+                color: isMapped
+                    ? labelColor.withValues(alpha: 0.28)
+                    : AppColors.border2,
+              ),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isMapped ? labelColor : AppColors.textMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.arrow_forward_rounded,
+            size: 12,
+            color: AppColors.textMuted,
+          ),
+          const SizedBox(width: 8),
+
+          // Dropdown
+          Expanded(
+            child: Container(
+              height: 32,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: borderColor),
+                color: isMapped
+                    ? labelColor.withValues(alpha: 0.04)
+                    : AppColors.bg,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: DropdownButton<String?>(
+                value: currentKey,
+                hint: Text(
+                  isRequired ? '— required —' : '— optional —',
+                  style: TextStyle(
+                    color: isRequired
+                        ? AppColors.red.withValues(alpha: 0.65)
+                        : AppColors.textMuted,
+                    fontSize: 10,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                isExpanded: true,
+                isDense: true,
+                underline: const SizedBox.shrink(),
+                icon: Icon(
+                  Icons.arrow_drop_down_rounded,
+                  size: 16,
+                  color: isMapped ? labelColor : AppColors.textDim,
+                ),
+                onChanged: onChanged,
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text(
+                      '— clear —',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 10,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                  ...availableKeys.map(
+                    (k) => DropdownMenuItem<String?>(
+                      value: k,
+                      child: Text(
+                        colLabels[k] ?? k,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 10,
+                          fontFamily: AppTextStyles.monoFamily,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          // Status dot (required) or delete button (optional last row)
+          if (onDelete != null)
+            GestureDetector(
+              onTap: onDelete,
+              child: const Icon(
+                Icons.remove_circle_outline_rounded,
+                size: 17,
+                color: AppColors.red,
+              ),
+            )
+          else
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isMapped ? AppColors.green : AppColors.red,
+              ),
+            ),
         ],
       ),
     );

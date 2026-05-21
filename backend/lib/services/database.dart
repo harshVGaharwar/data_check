@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 
@@ -5,7 +7,59 @@ import '../models/models.dart';
 class Database {
   static final Database _instance = Database._();
   factory Database() => _instance;
-  Database._();
+
+  static const _dynamicTemplatesPath = 'data/dynamic_templates.json';
+
+  /// Tracks only runtime-added templates — persisted to disk
+  final Map<int, List<Map<String, dynamic>>> _dynamicTemplates = {};
+
+  Database._() {
+    _loadDynamicTemplates();
+  }
+
+  void _loadDynamicTemplates() {
+    try {
+      final file = File(_dynamicTemplatesPath);
+      if (!file.existsSync()) return;
+      final data = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      for (final entry in data.entries) {
+        final deptId = int.tryParse(entry.key);
+        if (deptId == null) continue;
+        final list = (entry.value as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        _dynamicTemplates[deptId] = list;
+        templatesByDept.putIfAbsent(deptId, () => []);
+        templatesByDept[deptId]!.addAll(list);
+      }
+      print(
+          '[DB] Loaded ${_dynamicTemplates.values.expand((l) => l).length} dynamic template(s)');
+    } catch (e) {
+      print('[DB] Could not load dynamic templates: $e');
+    }
+  }
+
+  /// Adds a template entry to the in-memory map AND persists it to disk.
+  void persistTemplate(int deptId, Map<String, dynamic> entry) {
+    templatesByDept.putIfAbsent(deptId, () => []);
+    templatesByDept[deptId]!.add(entry);
+    _dynamicTemplates.putIfAbsent(deptId, () => []);
+    _dynamicTemplates[deptId]!.add(entry);
+    _saveDynamicTemplates();
+  }
+
+  void _saveDynamicTemplates() {
+    try {
+      final file = File(_dynamicTemplatesPath);
+      file.parent.createSync(recursive: true);
+      final jsonData = {
+        for (final e in _dynamicTemplates.entries) e.key.toString(): e.value,
+      };
+      file.writeAsStringSync(jsonEncode(jsonData));
+    } catch (e) {
+      print('[DB] Failed to save dynamic templates: $e');
+    }
+  }
 
   final _uuid = const Uuid();
 
@@ -31,108 +85,79 @@ class Database {
   };
 
   // ── Templates by Department ID ──
-  // Flat format: [{TemplateId, TemplateName, ..., OutputFormats:[...], Approvals:[...], CreatedBy, DepartmentName, SourceListNames}]
+  // 3 cases: Static+UserDefined, Static+UniMailing, Dynamic+UniMailing
   final Map<int, List<Map<String, dynamic>>> templatesByDept = {
     1: [
-      // Finance
+      // ── Case 1: Static + User Defined ──
       {
-        'TemplateId': 1,
-        'TemplateName': 'GL Reconciliation',
+        'TemplateType': '1 - Static',
+        'TemplateId': 10,
+        'TemplateName': '10 - Static User Defined',
         'Department': '1',
         'Frequency': 'Monthly',
-        'NormalVolume': 500,
-        'PeakVolume': 1000,
-        'SourceCount': 3,
-        'BenefitType': 'Efficiency',
-        'BenefitAmount': 5000,
+        'NormalVolume': 1000,
+        'PeakVolume': 5000,
+        'SourceCount': 2,
+        'BenefitType': 'Cost',
+        'BenefitAmount': 50000,
         'BenefitInTat': '2 days',
-        'GoLiveDate': '2025-01-01',
+        'GoLiveDate': '2026-01-01',
         'DeactivateDate': null,
         'SpocPerson': 'Rahul Sharma',
         'SpocManager': 'Amit Kumar',
         'UnitHead': 'Priya Singh',
-        'Priority': 'High',
-        'TemplateType': '2 - Dynamic',
-        'NumberOfOutputs': 2,
-        'SourceList': '1,2',
-        'OutputFormats': [
-          {'TemplateTempId': null, 'FormatName': 'CSV'},
-          {'TemplateTempId': null, 'FormatName': 'Excel'},
-        ],
-        'Approvals': [
-          {
-            'TemplateTempId': null,
-            'Approval_Type': 'Unit Head',
-            'ApprovalFile': ''
-          },
-          {
-            'TemplateTempId': null,
-            'Approval_Type': 'UAT Sign Off',
-            'ApprovalFile': ''
-          },
-        ],
-        'CreatedBy': 'admin',
-        'jsonData': '',
-        'DepartmentName': 'Finance',
-        'SourceListNames': 'Finacle Core,Oracle GL',
-      },
-      {
-        'TemplateId': 2,
-        'TemplateName': 'P&L Report',
-        'Department': '1',
-        'Frequency': 'Monthly',
-        'NormalVolume': 200,
-        'PeakVolume': 400,
-        'SourceCount': 2,
-        'BenefitType': 'Reporting',
-        'BenefitAmount': 3000,
-        'BenefitInTat': '1 day',
-        'GoLiveDate': '2025-02-01',
-        'DeactivateDate': null,
-        'SpocPerson': 'Neha Gupta',
-        'SpocManager': 'Amit Kumar',
-        'UnitHead': 'Priya Singh',
-        'Priority': 'High',
-        'TemplateType': '2 - Dynamic',
-        'NumberOfOutputs': 1,
-        'SourceList': '3',
-        'OutputFormats': [
-          {'TemplateTempId': null, 'FormatName': 'Excel'},
-        ],
-        'Approvals': [
-          {
-            'TemplateTempId': null,
-            'Approval_Type': 'Unit Head',
-            'ApprovalFile': ''
-          },
-        ],
-        'CreatedBy': 'admin',
-        'jsonData': '',
-        'DepartmentName': 'Finance',
-        'SourceListNames': 'SAP FI',
-      },
-      {
-        'TemplateId': 3,
-        'TemplateName': 'Budget Variance',
-        'Department': '1',
-        'Frequency': 'Quarterly',
-        'NormalVolume': 100,
-        'PeakVolume': 200,
-        'SourceCount': 2,
-        'BenefitType': 'CostSaving',
-        'BenefitAmount': 2000,
-        'BenefitInTat': '3 days',
-        'GoLiveDate': '2025-03-01',
-        'DeactivateDate': null,
-        'SpocPerson': 'Vikram Rao',
-        'SpocManager': 'Amit Kumar',
-        'UnitHead': 'Priya Singh',
         'Priority': 'Medium',
-        'TemplateType': '2 - Dynamic',
-        'NumberOfOutputs': 1,
-        'SourceList': '1,3',
+        'NumberOfOutputs': null,
+        'SourceList': '1,2',
+        'templateType': '1',
+        'templateId': 10,
+        'templateName': '10 - Static User Defined',
+        'outputFormats': [
+          {'templateTempId': 10, 'formatName': 'User Defined'},
+        ],
         'OutputFormats': [
-          {'TemplateTempId': null, 'FormatName': 'CSV'},
+          {'TemplateTempId': null, 'FormatName': 'User Defined'},
+        ],
+        'dynamicTemplate': [
+          {
+            'srno': 0,
+            'id': 0,
+            'sourceList': '1,2',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 10,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '2',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '1',
+          },
         ],
         'Approvals': [
           {
@@ -144,71 +169,80 @@ class Database {
         'CreatedBy': 'admin',
         'jsonData': '',
         'DepartmentName': 'Finance',
-        'SourceListNames': 'Finacle Core,SAP FI',
+        'departmentName': 'Finance',
+        'SourceListNames': 'Finacle Core, Oracle GL',
+        'sourceListNames': 'Finacle Core, Oracle GL',
       },
+      // ── Case 2: Static + UniMailing ──
       {
-        'TemplateId': 4,
-        'TemplateName': 'Cash Flow',
+        'TemplateType': '1 - Static',
+        'TemplateId': 20,
+        'TemplateName': '20 - Static UniMailing',
         'Department': '1',
         'Frequency': 'Weekly',
-        'NormalVolume': 300,
-        'PeakVolume': 600,
+        'NormalVolume': 500,
+        'PeakVolume': 2000,
         'SourceCount': 2,
-        'BenefitType': 'Compliance',
-        'BenefitAmount': 4000,
-        'BenefitInTat': '1 day',
-        'GoLiveDate': '2025-01-15',
-        'DeactivateDate': null,
-        'SpocPerson': 'Sonal Mehta',
-        'SpocManager': 'Amit Kumar',
-        'UnitHead': 'Priya Singh',
-        'Priority': 'High',
-        'TemplateType': '2 - Dynamic',
-        'NumberOfOutputs': 2,
-        'SourceList': '1,2',
-        'OutputFormats': [
-          {'TemplateTempId': null, 'FormatName': 'CSV'},
-          {'TemplateTempId': null, 'FormatName': 'Excel'},
-        ],
-        'Approvals': [
-          {
-            'TemplateTempId': null,
-            'Approval_Type': 'Unit Head',
-            'ApprovalFile': ''
-          },
-          {
-            'TemplateTempId': null,
-            'Approval_Type': 'BCU Head',
-            'ApprovalFile': ''
-          },
-        ],
-        'CreatedBy': 'admin',
-        'jsonData': '',
-        'DepartmentName': 'Finance',
-        'SourceListNames': 'Finacle Core,Oracle GL',
-      },
-      {
-        'TemplateId': 5,
-        'TemplateName': 'Trial Balance',
-        'Department': '1',
-        'Frequency': 'Monthly',
-        'NormalVolume': 150,
-        'PeakVolume': 300,
-        'SourceCount': 1,
         'BenefitType': 'Reporting',
-        'BenefitAmount': 1500,
-        'BenefitInTat': '2 days',
-        'GoLiveDate': '2025-01-01',
+        'BenefitAmount': 20000,
+        'BenefitInTat': '1 day',
+        'GoLiveDate': '2026-01-01',
         'DeactivateDate': null,
         'SpocPerson': 'Rahul Sharma',
         'SpocManager': 'Amit Kumar',
         'UnitHead': 'Priya Singh',
-        'Priority': 'Medium',
-        'TemplateType': '1 - Static',
+        'Priority': 'High',
         'NumberOfOutputs': null,
-        'SourceList': '2',
+        'SourceList': '1,2',
+        'templateType': '2',
+        'templateId': 20,
+        'templateName': '20 - Static UniMailing',
+        'outputFormats': [
+          {'templateTempId': 20, 'formatName': 'Unimailing'},
+        ],
         'OutputFormats': [
-          {'TemplateTempId': null, 'FormatName': 'Excel'},
+          {'TemplateTempId': null, 'FormatName': 'Unimailing'},
+        ],
+        'dynamicTemplate': [
+          {
+            'srno': 0,
+            'id': 0,
+            'sourceList': '1,2',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 20,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '2',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '1',
+          },
         ],
         'Approvals': [
           {
@@ -220,11 +254,152 @@ class Database {
         'CreatedBy': 'admin',
         'jsonData': '',
         'DepartmentName': 'Finance',
-        'SourceListNames': 'Oracle GL',
+        'departmentName': 'Finance',
+        'SourceListNames': 'Finacle Core, Oracle GL',
+        'sourceListNames': 'Finacle Core, Oracle GL',
+      },
+      // ── Case 3: Dynamic + UniMailing ──
+      {
+        'TemplateType': '3',
+        'TemplateId': 57,
+        'TemplateName': '57 - dynamic + unimailing',
+        'Department': null,
+        'Frequency': 'Monthly',
+        'NormalVolume': 0,
+        'PeakVolume': 0,
+        'SourceCount': 0,
+        'NumberOfOutputs': 0,
+        'BenefitType': 0,
+        'BenefitAmount': 0,
+        'BenefitInTAT': null,
+        'GoLiveDate': null,
+        'DeactivateDate': null,
+        'SpocPerson': null,
+        'SpocManager': null,
+        'UnitHead': null,
+        'Priority': 0,
+        // camelCase keys below match what the real external API returns
+        'templateType': '3',
+        'templateId': 57,
+        'templateName': '57 - dynamic + unimailing',
+        'outputFormats': [
+          {'templateTempId': 57, 'formatName': 'Unimailing'},
+        ],
+        'dynamicTemplate': [
+          {
+            'srno': 0,
+            'id': 0,
+            'sourceList': '1',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 57,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '1',
+          },
+          {
+            'srno': 10,
+            'id': 21,
+            'sourceList': '1,2',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 57,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '3',
+          },
+          {
+            'srno': 11,
+            'id': 22,
+            'sourceList': '1',
+            'sourceCount': '1',
+            'sourceListName': null,
+            'templateId': 57,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '3',
+          },
+        ],
+        'jsonData': null,
+        'DepartmentName': 'Finance',
+        'departmentName': null,
+        'SourceListNames': null,
+        'sourceListNames': null,
+        'sourceList': '1',
       },
     ],
+    // depts 2–8 intentionally empty — all test cases are in dept 1
     2: [
-      // Operations
       {
         'TemplateId': 6,
         'TemplateName': 'Daily MIS',

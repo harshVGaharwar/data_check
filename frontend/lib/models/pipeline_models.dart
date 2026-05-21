@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 // ENUMS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-enum NodeType { db, manual, fc, laser, join }
+enum NodeType { db, manual, fc, laser, join, output }
 
 enum NodeConfirmState { notConfigured, confirmed, editing }
 
@@ -32,7 +32,7 @@ class DragNodeData {
 }
 
 extension NodeTypeExt on NodeType {
-  bool get isSource => this != NodeType.join;
+  bool get isSource => this != NodeType.join && this != NodeType.output;
 
   String get label {
     switch (this) {
@@ -46,6 +46,8 @@ extension NodeTypeExt on NodeType {
         return 'Laser Banking';
       case NodeType.join:
         return 'Join Operation';
+      case NodeType.output:
+        return 'Output Preview';
     }
   }
 
@@ -61,6 +63,8 @@ extension NodeTypeExt on NodeType {
         return 'LASER';
       case NodeType.join:
         return 'LEFT / INNER / RIGHT';
+      case NodeType.output:
+        return 'Configure & Submit';
     }
   }
 
@@ -76,6 +80,8 @@ extension NodeTypeExt on NodeType {
         return Icons.flash_on_rounded;
       case NodeType.join:
         return Icons.link_rounded;
+      case NodeType.output:
+        return Icons.table_chart_rounded;
     }
   }
 
@@ -91,6 +97,8 @@ extension NodeTypeExt on NodeType {
         return AppColors.green;
       case NodeType.join:
         return AppColors.violet;
+      case NodeType.output:
+        return AppColors.green;
     }
   }
 
@@ -107,6 +115,8 @@ extension NodeTypeExt on NodeType {
         return NodeType.laser;
       case 'join':
         return NodeType.join;
+      case 'output':
+        return NodeType.output;
       default:
         return NodeType.db;
     }
@@ -180,6 +190,13 @@ class PipelineNode {
   /// Column aliases {originalName: aliasName} — used in join output column renaming
   Map<String, String> columnAliases;
 
+  /// Column priorities {originalName: priority (1 = first in output)}
+  // Initialized inline so it is never null, even after a hot reload
+  final Map<String, int> columnPriorities = {};
+
+  /// Unique field flags {colName: isUnique}
+  final Map<String, bool> columnUniqueFields = {};
+
   /// Source type selected from API (sourceValue, e.g. 'DB', 'API')
   String sourceTypeValue;
 
@@ -241,6 +258,8 @@ class PipelineNode {
     switch (type) {
       case NodeType.join:
         return 340;
+      case NodeType.output:
+        return 420;
       default:
         return 200;
     }

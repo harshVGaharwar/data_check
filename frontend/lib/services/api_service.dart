@@ -51,7 +51,7 @@ class ApiService {
         contentType: Headers.jsonContentType,
         connectTimeout: _timeout,
         receiveTimeout: _timeout,
-        sendTimeout: _timeout,
+        // sendTimeout not set: unsupported on Flutter Web for GET requests
       ),
     );
 
@@ -171,7 +171,6 @@ class ApiService {
         responseType: req.responseType,
         followRedirects: req.followRedirects,
         receiveTimeout: req.receiveTimeout,
-        sendTimeout: req.sendTimeout,
       ),
     );
   }

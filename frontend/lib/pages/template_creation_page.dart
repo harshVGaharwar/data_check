@@ -68,7 +68,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   static const _priorities = ['Low', 'Medium', 'High', 'Critical'];
   static const _outputFormats = ['Unimailing', 'User Defined'];
   static const _sourceCountOptions = [
-    '1',
+    // '1',
     '2',
     '3',
     '4',
@@ -217,6 +217,13 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                 .toList();
             _model.sourceList = filterd.map((s) => s.toJson()).toList();
             _model.sourceListName = filterd.map((s) => s.name).join(',');
+            if (!_model.isDynamic) {
+              _model.templateType = '1 - Static';
+              selectedFormat = null;
+              _model.outputFormats = [];
+              _model.numberOfOutputs = 0;
+              _model.dynamicOutputs = [];
+            }
           });
           _closeSourceDropdown();
         },
@@ -256,6 +263,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
     if (!_model.isGeneralInfoValid ||
         !_model.isOutputFormatValid ||
+        !_model.isDynamicOutputsValid ||
         !_model.isApprovalValid ||
         !_allApprovalFilesUploaded) {
       _shakeCtrl.forward(from: 0);
@@ -450,58 +458,83 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                         _tf('Normal Volume', _normalVolCtrl, '0', num: true),
                         _tf('Peak Volume', _peakVolCtrl, '0', num: true),
                       ]),
-                      const SizedBox(height: 10),
-                      _row([
-                        SearchableStringDropdown(
-                          label: 'Source Count *',
-                          items: _sourceCountOptions,
-                          value: _model.sourceCount > 0
-                              ? '${_model.sourceCount}'
-                              : '',
-                          onChanged: (v) => setState(
-                            () => _model.sourceCount = int.tryParse(v) ?? 0,
+                      if (!_model.isDynamic) ...[
+                        const SizedBox(height: 10),
+                        _row([
+                          SearchableStringDropdown(
+                            label: 'Benefit Type',
+                            items: _benefitTypes,
+                            value: _model.benefitType,
+                            onChanged: (v) =>
+                                setState(() => _model.benefitType = v),
                           ),
-                        ),
-                        _sourceMasterMultiSelect(),
-                        SearchableStringDropdown(
-                          label: 'Benefit Type',
-                          items: _benefitTypes,
-                          value: _model.benefitType,
-                          onChanged: (v) =>
-                              setState(() => _model.benefitType = v),
-                        ),
-                      ]),
-                      const SizedBox(height: 10),
-                      _row([
-                        _tf(
-                          'Benefit Amount (₹)',
-                          _benefitAmtCtrl,
-                          '0.00',
-                          num: true,
-                        ),
-                        _tf('Benefit in TAT', _tatCtrl, 'e.g. 2 hours'),
-                        _dp(
-                          'Go Live Date',
-                          _model.goLiveDate,
-                          (v) => setState(() => _model.goLiveDate = v),
-                        ),
-                      ]),
-                      const SizedBox(height: 10),
-                      _row([
-                        _dp(
-                          'Deactivate Date',
-                          _model.deactivateDate,
-                          (v) => setState(() => _model.deactivateDate = v),
-                        ),
-                        _tf('SPOC Person *', _spocCtrl, 'Enter name'),
-                        _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
-                      ]),
-                      const SizedBox(height: 10),
-                      _row([
-                        _tf('Unit Head', _unitHeadCtrl, 'Enter name'),
-                        const SizedBox(),
-                        const SizedBox(),
-                      ]),
+                          _tf(
+                            'Benefit Amount (₹)',
+                            _benefitAmtCtrl,
+                            '0.00',
+                            num: true,
+                          ),
+                          _tf('Benefit in TAT', _tatCtrl, 'e.g. 2 hours'),
+                        ]),
+                        const SizedBox(height: 10),
+                        _row([
+                          _dp(
+                            'Go Live Date',
+                            _model.goLiveDate,
+                            (v) => setState(() => _model.goLiveDate = v),
+                          ),
+                          _dp(
+                            'Deactivate Date',
+                            _model.deactivateDate,
+                            (v) => setState(() => _model.deactivateDate = v),
+                          ),
+                          _tf('SPOC Person *', _spocCtrl, 'Enter name'),
+                        ]),
+                        const SizedBox(height: 10),
+                        _row([
+                          _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
+                          _tf('Unit Head', _unitHeadCtrl, 'Enter name'),
+                          const SizedBox(),
+                        ]),
+                      ] else ...[
+                        const SizedBox(height: 10),
+                        _row([
+                          SearchableStringDropdown(
+                            label: 'Benefit Type',
+                            items: _benefitTypes,
+                            value: _model.benefitType,
+                            onChanged: (v) =>
+                                setState(() => _model.benefitType = v),
+                          ),
+                          _tf(
+                            'Benefit Amount (₹)',
+                            _benefitAmtCtrl,
+                            '0.00',
+                            num: true,
+                          ),
+                          _tf('Benefit in TAT', _tatCtrl, 'e.g. 2 hours'),
+                        ]),
+                        const SizedBox(height: 10),
+                        _row([
+                          _dp(
+                            'Go Live Date',
+                            _model.goLiveDate,
+                            (v) => setState(() => _model.goLiveDate = v),
+                          ),
+                          _dp(
+                            'Deactivate Date',
+                            _model.deactivateDate,
+                            (v) => setState(() => _model.deactivateDate = v),
+                          ),
+                          _tf('SPOC Person *', _spocCtrl, 'Enter name'),
+                        ]),
+                        const SizedBox(height: 10),
+                        _row([
+                          _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
+                          _tf('Unit Head', _unitHeadCtrl, 'Enter name'),
+                          const SizedBox(),
+                        ]),
+                      ],
                     ],
                   ),
                 ),
@@ -521,29 +554,50 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           label: 'Template Type *',
                           items: _templateTypeOptions,
                           value: _model.templateType,
+                          // onChanged: (v) => setState(() {
+                          //   _model.templateType = v;
+                          //   if (v == '2 - Dynamic') {
+                          //     selectedFormat = 'Unimailing';
+                          //     _model.outputFormats = ['Unimailing'];
+                          //   } else {
+                          //     selectedFormat = null;
+                          //     _model.outputFormats = [];
+                          //     _model.numberOfOutputs = 0;
+                          //   }
+                          // }),
                           onChanged: (v) => setState(() {
                             _model.templateType = v;
+
                             if (v == '2 - Dynamic') {
                               selectedFormat = 'Unimailing';
                               _model.outputFormats = ['Unimailing'];
+                              // Clear General Info source fields
+                              _model.sourceCount = 0;
+                              _model.sourceList = [];
+                              _model.sourceListName = '';
                             } else {
                               selectedFormat = null;
                               _model.outputFormats = [];
                               _model.numberOfOutputs = 0;
+                              _model.dynamicOutputs = [];
                             }
                           }),
                         ),
                         if (_model.templateType == '2 - Dynamic')
                           SearchableStringDropdown(
-                            label: 'Number of Outputs *',
+                            label: 'Dynamic Count *',
                             items: _numOutputOptions,
                             value: _model.numberOfOutputs > 0
                                 ? '${_model.numberOfOutputs}'
                                 : '',
-                            onChanged: (v) => setState(
-                              () => _model.numberOfOutputs =
-                                  int.tryParse(v) ?? 0,
-                            ),
+                            onChanged: (v) => setState(() {
+                              _model.numberOfOutputs = int.tryParse(v) ?? 0;
+
+                              _model.dynamicOutputs = List.generate(
+                                _model.numberOfOutputs,
+                                (_) => DynamicOutputModel(),
+                              );
+                            }),
                           )
                         else
                           const SizedBox(),
@@ -568,6 +622,137 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                         ),
                       const SizedBox(height: 16),
                       const Divider(height: 1, color: AppColors.border),
+
+                      if (_model.templateType == '1 - Static') ...[
+                        const SizedBox(height: 16),
+                        _row([
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SearchableStringDropdown(
+                                label: 'Source Count *',
+                                items: _sourceCountOptions,
+                                value: _model.sourceCount > 0
+                                    ? '${_model.sourceCount}'
+                                    : '',
+                                onChanged: (v) => setState(() {
+                                  _model.sourceCount = int.tryParse(v) ?? 0;
+                                }),
+                              ),
+                              if (_submitted && _model.sourceCount == 0)
+                                _err('Source Count is required'),
+                            ],
+                          ),
+                          _sourceMasterMultiSelect(),
+                          const SizedBox(),
+                        ]),
+                        const SizedBox(height: 16),
+                        const Divider(height: 1, color: AppColors.border),
+                      ],
+                      if (_model.templateType == '2 - Dynamic' &&
+                          _model.dynamicOutputs.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        // Static 1 — always first
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Static 1',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _row([
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SearchableStringDropdown(
+                                      label: 'Source Count *',
+                                      items: _sourceCountOptions,
+                                      value: _model.sourceCount > 0
+                                          ? '${_model.sourceCount}'
+                                          : '',
+                                      onChanged: (v) => setState(
+                                        () => _model.sourceCount =
+                                            int.tryParse(v) ?? 0,
+                                      ),
+                                    ),
+                                    if (_submitted && _model.sourceCount == 0)
+                                      _err('Source Count is required'),
+                                  ],
+                                ),
+                                _sourceMasterMultiSelect(),
+                                const SizedBox(),
+                              ]),
+                            ],
+                          ),
+                        ),
+                        // Dynamic 1..N
+                        Column(
+                          children: List.generate(
+                            _model.dynamicOutputs.length,
+                            (index) {
+                              final item = _model.dynamicOutputs[index];
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Dynamic ${index + 1}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    _row([
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          SearchableStringDropdown(
+                                            label: 'Source Count *',
+                                            items: _sourceCountOptions,
+                                            value: item.sourceCount > 0
+                                                ? '${item.sourceCount}'
+                                                : '',
+                                            onChanged: (v) {
+                                              setState(() {
+                                                item.sourceCount =
+                                                    int.tryParse(v) ?? 0;
+                                              });
+                                            },
+                                          ),
+                                          if (_submitted &&
+                                              item.sourceCount == 0)
+                                            _err('Source Count is required'),
+                                        ],
+                                      ),
+                                      DynamicSourceTypeWidget(
+                                        sourceMasterList: _sourceMasterList,
+                                        selectedList: item.sourceList,
+                                        submitted: _submitted,
+                                        onChanged: (list) {
+                                          setState(() {
+                                            item.sourceList = list;
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(),
+                                    ]),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
 
                       // ── Format chips ──
@@ -1320,7 +1505,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
   // ── Source Type multi-select dropdown ──
   Widget _sourceMasterMultiSelect() {
-    final hasError = _submitted && _model.sourceList.isEmpty;
+    final hasError =
+        _submitted && _model.sourceList.isEmpty && !_model.isDynamic;
     final isOpen = _sourceOverlayEntry != null;
 
     return Column(
@@ -2248,6 +2434,267 @@ class SuccessDialogState extends State<SuccessDialog>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class DynamicSourceTypeWidget extends StatefulWidget {
+  final List<SourceMasterItem> sourceMasterList;
+
+  final List<Map<String, dynamic>> selectedList;
+
+  final Function(List<Map<String, dynamic>>) onChanged;
+
+  final bool loading;
+  final bool error;
+  final bool submitted;
+  final VoidCallback? onRetry;
+
+  const DynamicSourceTypeWidget({
+    super.key,
+    required this.sourceMasterList,
+    required this.selectedList,
+    required this.onChanged,
+    this.loading = false,
+    this.error = false,
+    this.submitted = false,
+    this.onRetry,
+  });
+
+  @override
+  State<DynamicSourceTypeWidget> createState() =>
+      _DynamicSourceTypeWidgetState();
+}
+
+class _DynamicSourceTypeWidgetState extends State<DynamicSourceTypeWidget> {
+  final LayerLink _layerLink = LayerLink();
+
+  final GlobalKey _triggerKey = GlobalKey();
+
+  OverlayEntry? _overlayEntry;
+
+  bool get _isOpen => _overlayEntry != null;
+
+  void _openDropdown() {
+    _closeDropdown();
+
+    final renderBox =
+        _triggerKey.currentContext?.findRenderObject() as RenderBox?;
+
+    final width = renderBox?.size.width ?? 280.0;
+
+    final initialSelected = Set<int>.from(
+      widget.selectedList.map((m) => m['id'] as int),
+    );
+
+    _overlayEntry = OverlayEntry(
+      builder: (_) => _SourceMultiSelectOverlay(
+        layerLink: _layerLink,
+        items: widget.sourceMasterList,
+        initialSelected: initialSelected,
+        dropdownWidth: width,
+        onDismiss: _closeDropdown,
+        onDone: (selected) {
+          final filtered = widget.sourceMasterList
+              .where((s) => selected.contains(s.id))
+              .toList();
+
+          widget.onChanged(filtered.map((e) => e.toJson()).toList());
+
+          _closeDropdown();
+        },
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+
+    setState(() {});
+  }
+
+  void _closeDropdown() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _closeDropdown();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasError = widget.submitted && widget.selectedList.isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Source Type *', style: AppTextStyles.fieldLabel),
+        const SizedBox(height: 4),
+        CompositedTransformTarget(
+          link: _layerLink,
+          child: InkWell(
+            key: _triggerKey,
+            onTap: widget.loading
+                ? null
+                : widget.error
+                ? widget.onRetry
+                : () => _isOpen ? _closeDropdown() : _openDropdown(),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: widget.error
+                      ? AppColors.red.withValues(alpha: 0.4)
+                      : _isOpen
+                      ? const Color(0xFF004C8F)
+                      : hasError
+                      ? AppColors.red
+                      : AppColors.border,
+                  width: _isOpen || hasError ? 1.5 : 1,
+                ),
+                color: widget.error
+                    ? AppColors.red.withValues(alpha: 0.04)
+                    : AppColors.surface2,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: widget.loading
+                        ? const Row(
+                            children: [
+                              SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.textDim,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Loading...',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          )
+                        : widget.error
+                        ? Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 12,
+                                color: AppColors.red,
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Failed to load. Tap to retry',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.red,
+                                ),
+                              ),
+                            ],
+                          )
+                        : widget.selectedList.isEmpty
+                        ? const Text(
+                            'Select',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: widget.selectedList.map((m) {
+                              final name = (m['name'] as String? ?? '').trim();
+
+                              final type = m['sourceType']?.toString() ?? '';
+
+                              final label = name.isNotEmpty ? name : type;
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  color: const Color(
+                                    0xFF004C8F,
+                                  ).withValues(alpha: 0.1),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF004C8F,
+                                    ).withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF004C8F),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                  const SizedBox(width: 4),
+                  widget.error
+                      ? Icon(
+                          Icons.refresh_rounded,
+                          size: 14,
+                          color: AppColors.red,
+                        )
+                      : AnimatedRotation(
+                          turns: _isOpen ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.textDim,
+                          ),
+                        ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (hasError) _err('Source Type is required'),
+      ],
+    );
+  }
+
+  Widget _err(String msg) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, size: 14, color: AppColors.red),
+          const SizedBox(width: 6),
+          Text(
+            msg,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.red,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

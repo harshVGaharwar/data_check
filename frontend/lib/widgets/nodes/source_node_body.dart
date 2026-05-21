@@ -90,6 +90,7 @@ class SourceNodeBody extends StatelessWidget {
               icon: Icons.settings_outlined,
               animating:
                   context.watch<PipelineController>().selectedNodeId != node.id,
+              onTap: () => context.read<PipelineController>().selectNode(node.id),
             ),
           ),
 

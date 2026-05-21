@@ -6,6 +6,7 @@ import '../controllers/pipeline_controller.dart';
 import 'edge_painter.dart';
 import 'nodes/source_node_body.dart';
 import 'nodes/join_node_body.dart';
+import 'nodes/output_node_body.dart';
 import 'sidebar.dart';
 import 'config_panel.dart';
 import 'status_bar.dart';
@@ -22,11 +23,11 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
   final _transformCtrl = TransformationController();
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
+  PipelineController? _ctrl;
 
   @override
   void initState() {
     super.initState();
-    // Empty canvas — user drags sources from sidebar
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1100),
@@ -35,10 +36,37 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
       begin: 0.25,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _ctrl = context.read<PipelineController>();
+      _ctrl!.addListener(_onCtrlChange);
+    });
+  }
+
+  void _onCtrlChange() {
+    final ctrl = context.read<PipelineController>();
+    final focusId = ctrl.pendingFocusNodeId;
+    if (focusId == null) return;
+    ctrl.clearFocusRequest();
+    final node = ctrl.findNode(focusId);
+    if (node == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = context.findRenderObject() as RenderBox?;
+      final size = box?.size ?? const Size(1200, 800);
+      final nodeCenter = Offset(
+        node.position.dx + node.nodeWidth / 2,
+        node.position.dy + 100,
+      );
+      final tx = size.width / 2 - nodeCenter.dx;
+      final ty = size.height / 2 - nodeCenter.dy;
+      _transformCtrl.value = Matrix4.identity()..translate(tx, ty);
+    });
   }
 
   @override
   void dispose() {
+    _ctrl?.removeListener(_onCtrlChange);
     _pulseCtrl.dispose();
     _transformCtrl.dispose();
     super.dispose();
@@ -138,7 +166,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                           ctrl.deselectAll();
                         },
                   child: Container(
-                    color: AppColors.bg,
+                    color: const Color(0xFFE8F4FD),
                     child: InteractiveViewer(
                       transformationController: _transformCtrl,
                       minScale: 0.3,
@@ -147,9 +175,26 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                       boundaryMargin: const EdgeInsets.all(2000),
                       panEnabled: !isConnecting,
                       scaleEnabled: !isConnecting,
-                      child: SizedBox(
+                      child: Container(
                         width: 3000,
                         height: 2000,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(
+                              0xFF3B82F6,
+                            ).withValues(alpha: 0.4),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF3B82F6,
+                              ).withValues(alpha: 0.08),
+                              blurRadius: 24,
+                              spreadRadius: 8,
+                            ),
+                          ],
+                        ),
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -173,14 +218,65 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
               },
             ),
 
-            // ── 2. SCREEN-SPACE PORT OVERLAY ──
+            // ── 2. Canvas boundary info banner (screen-space, always visible) ──
+            Positioned(
+              top: 10,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFF97316).withValues(alpha: 0.45),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFF97316).withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.crop_free_rounded,
+                          size: 13,
+                          color: Color(0xFFF97316),
+                        ),
+                        const SizedBox(width: 7),
+                        const Text(
+                          'Canvas boundary  3000 × 2000 px  —  all nodes are clamped within this area',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFEA580C),
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // ── 3. SCREEN-SPACE PORT OVERLAY ──
             // Rebuilt only when _transformCtrl changes, NOT the InteractiveViewer
             AnimatedBuilder(
               animation: _transformCtrl,
               builder: (_, __) => Stack(children: _buildPortOverlay(ctrl)),
             ),
 
-            // ── 3. Connection banner ──
+            // ── 4. Connection banner ──
             if (isConnecting)
               Positioned(
                 top: 8,
@@ -260,7 +356,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
     // Glow hint: confirmed source node + join node on canvas + no outgoing edge yet
     final hasJoinNode = ctrl.nodes.any((n) => n.type == NodeType.join);
 
-    for (final node in ctrl.nodes) {
+    for (final node in ctrl.nodes.where((n) => n.type != NodeType.output)) {
       // ── OUT port (blue dot, right side) ──
       {
         final sp = MatrixUtils.transformPoint(matrix, node.outPortCenter);
@@ -508,39 +604,28 @@ class _CanvasNodeState extends State<_CanvasNode>
       staticBorderColor = AppColors.border2;
     }
 
-    bool nodeDragged = false;
+    // Output node is not draggable — its inner SingleChildScrollView needs pan gestures
+    final isDraggable =
+        node.type != NodeType.output && ctrl.portDragFromNodeId == null;
 
     return Positioned(
       left: node.position.dx,
       top: node.position.dy,
       child: GestureDetector(
-        onPanStart: ctrl.portDragFromNodeId == null
-            ? (_) {
-                nodeDragged = false;
-                debugPrint(
-                  '[NODE-DRAG] START → id=${node.id} name=${node.name} pos=${node.position}',
-                );
-              }
+        onPanStart: isDraggable
+            ? (_) => debugPrint(
+                '[NODE-DRAG] START → id=${node.id} name=${node.name} pos=${node.position}',
+              )
             : null,
-        onPanUpdate: ctrl.portDragFromNodeId == null
+        onPanUpdate: isDraggable
             ? (d) {
-                nodeDragged = true;
                 ctrl.moveNode(node.id, d.delta);
-                debugPrint(
-                  '[NODE-DRAG] UPDATE → id=${node.id} delta=${d.delta} newPos=${node.position}',
-                );
               }
             : null,
-        onPanEnd: ctrl.portDragFromNodeId == null
-            ? (_) {
-                debugPrint(
-                  '[NODE-DRAG] END → id=${node.id} finalPos=${node.position}',
-                );
-                Future.delayed(
-                  const Duration(milliseconds: 100),
-                  () => nodeDragged = false,
-                );
-              }
+        onPanEnd: isDraggable
+            ? (_) => debugPrint(
+                '[NODE-DRAG] END → id=${node.id} finalPos=${node.position}',
+              )
             : null,
         child: AnimatedBuilder(
           animation: _pulseAnim,
@@ -558,16 +643,11 @@ class _CanvasNodeState extends State<_CanvasNode>
               clipBehavior: Clip.none,
               children: [
                 GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    if (!nodeDragged && node.type != NodeType.join) {
-                      debugPrint(
-                        '[NODE] TAP → id=${node.id} name=${node.name} type=${node.type}',
-                      );
+                    if (node.type != NodeType.join &&
+                        node.type != NodeType.output) {
                       ctrl.selectNode(node.id);
-                    } else {
-                      debugPrint(
-                        '[NODE] TAP ignored → dragged=$nodeDragged type=${node.type}',
-                      );
                     }
                   },
                   child: Container(
@@ -671,6 +751,8 @@ class _CanvasNodeState extends State<_CanvasNode>
     switch (node.type) {
       case NodeType.join:
         return JoinNodeBody(node: node);
+      case NodeType.output:
+        return OutputNodeBody(node: node);
       default:
         return SourceNodeBody(node: node);
     }

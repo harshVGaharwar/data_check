@@ -129,11 +129,44 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     }
 
     final service = context.read<MasterDataService>();
-    final templates = await service.getTemplatesByDept(deptId, 2);
+    final templates = await service.getTemplatesDynamic(deptId, 2);
     if (!mounted) return;
     setState(() {
       _templates = templates;
       _templateLoading = false;
+    });
+  }
+
+  /// Called when user picks an output key in the Dynamic+UniMailing flow.
+  /// Loads sourceMasterList from the matching dynamicTemplate entry (no API call).
+  void _onOutputKeySelected(String key, PipelineController ctrl) {
+    final entry = ctrl.getDynamicTemplateForOutputKey(key);
+    if (entry == null) return;
+
+    final rawList = entry['sourceMasterList'] as List?;
+    final sources =
+        rawList
+            ?.whereType<Map<String, dynamic>>()
+            .map(SourceMasterFilterItem.fromJson)
+            .toList() ??
+        [];
+
+    final sourceCount =
+        int.tryParse(entry['sourceCount']?.toString() ?? '') ?? 0;
+
+    ctrl.setOutputKeySourceCount(sourceCount);
+    setState(() {
+      _filteredSourceTypes = sources;
+      _sourceCountError = false;
+    });
+
+    // Pulse source count briefly, then hand off to source type pulse
+    _sourceCountPulse.repeat(reverse: true);
+    Timer(const Duration(milliseconds: 1000), () {
+      if (!mounted) return;
+      _sourceCountPulse.stop();
+      _sourceCountPulse.value = 0;
+      if (sources.isNotEmpty) _sourceTypePulse.repeat(reverse: true);
     });
   }
 
@@ -182,9 +215,34 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     final ctrl = context.watch<PipelineController>();
     if (ctrl.canvasVersion != _lastCanvasVersion) {
       _lastCanvasVersion = ctrl.canvasVersion;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _resetAnimations();
-      });
+      // Skip sidebar reset while Dynamic UniMailing output key configuration
+      // is in progress — canvas clears between keys but the sidebar must
+      // keep its dept/template/source-type state intact until all keys are done.
+      final midOutputKeyFlow =
+          ctrl.isDynamicUniMailing && !ctrl.allDynamicUniMailingKeysConfigured;
+      if (!midOutputKeyFlow) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _resetAnimations();
+        });
+      } else {
+        // Between output keys: ensure source types are loaded so the user
+        // can drag nodes for the next key without re-selecting the template.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_filteredSourceTypes.isEmpty &&
+              ctrl.sidebarTemplateId > 0 &&
+              ctrl.sidebarDeptId.isNotEmpty) {
+            _loadFilteredSourceTypes(
+              templateId: ctrl.sidebarTemplateId.toString(),
+              departmentId: ctrl.sidebarDeptId,
+            );
+          }
+          // Restart source-type pulse so the user sees they need to drag sources.
+          if (!_sourceTypePulse.isAnimating) {
+            _sourceTypePulse.repeat(reverse: true);
+          }
+        });
+      }
     }
 
     return Container(
@@ -295,53 +353,115 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                         outputFormats: [],
                                       ),
                                     );
+                                    final dynEntry0 = info.dynamicTemplates.isNotEmpty
+                                        ? info.dynamicTemplates[0]
+                                        : null;
+                                    final dynSourceCount = int.tryParse(
+                                            dynEntry0?['sourceCount']?.toString() ?? '') ??
+                                        0;
                                     ctrl.setSidebarTemplate(
                                       v,
-                                      sourceCount: info.sourceCount > 0
-                                          ? info.sourceCount
-                                          : null,
+                                      sourceCount: dynSourceCount > 0
+                                          ? dynSourceCount
+                                          : (info.sourceCount > 0 ? info.sourceCount : null),
                                       templateId: info.templateId,
+                                      templateType: info.templateType,
+                                      outputFormats: info.outputFormats,
+                                      numberOfOutputs: info.numberOfOutputs,
+                                      dynamicTemplates: info.dynamicTemplates,
                                     );
-                                    // Load filtered source types for selected dept + template
-                                    final deptId = _deptMap[ctrl.sidebarDept];
-                                    if (deptId != null && info.templateId > 0) {
-                                      _loadFilteredSourceTypes(
-                                        templateId: info.templateId.toString(),
-                                        departmentId: deptId.toString(),
-                                      );
-                                    }
+
                                     // Template done → stop template pulse
                                     _templatePulse.stop();
                                     _templatePulse.value = 0;
 
-                                    if (info.sourceCount == 0) {
-                                      // ── ERROR: source count not configured ──
-                                      // Keep pulsing in red; block progression to source types
-                                      setState(() => _sourceCountError = true);
+                                    // Dynamic + UniMailing: sources come from output-key
+                                    // selection, NOT from a separate API call.
+                                    final isDynUni =
+                                        (info.templateType == '3' ||
+                                            info.templateType
+                                                .toLowerCase()
+                                                .contains('dynamic')) &&
+                                        info.outputFormats.any(
+                                          (f) => f.toLowerCase().contains(
+                                            'unimailing',
+                                          ),
+                                        );
+
+                                    if (isDynUni) {
+                                      // Clear any stale source types; user must pick an output key
+                                      setState(() {
+                                        _sourceCountError = false;
+                                        _filteredSourceTypes = [];
+                                      });
+                                      _sourceCountPulse.stop();
+                                      _sourceCountPulse.value = 0;
                                       _sourceTypePulse.stop();
                                       _sourceTypePulse.value = 0;
-                                      _sourceCountPulse.repeat(reverse: true);
                                     } else {
-                                      // ── OK: blink source count briefly, then hand off ──
-                                      setState(() => _sourceCountError = false);
-                                      _sourceCountPulse.repeat(reverse: true);
-                                      Timer(
-                                        const Duration(milliseconds: 1000),
-                                        () {
+                                      // Static template (User Defined or UniMailing):
+                                      // sourceMasterList and sourceCount come from
+                                      // dynamicTemplate[0].
+                                      final rawList = dynEntry0?['sourceMasterList'] as List?;
+                                      final sources = rawList
+                                              ?.whereType<Map<String, dynamic>>()
+                                              .map(SourceMasterFilterItem.fromJson)
+                                              .toList() ??
+                                          [];
+                                      if (dynEntry0 != null && dynSourceCount > 0) {
+                                        ctrl.setOutputKeySourceCount(dynSourceCount);
+                                        setState(() {
+                                          _filteredSourceTypes = sources;
+                                          _sourceCountError = false;
+                                        });
+                                      } else {
+                                        setState(() {
+                                          _filteredSourceTypes = sources;
+                                          _sourceCountError = false;
+                                        });
+                                      }
+
+                                      final effectiveCount = ctrl.requiredSourceCount;
+                                      if (effectiveCount == 0) {
+                                        _sourceTypePulse.stop();
+                                        _sourceTypePulse.value = 0;
+                                        _sourceCountPulse.repeat(reverse: true);
+                                      } else {
+                                        _sourceCountPulse.repeat(reverse: true);
+                                        Timer(const Duration(milliseconds: 1000), () {
                                           if (!mounted) return;
                                           _sourceCountPulse.stop();
                                           _sourceCountPulse.value = 0;
-                                          _sourceTypePulse.repeat(
-                                            reverse: true,
-                                          );
-                                        },
-                                      );
+                                          _sourceTypePulse.repeat(reverse: true);
+                                        });
+                                      }
                                     }
                                   },
                                 ),
                         ],
                       ),
                     ),
+
+                    // Template type + output format indicator
+                    if (ctrl.sidebarTemplate.isNotEmpty &&
+                        ctrl.templateType.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      _TemplateConfigBadge(
+                        templateType: ctrl.templateType,
+                        outputFormats: ctrl.outputFormats,
+                      ),
+                    ],
+
+                    // Output Key selector (Dynamic + UniMailing)
+                    if (ctrl.sidebarTemplate.isNotEmpty &&
+                        ctrl.isDynamicUniMailing) ...[
+                      const SizedBox(height: 8),
+                      _OutputKeySelector(
+                        ctrl: ctrl,
+                        onOutputKeySelected: _onOutputKeySelected,
+                      ),
+                    ],
+
                     const SizedBox(height: 8),
 
                     // Required count
@@ -487,8 +607,12 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
   }
 
   Widget _buildRequiredSourcesBox(PipelineController ctrl) {
-    // Template selected but sourceCount is 0 — not configured
-    if (ctrl.sidebarTemplate.isNotEmpty && ctrl.requiredSourceCount == 0) {
+    // Dynamic+UniMailing: sourceCount is 0 until an output key is selected — not an error
+    final isDynUni = ctrl.isDynamicUniMailing;
+    // Template selected but sourceCount is 0 — not configured (only for non-dynamic)
+    if (ctrl.sidebarTemplate.isNotEmpty &&
+        ctrl.requiredSourceCount == 0 &&
+        !isDynUni) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -1074,6 +1198,234 @@ class _StepHighlight extends AnimatedWidget {
             : null,
       ),
       child: child,
+    );
+  }
+}
+
+// ── Template config badge ─────────────────────────────────────────────────────
+
+class _TemplateConfigBadge extends StatelessWidget {
+  final String templateType;
+  final List<String> outputFormats;
+
+  const _TemplateConfigBadge({
+    required this.templateType,
+    required this.outputFormats,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isStatic =
+        templateType.toLowerCase().contains('static') ||
+        templateType == '1' ||
+        templateType == '2';
+    final typeLabel = isStatic ? 'Static' : 'Dynamic';
+    final typeColor = isStatic ? AppColors.green : AppColors.blue;
+    final typeIcon = isStatic ? Icons.lock_outline_rounded : Icons.sync_rounded;
+
+    final isUniMailing = outputFormats.any(
+      (f) => f.toLowerCase().contains('unimailing'),
+    );
+    final isUserDefined = outputFormats.any(
+      (f) => f.toLowerCase().replaceAll(' ', '').contains('userdefined'),
+    );
+
+    final formatLabel = isUniMailing
+        ? 'UniMailing'
+        : isUserDefined
+        ? 'User Defined'
+        : outputFormats.where((f) => f.isNotEmpty).join(', ');
+    final formatColor = isUniMailing
+        ? AppColors.amber
+        : isUserDefined
+        ? AppColors.violet
+        : AppColors.textDim;
+    final formatIcon = isUniMailing
+        ? Icons.email_rounded
+        : isUserDefined
+        ? Icons.tune_rounded
+        : Icons.description_rounded;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Section header ──
+        const Text('TEMPLATE CONFIG', style: AppTextStyles.sectionLabel),
+        const SizedBox(height: 5),
+
+        // ── Info card ──
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              // Type row
+              _ConfigRow(
+                icon: typeIcon,
+                header: 'Template Type',
+                value: typeLabel,
+                color: typeColor,
+                isFirst: true,
+              ),
+              // Divider
+              Divider(height: 1, color: AppColors.border),
+              // Format row
+              if (formatLabel.isNotEmpty)
+                _ConfigRow(
+                  icon: formatIcon,
+                  header: 'Output Format',
+                  value: formatLabel,
+                  color: formatColor,
+                  isLast: true,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ConfigRow extends StatelessWidget {
+  final IconData icon;
+  final String header;
+  final String value;
+  final Color color;
+  final bool isFirst;
+  final bool isLast;
+
+  const _ConfigRow({
+    required this.icon,
+    required this.header,
+    required this.value,
+    required this.color,
+    this.isFirst = false,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.vertical(
+          top: isFirst ? const Radius.circular(10) : Radius.zero,
+          bottom: isLast ? const Radius.circular(10) : Radius.zero,
+        ),
+        color: color.withValues(alpha: 0.04),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.12),
+            ),
+            child: Icon(icon, size: 12, color: color),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  header,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Output Key selector ───────────────────────────────────────────────────────
+
+class _OutputKeySelector extends StatelessWidget {
+  final PipelineController ctrl;
+  final void Function(String key, PipelineController ctrl) onOutputKeySelected;
+
+  const _OutputKeySelector({
+    required this.ctrl,
+    required this.onOutputKeySelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = ctrl.dynamicUniMailingOutputKeys;
+    final selected = ctrl.selectedOutputKey;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('OUTPUT KEY', style: AppTextStyles.sectionLabel),
+            const SizedBox(width: 3),
+            const Text(
+              '*',
+              style: TextStyle(
+                color: Color(0xFFE53935),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        SearchableDropdownField(
+          value: (selected.isEmpty || !items.contains(selected))
+              ? null
+              : selected,
+          hint: '— Select Output Key —',
+          items: items,
+          disabledItems: ctrl.savedOutputKeyConfigs.keys.toSet(),
+          leadingBuilder: (item) {
+            final isDone = ctrl.savedOutputKeyConfigs.containsKey(item);
+            return Icon(
+              isDone
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              size: 13,
+              color: isDone ? AppColors.green : AppColors.textDim,
+            );
+          },
+          onChanged: (v) {
+            if (v == null) return;
+            ctrl.setSelectedOutputKey(v);
+            onOutputKeySelected(v, ctrl);
+          },
+        ),
+      ],
     );
   }
 }

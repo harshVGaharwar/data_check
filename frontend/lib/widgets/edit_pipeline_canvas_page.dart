@@ -707,6 +707,7 @@ class _CanvasEditNodeState extends State<_CanvasEditNode>
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
   late NodeConfirmState _lastConfirmState;
+  bool _nodeDragged = false;
 
   @override
   void initState() {
@@ -767,20 +768,18 @@ class _CanvasEditNodeState extends State<_CanvasEditNode>
       staticBorderColor = AppColors.border2;
     }
 
-    bool nodeDragged = false;
-
     return Positioned(
       left: node.position.dx,
       top: node.position.dy,
       child: GestureDetector(
         onPanStart: ctrl.portDragFromNodeId == null
             ? (_) {
-                nodeDragged = false;
+                _nodeDragged = false;
               }
             : null,
         onPanUpdate: ctrl.portDragFromNodeId == null
             ? (d) {
-                nodeDragged = true;
+                _nodeDragged = true;
                 ctrl.moveNode(node.id, d.delta);
               }
             : null,
@@ -788,7 +787,7 @@ class _CanvasEditNodeState extends State<_CanvasEditNode>
             ? (_) {
                 Future.delayed(
                   const Duration(milliseconds: 100),
-                  () => nodeDragged = false,
+                  () => _nodeDragged = false,
                 );
               }
             : null,
@@ -809,7 +808,7 @@ class _CanvasEditNodeState extends State<_CanvasEditNode>
               children: [
                 GestureDetector(
                   onTap: () {
-                    if (!nodeDragged && node.type != NodeType.join) {
+                    if (!_nodeDragged && node.type != NodeType.join) {
                       ctrl.selectNode(node.id);
                     }
                   },

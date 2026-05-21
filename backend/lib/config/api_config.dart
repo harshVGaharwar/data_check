@@ -12,6 +12,7 @@ class ExternalApi {
   static const String departments = '/api/master/GetDepartments';
   static const String approvalList = '/api/template/GetApprovalList';
   static const String getTemplates = '/Template/GetTemplates';
+  static const String getTemplatesDynamic = '/Template/GetTemplatesDynamic';
   static const String getApprovedTemplates = '/Template/GetApprovedTemplates';
   static const String getTemplateConfig = '/Template/GetTemplateConfig';
   static const String getTemplateCreationList =

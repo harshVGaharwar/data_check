@@ -31,9 +31,130 @@ class PipelineController extends ChangeNotifier {
   String sidebarDeptId = '';
   int requiredSourceCount = 0;
 
+  // ── Template metadata from API ──
+  String templateType = '';
+  List<String> outputFormats = const [];
+  int numberOfOutputs = 0;
+
+  // ── Dynamic template entries from GetTemplatesDynamic API ──
+  // Each entry: {srno, id, sourceList, sourceCount, sourceMasterList, sourceType}
+  List<Map<String, dynamic>> dynamicTemplates = [];
+
+  // ── Selected output key (e.g. "Output 1 - Static") ──
+  String selectedOutputKey = '';
+
+  // ── Dynamic UniMailing per-key saved configs (3rd case) ──
+  // key: output key name e.g. 'Output Key 1'
+  // value: complete config map ready for payload
+  final Map<String, Map<String, dynamic>> savedOutputKeyConfigs = {};
+
+  // ── Output column order set by user in Step 2 of preview dialog ──
+  // Each entry: {'nodeId': String, 'col': String, 'priority': int}
+  List<Map<String, dynamic>> outputColumnOrder = [];
+
+  // ── UniMailing column mapping (Static + UniMailing templates only) ──
+  // key: field name ('Mail To', 'Subject', …)  value: 'nodeId::colName'
+  final Map<String, String> uniMailingMandatory = {};
+  // key: slot name ('C1', 'C2', …)  value: 'nodeId::colName'
+  final Map<String, String> uniMailingCustom = {};
+
   // ── Port drag state (same as HTML portDrag) ──
   String? portDragFromNodeId;
   Offset? portDragCurrentPos;
+
+  // ── Pending canvas scroll-to request ──
+  String? pendingFocusNodeId;
+  void requestFocus(String nodeId) {
+    pendingFocusNodeId = nodeId;
+    // notifyListeners() already called by the caller (addOutputNode)
+  }
+
+  void clearFocusRequest() {
+    pendingFocusNodeId = null;
+  }
+
+  // ── Dynamic UniMailing (3rd case) getters & methods ──
+
+  /// True when: templateType = Dynamic (code "3" or label contains "dynamic")
+  /// AND outputFormats contains UniMailing.
+  bool get isDynamicUniMailing {
+    final isDynamic =
+        templateType == '3' || templateType.toLowerCase().contains('dynamic');
+    final hasUnimailing = outputFormats.any(
+      (f) => f.toLowerCase().contains('unimailing'),
+    );
+    return isDynamic && hasUnimailing;
+  }
+
+  /// Safe srno reader — Flutter Web returns JSON ints as num/double.
+  static int _srno(Map<String, dynamic> dt) =>
+      (dt['srno'] as num?)?.toInt() ?? 0;
+
+  /// Build output key list from dynamicTemplates (new API) or numberOfOutputs (old API).
+  /// Format: 'Key 1 - Static', 'Key 2 - Dynamic', …
+  List<String> get dynamicUniMailingOutputKeys {
+    if (dynamicTemplates.isNotEmpty) {
+      final result = <String>[];
+      final hasStatic = dynamicTemplates.any((dt) => _srno(dt) == 0);
+      if (hasStatic) result.add('Key 1 - Static');
+      int keyIdx = 2;
+      for (final dt in dynamicTemplates) {
+        if (_srno(dt) > 0) {
+          result.add('Key $keyIdx - Dynamic');
+          keyIdx++;
+        }
+      }
+      if (result.isEmpty) result.add('Key 1 - Static');
+      return result;
+    }
+    // Old API / fallback
+    final n = numberOfOutputs;
+    if (n == 0) return ['Key 1 - Static'];
+    return [
+      'Key 1 - Static',
+      for (int i = 2; i <= n + 1; i++) 'Key $i - Dynamic',
+    ];
+  }
+
+  /// Returns the dynamicTemplate entry corresponding to a given output key label.
+  Map<String, dynamic>? getDynamicTemplateForOutputKey(String key) {
+    if (dynamicTemplates.isEmpty) return null;
+    if (key.contains('Static')) {
+      try {
+        return dynamicTemplates.firstWhere((dt) => _srno(dt) == 0);
+      } catch (_) {
+        return null;
+      }
+    }
+    final dynamicItems = dynamicTemplates.where((dt) => _srno(dt) > 0).toList();
+    // Key format: 'Key N - Dynamic' where N starts at 2
+    final parts = key.split(' ');
+    final keyNum = parts.length > 1 ? int.tryParse(parts[1]) : null;
+    if (keyNum == null) return null;
+    final dynIdx = keyNum - 2;
+    if (dynIdx < 0 || dynIdx >= dynamicItems.length) return null;
+    return dynamicItems[dynIdx];
+  }
+
+  /// Keys containing 'Static' are the static output key.
+  bool isOutputKeyStatic(String keyName) => keyName.contains('Static');
+
+  /// True once every output key has been saved.
+  bool get allDynamicUniMailingKeysConfigured =>
+      isDynamicUniMailing &&
+      dynamicUniMailingOutputKeys.every(
+        (k) => savedOutputKeyConfigs.containsKey(k),
+      );
+
+  void saveOutputKeyConfig(String keyName, Map<String, dynamic> config) {
+    savedOutputKeyConfigs[keyName] = config;
+    notifyListeners();
+  }
+
+  void removeOutputKeyConfig(String keyName) {
+    savedOutputKeyConfigs.remove(keyName);
+    notifyListeners();
+  }
 
   // ── Helpers ──
   String _nextId() => 'n${++_nodeIdSeq}';
@@ -101,6 +222,15 @@ class PipelineController extends ChangeNotifier {
     sidebarTemplate = '';
     sidebarTemplateId = 0;
     requiredSourceCount = 0;
+    templateType = '';
+    outputFormats = const [];
+    numberOfOutputs = 0;
+    dynamicTemplates = [];
+    selectedOutputKey = '';
+    outputColumnOrder = [];
+    uniMailingMandatory.clear();
+    uniMailingCustom.clear();
+    savedOutputKeyConfigs.clear();
     notifyListeners();
   }
 
@@ -108,12 +238,69 @@ class PipelineController extends ChangeNotifier {
     String template, {
     int? sourceCount,
     int templateId = 0,
+    String templateType = '',
+    List<String> outputFormats = const [],
+    int numberOfOutputs = 0,
+    List<Map<String, dynamic>> dynamicTemplates = const [],
   }) {
+    final isSameTemplate = templateId != 0 && templateId == sidebarTemplateId;
     sidebarTemplate = template;
     sidebarTemplateId = templateId;
     requiredSourceCount =
         sourceCount ?? PipelineConfig.templateSourceCount[template] ?? 0;
+    this.templateType = templateType;
+    this.outputFormats = List<String>.from(outputFormats);
+    this.numberOfOutputs = numberOfOutputs;
+    this.dynamicTemplates = List<Map<String, dynamic>>.from(dynamicTemplates);
+    selectedOutputKey = '';
+    outputColumnOrder = [];
+    if (!isSameTemplate) savedOutputKeyConfigs.clear();
+    debugPrint(
+      '[CTRL] setSidebarTemplate: type=$templateType, formats=$outputFormats, dynamicCount=${this.dynamicTemplates.length}, isDynUni=$isDynamicUniMailing',
+    );
     notifyListeners();
+  }
+
+  /// Update required source count when an output key is selected.
+  void setOutputKeySourceCount(int count) {
+    requiredSourceCount = count;
+    notifyListeners();
+  }
+
+  void setSelectedOutputKey(String key) {
+    selectedOutputKey = key;
+    notifyListeners();
+  }
+
+  bool get hasOutputNode => nodes.any((n) => n.type == NodeType.output);
+
+  /// Adds an output-preview node to the right of the join node.
+  /// Removes any existing output node first (only one allowed).
+  PipelineNode addOutputNode(String joinNodeId) {
+    nodes.removeWhere((n) => n.type == NodeType.output);
+    final joinNode = findNode(joinNodeId);
+    final pos = joinNode != null
+        ? Offset(
+            joinNode.position.dx,
+            joinNode.position.dy + joinNode.nodeHeight + 60,
+          )
+        : const Offset(200, 400);
+    final node = PipelineNode(
+      id: _nextId(),
+      type: NodeType.output,
+      name: 'Output Preview',
+      position: pos,
+    );
+    node.position = _clamp(node.position, node);
+    nodes.add(node);
+    pendingFocusNodeId = node.id;
+    notifyListeners();
+    return node;
+  }
+
+  void setOutputColumnOrder(List<Map<String, dynamic>> order) {
+    outputColumnOrder = List<Map<String, dynamic>>.from(order);
+    // No notifyListeners needed — called just before submit
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -142,7 +329,7 @@ class PipelineController extends ChangeNotifier {
     if (sourceTypeValue.isNotEmpty) node.sourceTypeValue = sourceTypeValue;
     if (sourceTypeId > 0) node.sourceTypeId = sourceTypeId;
     if (sourceTypeName.isNotEmpty) node.sourceTypeName = sourceTypeName;
-    // No demo data — columns load only when user uploads file
+    node.position = _clamp(node.position, node);
     nodes.add(node);
     notifyListeners();
     return node;
@@ -172,13 +359,55 @@ class PipelineController extends ChangeNotifier {
     selectedNodeId = null;
     selectedEdgeId = null;
     _nodeIdSeq = 0;
+    portDragFromNodeId = null;
+    portDragCurrentPos = null;
+    pendingFocusNodeId = null;
     sidebarDept = '';
     sidebarTemplate = '';
     sidebarTemplateId = 0;
     sidebarDeptId = '';
     requiredSourceCount = 0;
+    templateType = '';
+    outputFormats = const [];
+    numberOfOutputs = 0;
+    dynamicTemplates = [];
+    selectedOutputKey = '';
+    outputColumnOrder = [];
+    uniMailingMandatory.clear();
+    uniMailingCustom.clear();
+    savedOutputKeyConfigs.clear();
     canvasVersion++;
     clearVersion++;
+    notifyListeners();
+  }
+
+  /// Clears only the canvas nodes/edges after saving a Dynamic UniMailing
+  /// output key config. Preserves template metadata and savedOutputKeyConfigs
+  /// so the user can rebuild the canvas for the next output key.
+  void clearCanvasForNextOutputKey() {
+    nodes.clear();
+    edges.clear();
+    selectedNodeId = null;
+    selectedEdgeId = null;
+    _nodeIdSeq = 0;
+    portDragFromNodeId = null;
+    portDragCurrentPos = null;
+    pendingFocusNodeId = null;
+    outputColumnOrder = [];
+    uniMailingMandatory.clear();
+    uniMailingCustom.clear();
+    // Auto-advance sidebar selection to the next unconfigured key so the user
+    // doesn't have to manually pick one from the dropdown after the canvas clears.
+    final keys = dynamicUniMailingOutputKeys;
+    final next = keys
+        .where((k) => !savedOutputKeyConfigs.containsKey(k))
+        .firstOrNull;
+    selectedOutputKey = next ?? '';
+    // Intentionally NOT clearing: sidebarDept, sidebarTemplate, sidebarTemplateId,
+    // sidebarDeptId, requiredSourceCount, templateType, outputFormats,
+    // numberOfOutputs, savedOutputKeyConfigs.
+    // Intentionally NOT incrementing clearVersion (sidebar keeps dept/template).
+    canvasVersion++;
     notifyListeners();
   }
 
@@ -364,10 +593,18 @@ class PipelineController extends ChangeNotifier {
   }
 
   /// Move node by delta (drag handler)
+  static const double canvasWidth = 3000;
+  static const double canvasHeight = 2000;
+
+  Offset _clamp(Offset pos, PipelineNode node) => Offset(
+    pos.dx.clamp(0.0, canvasWidth - node.nodeWidth),
+    pos.dy.clamp(0.0, canvasHeight - node.nodeHeight),
+  );
+
   void moveNode(String nodeId, Offset delta) {
     final node = findNode(nodeId);
     if (node != null) {
-      node.position += delta;
+      node.position = _clamp(node.position + delta, node);
       notifyListeners();
     }
   }
@@ -751,6 +988,8 @@ class PipelineController extends ChangeNotifier {
     if (node == null) return;
     if (node.selectedCols.contains(col)) {
       node.selectedCols.remove(col);
+      // Clear stale priority so it doesn't conflict when reselected later
+      node.columnPriorities.remove(col);
     } else {
       node.selectedCols.add(col);
     }
@@ -765,6 +1004,46 @@ class PipelineController extends ChangeNotifier {
     } else {
       node.columnAliases[col] = alias.trim();
     }
+    notifyListeners();
+  }
+
+  void setUniMailingMandatory(String field, String colKey) {
+    if (colKey.isEmpty) {
+      uniMailingMandatory.remove(field);
+    } else {
+      uniMailingMandatory[field] = colKey;
+    }
+    notifyListeners();
+  }
+
+  void setUniMailingCustom(String key, String colKey) {
+    if (colKey.isEmpty) {
+      uniMailingCustom.remove(key);
+    } else {
+      uniMailingCustom[key] = colKey;
+    }
+    notifyListeners();
+  }
+
+  void setColumnPriority(String nodeId, String col, int priority) {
+    final node = findNode(nodeId);
+    if (node == null) return;
+    if (priority <= 0) {
+      node.columnPriorities.remove(col);
+    } else {
+      node.columnPriorities[col] = priority;
+    }
+    notifyListeners();
+  }
+
+  void setColumnUniqueField(String nodeId, String col, bool isUnique) {
+    final node = findNode(nodeId);
+    if (node == null) return;
+    if (isUnique) {
+      // Only one unique field allowed per source — clear all others first
+      node.columnUniqueFields.updateAll((_, __) => false);
+    }
+    node.columnUniqueFields[col] = isUnique;
     notifyListeners();
   }
 }

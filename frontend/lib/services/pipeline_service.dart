@@ -12,7 +12,7 @@ class PipelineService {
   /// [payload] is the JSON config body.
   /// [fileEntries] is the list of files to send under the "Files" key.
   Future<ApiResponse<SubmitMappingResponse>> submitMapping(
-    Map<String, dynamic> payload, {
+    dynamic payload, {
     List<({String key, List<int> bytes, String filename})> fileEntries =
         const [],
   }) async {

@@ -16,6 +16,7 @@ class ApiConfig {
   static const String departmentsEndpoint = 'template/GetDepartment';
   static const String approvalListEndpoint = 'template/GetApprovalList';
   static const String templatesEndpoint = 'template/GetTemplates';
+  static const String templatesDynamicEndpoint = 'template/GetTemplatesDynamic';
   static const String sourceTypeEndpoint = 'template/GetSourceType';
   static const String operationsEndpoint = 'template/GetOperations';
 

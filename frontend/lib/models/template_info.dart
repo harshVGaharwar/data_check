@@ -54,6 +54,10 @@ class TemplateInfo {
   final String sourceListNames;
   final List<Map<String, dynamic>> approvals;
 
+  /// Raw dynamicTemplate entries from GetTemplatesDynamic API.
+  /// Each entry: {srno, id, sourceList, sourceCount, sourceMasterList, sourceType}
+  final List<Map<String, dynamic>> dynamicTemplates;
+
   TemplateInfo({
     required this.templateId,
     required this.templateName,
@@ -79,6 +83,7 @@ class TemplateInfo {
     this.departmentName = '',
     this.sourceListNames = '',
     this.approvals = const [],
+    this.dynamicTemplates = const [],
   });
 
   /// Parses the nested response shape returned by GetTemplates?deptId=&flag=:
@@ -90,51 +95,102 @@ class TemplateInfo {
         ? (templateArr[0] as Map<String, dynamic>? ?? {})
         : json;
 
-    final outputFormatsArr = json['OutputFormats'] as List?;
-    final parsedFormats = outputFormatsArr
-            ?.whereType<Map<String, dynamic>>()
-            .map((f) => f['FormatName']?.toString() ?? '')
+    // Handle both PascalCase (old nested API) and camelCase (new flat API)
+    final outputFormatsArr =
+        (json['OutputFormats'] ?? json['outputFormats']) as List?;
+    final parsedFormats =
+        outputFormatsArr
+            ?.map((e) {
+              if (e is Map<String, dynamic>) return e;
+              if (e is Map) return Map<String, dynamic>.from(e);
+              return null;
+            })
+            .whereType<Map<String, dynamic>>()
+            .map((f) => (f['FormatName'] ?? f['formatName'])?.toString() ?? '')
             .where((s) => s.isNotEmpty)
             .toList() ??
-        (json['outputFormats'] as List?)?.map((e) => e.toString()).toList() ??
         [];
 
     final approvalsArr = json['Approvals'] as List?;
-    final parsedApprovals = approvalsArr
-            ?.whereType<Map<String, dynamic>>()
+    final parsedApprovals =
+        approvalsArr?.whereType<Map<String, dynamic>>().toList() ?? [];
+
+    // Parse dynamicTemplate array (camelCase from GetTemplatesDynamic API)
+    final dynamicTemplateArr =
+        (json['DynamicTemplate'] ?? json['dynamicTemplate']) as List?;
+    final parsedDynamicTemplates =
+        dynamicTemplateArr
+            ?.map((e) {
+              if (e is Map<String, dynamic>) return e;
+              if (e is Map) return Map<String, dynamic>.from(e);
+              return null;
+            })
+            .whereType<Map<String, dynamic>>()
             .toList() ??
         [];
 
     return TemplateInfo(
       templateId: _toInt(tpl['TemplateId'] ?? tpl['templateId']),
-      templateName: tpl['TemplateName']?.toString() ?? tpl['templateName']?.toString() ?? '',
-      department: tpl['Department']?.toString() ?? tpl['department']?.toString() ?? '',
-      frequency: tpl['Frequency']?.toString() ?? tpl['frequency']?.toString() ?? '',
+      templateName:
+          tpl['TemplateName']?.toString() ??
+          tpl['templateName']?.toString() ??
+          '',
+      department:
+          tpl['Department']?.toString() ?? tpl['department']?.toString() ?? '',
+      frequency:
+          tpl['Frequency']?.toString() ?? tpl['frequency']?.toString() ?? '',
       sourceCount: _toInt(tpl['SourceCount'] ?? tpl['sourceCount']),
       numberOfOutputs: _toInt(tpl['NumberOfOutputs'] ?? tpl['numberOfOutputs']),
       normalVolume: _toInt(tpl['NormalVolume'] ?? tpl['normalVolume']),
       peakVolume: _toInt(tpl['PeakVolume'] ?? tpl['peakVolume']),
-      priority: tpl['Priority']?.toString() ?? tpl['priority']?.toString() ?? '',
-      benefitType: tpl['BenefitType']?.toString() ?? tpl['benefitType']?.toString() ?? '',
+      priority:
+          tpl['Priority']?.toString() ?? tpl['priority']?.toString() ?? '',
+      benefitType:
+          tpl['BenefitType']?.toString() ??
+          tpl['benefitType']?.toString() ??
+          '',
       benefitAmount: _toDouble(tpl['BenefitAmount'] ?? tpl['benefitAmount']),
       outputFormats: parsedFormats,
-      templateType: tpl['TemplateType']?.toString() ?? tpl['templateType']?.toString() ?? '',
-      benefitInTAT: tpl['BenefitInTat']?.toString() ?? tpl['benefitInTAT']?.toString() ?? '',
-      goLiveDate: tpl['GoLiveDate']?.toString() ?? tpl['goLiveDate']?.toString() ?? '',
-      deactivateDate: tpl['DeactivateDate']?.toString() ?? tpl['deactivateDate']?.toString() ?? '',
-      spocPerson: tpl['SpocPerson']?.toString() ?? tpl['spocPerson']?.toString() ?? '',
-      spocManager: tpl['SpocManager']?.toString() ?? tpl['spocManager']?.toString() ?? '',
-      unitHead: tpl['UnitHead']?.toString() ?? tpl['unitHead']?.toString() ?? '',
-      sourceList: tpl['SourceList']?.toString() ?? tpl['sourceList']?.toString() ?? '',
-      createdBy: json['CreatedBy']?.toString() ?? json['createdBy']?.toString() ?? '',
-      departmentName: json['DepartmentName']?.toString() ?? json['departmentName']?.toString() ?? '',
-      sourceListNames: json['SourceListNames']?.toString() ?? json['sourceListNames']?.toString() ?? '',
+      templateType:
+          tpl['TemplateType']?.toString() ??
+          tpl['templateType']?.toString() ??
+          '',
+      benefitInTAT:
+          tpl['BenefitInTat']?.toString() ??
+          tpl['benefitInTAT']?.toString() ??
+          '',
+      goLiveDate:
+          tpl['GoLiveDate']?.toString() ?? tpl['goLiveDate']?.toString() ?? '',
+      deactivateDate:
+          tpl['DeactivateDate']?.toString() ??
+          tpl['deactivateDate']?.toString() ??
+          '',
+      spocPerson:
+          tpl['SpocPerson']?.toString() ?? tpl['spocPerson']?.toString() ?? '',
+      spocManager:
+          tpl['SpocManager']?.toString() ??
+          tpl['spocManager']?.toString() ??
+          '',
+      unitHead:
+          tpl['UnitHead']?.toString() ?? tpl['unitHead']?.toString() ?? '',
+      sourceList:
+          tpl['SourceList']?.toString() ?? tpl['sourceList']?.toString() ?? '',
+      createdBy:
+          json['CreatedBy']?.toString() ?? json['createdBy']?.toString() ?? '',
+      departmentName:
+          json['DepartmentName']?.toString() ??
+          json['departmentName']?.toString() ??
+          '',
+      sourceListNames:
+          json['SourceListNames']?.toString() ??
+          json['sourceListNames']?.toString() ??
+          '',
       approvals: parsedApprovals,
+      dynamicTemplates: parsedDynamicTemplates,
     );
   }
 
-  static int _toInt(dynamic v) =>
-      v is int ? v : int.tryParse('$v') ?? 0;
+  static int _toInt(dynamic v) => v is int ? v : int.tryParse('$v') ?? 0;
   static double _toDouble(dynamic v) =>
       v is double ? v : double.tryParse('$v') ?? 0;
 }

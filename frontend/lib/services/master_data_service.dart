@@ -106,6 +106,37 @@ class MasterDataService {
     return [];
   }
 
+  Future<List<TemplateInfo>> getTemplatesDynamic(int deptId, int? flag) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.templatesDynamicEndpoint}?deptId=$deptId&flag=$flag',
+      );
+      debugPrint('[DYN] raw response type=${data.runtimeType} data=$data');
+      if (data is List) {
+        final list = data
+            .map((e) {
+              if (e is Map<String, dynamic>) return e;
+              if (e is Map) return Map<String, dynamic>.from(e);
+              return null;
+            })
+            .whereType<Map<String, dynamic>>()
+            .map(TemplateInfo.fromJson)
+            .toList();
+        for (final t in list) {
+          debugPrint(
+            '[DYN_TEMPLATE] id=${t.templateId} name="${t.templateName}" type="${t.templateType}" formats=${t.outputFormats} dynCount=${t.dynamicTemplates.length} isDynUni=${t.templateType == "3" || t.templateType.toLowerCase().contains("dynamic")}',
+          );
+        }
+        return list;
+      } else {
+        debugPrint('[DYN] data is NOT a List — got ${data.runtimeType}');
+      }
+    } catch (e, st) {
+      debugPrint('[MasterData] getTemplatesDynamic error: $e\n$st');
+    }
+    return [];
+  }
+
   /// Fetch source types from API
   Future<List<SourceTypeItem>> getSourceTypes() async {
     debugPrint('[MasterData] getSourceTypes called');

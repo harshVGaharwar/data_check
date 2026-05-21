@@ -11,6 +11,8 @@ class SearchableDropdownField extends StatefulWidget {
   final bool enabled;
   final double height;
   final Widget Function(String item)? leadingBuilder;
+  /// Items that are shown but cannot be selected
+  final Set<String> disabledItems;
 
   const SearchableDropdownField({
     super.key,
@@ -21,6 +23,7 @@ class SearchableDropdownField extends StatefulWidget {
     this.enabled = true,
     this.height = 34,
     this.leadingBuilder,
+    this.disabledItems = const {},
   });
 
   @override
@@ -54,6 +57,7 @@ class _SearchableDropdownFieldState extends State<SearchableDropdownField> {
         dropdownWidth: width,
         triggerHeight: widget.height,
         leadingBuilder: widget.leadingBuilder,
+        disabledItems: widget.disabledItems,
         onDismiss: _close,
         onSelect: (item) {
           _close();
@@ -72,8 +76,17 @@ class _SearchableDropdownFieldState extends State<SearchableDropdownField> {
   }
 
   @override
+  void didUpdateWidget(SearchableDropdownField old) {
+    super.didUpdateWidget(old);
+    if (old.value != widget.value && _isOpen) {
+      _close();
+    }
+  }
+
+  @override
   void dispose() {
-    _close();
+    _overlay?.remove();
+    _overlay = null;
     super.dispose();
   }
 
@@ -140,6 +153,7 @@ class _SearchDropdownOverlay extends StatefulWidget {
   final double dropdownWidth;
   final double triggerHeight;
   final Widget Function(String item)? leadingBuilder;
+  final Set<String> disabledItems;
   final VoidCallback onDismiss;
   final ValueChanged<String> onSelect;
 
@@ -152,6 +166,7 @@ class _SearchDropdownOverlay extends StatefulWidget {
     required this.onDismiss,
     required this.onSelect,
     this.leadingBuilder,
+    this.disabledItems = const {},
   });
 
   @override
@@ -179,10 +194,11 @@ class _SearchDropdownOverlayState extends State<_SearchDropdownOverlay> {
     final filtered = _filtered;
     return Stack(
       children: [
-        // Tap outside → dismiss
+        // Tap outside → dismiss (Listener, not GestureDetector, so it doesn't
+        // add a recognizer to the gesture arena and canvas taps still register)
         Positioned.fill(
-          child: GestureDetector(
-            onTap: widget.onDismiss,
+          child: Listener(
+            onPointerDown: (_) => widget.onDismiss(),
             behavior: HitTestBehavior.translucent,
             child: const SizedBox.expand(),
           ),
@@ -306,44 +322,48 @@ class _SearchDropdownOverlayState extends State<_SearchDropdownOverlay> {
                               itemBuilder: (_, i) {
                                 final item = filtered[i];
                                 final isCurrent = item == widget.current;
+                                final isDisabled = widget.disabledItems.contains(item);
                                 return InkWell(
-                                  onTap: () => widget.onSelect(item),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 9,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          isCurrent
-                                              ? Icons.radio_button_checked
-                                              : Icons.radio_button_unchecked,
-                                          size: 16,
-                                          color: isCurrent
-                                              ? AppColors.violet
-                                              : AppColors.textDim,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        if (widget.leadingBuilder != null) ...[
-                                          widget.leadingBuilder!(item),
+                                  onTap: isDisabled ? null : () => widget.onSelect(item),
+                                  child: Opacity(
+                                    opacity: isDisabled ? 0.45 : 1.0,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 9,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            isCurrent
+                                                ? Icons.radio_button_checked
+                                                : Icons.radio_button_unchecked,
+                                            size: 16,
+                                            color: isCurrent
+                                                ? AppColors.violet
+                                                : AppColors.textDim,
+                                          ),
                                           const SizedBox(width: 8),
-                                        ],
-                                        Expanded(
-                                          child: Text(
-                                            item,
-                                            style: TextStyle(
-                                              fontSize: 12.5,
-                                              color: isCurrent
-                                                  ? AppColors.violet
-                                                  : AppColors.text,
-                                              fontWeight: isCurrent
-                                                  ? FontWeight.w600
-                                                  : FontWeight.normal,
+                                          if (widget.leadingBuilder != null) ...[
+                                            widget.leadingBuilder!(item),
+                                            const SizedBox(width: 8),
+                                          ],
+                                          Expanded(
+                                            child: Text(
+                                              item,
+                                              style: TextStyle(
+                                                fontSize: 12.5,
+                                                color: isCurrent
+                                                    ? AppColors.violet
+                                                    : AppColors.text,
+                                                fontWeight: isCurrent
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );

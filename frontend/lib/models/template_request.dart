@@ -1,40 +1,21 @@
-/// Template Creation Request Model
-/// Share this with backend team for API structure
-///
-/// POST /api/v1/templates
-/// Content-Type: multipart/form-data (due to file upload)
-///
-/// Example JSON (form fields):
-// {
-//   "template": {
-//     "templateName": "Sample Template",
-//     "department": "Finance",
-//     "frequency": "Monthly",
-//     "normalVolume": 100,
-//     "peakVolume": 200,
-//     "sourceCount": 2,
-//     "numberOfOutputs": 3,
-//     "benefitType": "CostSaving",
-//     "benefitAmount": 5000,
-//     "benefitInTat": "2 days",
-//     "goLiveDate": "2025-01-01",
-//     "deactivateDate": null,
-//     "spocPerson": "John",
-//     "spocManager": "Manager A",
-//     "unitHead": "Head A",
-//     "priority": "High"
-//   },
-//   "outputFormats": [
-//     { "formatName": "CSV" },
-//     { "formatName": "Excel" }
-//   ],
-//   "approvals": [
-//     {
-//       "approval_Type": "Manager",
-//       "approvalFile": "file1.pdf"
-//     }
-//   ]
-// }
+class DynamicOutputModel {
+  int sourceCount;
+  List<Map<String, dynamic>> sourceList;
+
+  DynamicOutputModel({
+    this.sourceCount = 0,
+    List<Map<String, dynamic>>? sourceList,
+  }) : sourceList = sourceList ?? [];
+
+  bool get isValid => sourceCount > 0 && sourceList.isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+    'sourceList': sourceList.map((m) => m['id']).join(','),
+    'sourceCount': sourceCount.toString(),
+    'sourceType': "3",
+  };
+}
+
 class TemplateRequest {
   String templateName;
   String department;
@@ -59,12 +40,14 @@ class TemplateRequest {
   String departmentName;
   String sourceListName;
 
-  /// Per-approval file uploads: {"Unit Head": "approval_uh.pdf", "UAT Sign Off": "uat.pdf"}
+  /// Per-approval file uploads: {"Unit Head": "approval_uh.pdf", ...}
   Map<String, String> approvalFiles;
-  // Actual file bytes handled separately in multipart upload
 
-  /// Selected source master items (from /template/GetSourceMasterList)
+  /// Selected source master items (static case)
   List<Map<String, dynamic>> sourceList;
+
+  /// Per-output source config (dynamic case)
+  List<DynamicOutputModel> dynamicOutputs;
 
   TemplateRequest({
     this.templateName = '',
@@ -85,19 +68,39 @@ class TemplateRequest {
     this.priority = 'Medium',
     this.templateType = '',
     this.createdBy = '',
-    this.sourceListName = "",
-    this.departmentName = "",
+    this.sourceListName = '',
+    this.departmentName = '',
     List<String>? outputFormats,
-
     List<String>? approvals,
     Map<String, String>? approvalFiles,
     List<Map<String, dynamic>>? sourceList,
+    List<DynamicOutputModel>? dynamicOutputs,
   }) : outputFormats = outputFormats ?? [],
        approvals = approvals ?? [],
        approvalFiles = approvalFiles ?? {},
-       sourceList = sourceList ?? [];
+       sourceList = sourceList ?? [],
+       dynamicOutputs = dynamicOutputs ?? [];
+
+  bool get isDynamic => templateType == '2 - Dynamic';
+
+  /// "1" = Static + User Defined
+  /// "2" = Static + UniMailing
+  /// "3" = Dynamic + UniMailing
+  ///       1.1-->static
+  ///       1.2-->dynamic
+  ///       1.n--->dynmic n
+  ///
+  ///
+  String get templateTypeCode {
+    if (isDynamic) return '3';
+    if (outputFormats.any((f) => f.toLowerCase().contains('unimailing'))) {
+      return '2';
+    }
+    return '1';
+  }
 
   Map<String, dynamic> toJson() => {
+    'TemplateType': templateTypeCode,
     'Template': [
       {
         'TemplateName': templateName,
@@ -115,16 +118,19 @@ class TemplateRequest {
         'SpocManager': spocManager,
         'UnitHead': unitHead,
         'Priority': priority,
-        'TemplateType': templateType,
-        'NumberOfOutputs': templateType == '1 - Static'
-            ? null
-            : numberOfOutputs,
+        'NumberOfOutputs': isDynamic ? numberOfOutputs : null,
         'SourceList': sourceList.map((m) => m['id']).join(','),
       },
     ],
-    'OutputFormats': outputFormats
-        .map((f) => {'TemplateTempId': null, 'FormatName': f})
-        .toList(),
+    'OutputFormats': (() {
+      // Dynamic → always Unimailing; Static → deduplicate, keep one
+      final formats = isDynamic
+          ? ['Unimailing']
+          : outputFormats.toSet().toList();
+      return formats
+          .map((f) => {'TemplateTempId': null, 'FormatName': f})
+          .toList();
+    })(),
     'Approvals': approvals
         .map(
           (a) => {
@@ -135,23 +141,46 @@ class TemplateRequest {
         )
         .toList(),
     'CreatedBy': createdBy,
-    'jsonData': "",
+    'jsonData': '',
     'DepartmentName': departmentName,
     'SourceListNames': sourceListName,
+    'DynamicTemplate': isDynamic
+        ? [
+            {
+              'sourceList': sourceList.map((m) => m['id']).join(','),
+              'sourceCount': sourceCount.toString(),
+              'sourceType': "1",
+            },
+            ...dynamicOutputs.asMap().entries.map(
+              (e) => {
+                'sourceList': e.value.sourceList.map((m) => m['id']).join(','),
+                'sourceCount': e.value.sourceCount.toString(),
+                'sourceType': "3",
+              },
+            ),
+          ]
+        : [],
   };
+
+  // ── Validation ──────────────────────────────────────────────────────────────
 
   bool get isGeneralInfoValid =>
       templateName.isNotEmpty &&
       department.isNotEmpty &&
       frequency.isNotEmpty &&
-      spocPerson.isNotEmpty &&
-      sourceCount > 0 &&
-      sourceList.isNotEmpty;
+      spocPerson.isNotEmpty;
 
   bool get isOutputFormatValid =>
       templateType.isNotEmpty &&
       (templateType == '1 - Static' || numberOfOutputs > 0) &&
-      outputFormats.isNotEmpty;
+      outputFormats.isNotEmpty &&
+      (isDynamic || (sourceCount > 0 && sourceList.isNotEmpty));
+
+  bool get isDynamicOutputsValid =>
+      !isDynamic ||
+      (sourceCount > 0 &&
+          sourceList.isNotEmpty &&
+          dynamicOutputs.every((d) => d.isValid));
 
   bool get isApprovalValid => approvals.isNotEmpty;
 
@@ -160,6 +189,7 @@ class TemplateRequest {
   bool get isComplete =>
       isGeneralInfoValid &&
       isOutputFormatValid &&
+      isDynamicOutputsValid &&
       isApprovalValid &&
       isFileUploaded;
 
@@ -186,5 +216,8 @@ class TemplateRequest {
     approvals = [];
     approvalFiles = {};
     sourceList = [];
+    sourceListName = '';
+    departmentName = '';
+    dynamicOutputs = [];
   }
 }

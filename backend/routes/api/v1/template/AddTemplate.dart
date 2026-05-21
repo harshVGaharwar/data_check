@@ -24,7 +24,6 @@ Future<Response> onRequest(RequestContext context) async {
     );
   }
 
-  // ── Parse multipart to support multiple files under "Files" key ──
   final mediaType = MediaType.parse(contentTypeHeader);
   final boundary = mediaType.parameters['boundary'];
   if (boundary == null) {
@@ -65,7 +64,91 @@ Future<Response> onRequest(RequestContext context) async {
   } catch (_) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: ApiResponse.error(message: 'Invalid Config JSON').toJson(),
+      body: ApiResponse.error(message: 'Invalid TemplateRuequest JSON').toJson(),
+    );
+  }
+
+  // ── Validate required top-level fields ──
+  final templateType = body['TemplateType']?.toString() ?? '';
+  if (!['1', '2', '3'].contains(templateType)) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: ApiResponse.error(
+        message: 'TemplateType must be "1" (Static+UserDefined), '
+            '"2" (Static+UniMailing) or "3" (Dynamic+UniMailing)',
+      ).toJson(),
+    );
+  }
+
+  final templateArr = body['Template'];
+  if (templateArr is! List || templateArr.isEmpty) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: ApiResponse.error(message: 'Template array is required').toJson(),
+    );
+  }
+
+  final tplMap =
+      Map<String, dynamic>.from(templateArr[0] as Map<dynamic, dynamic>);
+
+  // Required fields inside Template[0]
+  final requiredFields = [
+    'TemplateName',
+    'Department',
+    'Frequency',
+    'SpocPerson',
+  ];
+  for (final f in requiredFields) {
+    if ((tplMap[f]?.toString() ?? '').isEmpty) {
+      return Response.json(
+        statusCode: HttpStatus.badRequest,
+        body: ApiResponse.error(message: 'Template.$f is required').toJson(),
+      );
+    }
+  }
+
+  // For static (type 1/2) SourceList and SourceCount are required
+  if (templateType != '3') {
+    final sourceList = tplMap['SourceList']?.toString() ?? '';
+    final sourceCount = tplMap['SourceCount'];
+    if (sourceList.isEmpty) {
+      return Response.json(
+        statusCode: HttpStatus.badRequest,
+        body: ApiResponse.error(message: 'Template.SourceList is required for static templates').toJson(),
+      );
+    }
+    if (sourceCount == null || (int.tryParse(sourceCount.toString()) ?? 0) <= 0) {
+      return Response.json(
+        statusCode: HttpStatus.badRequest,
+        body: ApiResponse.error(message: 'Template.SourceCount must be > 0').toJson(),
+      );
+    }
+  }
+
+  // For dynamic (type 3) DynamicTemplate array is required
+  if (templateType == '3') {
+    final dynArr = body['DynamicTemplate'];
+    if (dynArr is! List || dynArr.isEmpty) {
+      return Response.json(
+        statusCode: HttpStatus.badRequest,
+        body: ApiResponse.error(
+          message: 'DynamicTemplate array is required for TemplateType "3"',
+        ).toJson(),
+      );
+    }
+  }
+
+  if ((body['OutputFormats'] as List?)?.isEmpty ?? true) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: ApiResponse.error(message: 'OutputFormats is required').toJson(),
+    );
+  }
+
+  if ((body['Approvals'] as List?)?.isEmpty ?? true) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: ApiResponse.error(message: 'Approvals is required').toJson(),
     );
   }
 
@@ -73,18 +156,12 @@ Future<Response> onRequest(RequestContext context) async {
       context.request.headers['authorization'] ??
       '';
 
-  // Dev mode: save to in-memory DB and return mock response
+  // ── Dev mode: save to in-memory DB ──
   if (kDevMode) {
     final db = Database();
 
-    final templateArr = body['Template'] as List?;
-    final tplMap = (templateArr != null && templateArr.isNotEmpty)
-        ? Map<String, dynamic>.from(templateArr[0] as Map<dynamic, dynamic>)
-        : <String, dynamic>{};
-
     final deptId = int.tryParse(tplMap['Department']?.toString() ?? '') ?? 0;
 
-    // Generate next TemplateId
     final allIds = db.templatesByDept.values
         .expand((list) => list)
         .map((t) => t['TemplateId'] as int? ?? 0)
@@ -92,32 +169,52 @@ Future<Response> onRequest(RequestContext context) async {
     final newTemplateId =
         (allIds.isEmpty ? 0 : allIds.reduce((a, b) => a > b ? a : b)) + 1;
 
-    // Flat entry: all template fields at root + OutputFormats/Approvals at root
     final savedEntry = <String, dynamic>{
       ...tplMap,
       'TemplateId': newTemplateId,
+      'TemplateType': templateType,
       'OutputFormats': body['OutputFormats'] ?? [],
       'Approvals': body['Approvals'] ?? [],
       'CreatedBy': body['CreatedBy'] ?? '',
       'jsonData': body['jsonData'] ?? '',
       'DepartmentName': body['DepartmentName'] ?? '',
       'SourceListNames': body['SourceListNames'] ?? '',
+      'DynamicTemplate': body['DynamicTemplate'] ?? [],
     };
 
-    db.templatesByDept.putIfAbsent(deptId, () => []);
-    db.templatesByDept[deptId]!.add(savedEntry);
+    db.persistTemplate(deptId, savedEntry);
 
-    print('[TEMPLATE CREATE - DEV] Saved templateId=$newTemplateId to dept $deptId');
-    print('[TEMPLATE CREATE - DEV] Files: ${uploadedFiles.map((f) => f.filename).toList()}');
+    print('[TEMPLATE CREATE] templateId=$newTemplateId  type=$templateType  dept=$deptId');
+    print('[TEMPLATE CREATE] ${const JsonEncoder.withIndent('  ').convert(savedEntry)}');
+    print('[TEMPLATE CREATE] files=${uploadedFiles.map((f) => f.filename).toList()}');
+
     return Response.json(
       body: ApiResponse.success(
-        message: 'Template created successfully (dev mock)',
+        message: 'Template created successfully',
         data: {'templateId': newTemplateId},
       ).toJson(),
     );
   }
 
-  // ── Forward to external API as multipart ──
+  // ── Production: forward to external API as multipart ──
+  // Strip sourceMasterList from DynamicTemplate entries — production API doesn't expect it.
+  final productionBody = Map<String, dynamic>.from(body);
+  final dynArr = productionBody['DynamicTemplate'];
+  if (dynArr is List) {
+    productionBody['DynamicTemplate'] = dynArr.map((e) {
+      if (e is Map) {
+        final entry = Map<String, dynamic>.from(e);
+        return {
+          if (entry.containsKey('sourceList')) 'SourceList': entry['sourceList'],
+          if (entry.containsKey('sourceCount')) 'SourceCount': entry['sourceCount'],
+          if (entry.containsKey('sourceType')) 'SourceType': entry['sourceType'],
+        };
+      }
+      return e;
+    }).toList();
+  }
+  final productionJson = jsonEncode(productionBody);
+
   try {
     final uri = Uri.parse('$kBaseUrl${ExternalApi.templateCreate}');
     final request = http.MultipartRequest('POST', uri);
@@ -125,11 +222,15 @@ Future<Response> onRequest(RequestContext context) async {
     if (authHeader.isNotEmpty) {
       request.headers['Authorization'] = authHeader;
     }
-    request.fields['TemplateRuequest'] = configJson;
+    request.fields['TemplateRuequest'] = productionJson;
 
     for (final file in uploadedFiles) {
       request.files.add(
-        http.MultipartFile.fromBytes('Files', file.bytes, filename: file.filename),
+        http.MultipartFile.fromBytes(
+          'Files',
+          file.bytes,
+          filename: file.filename,
+        ),
       );
     }
 
@@ -146,7 +247,8 @@ Future<Response> onRequest(RequestContext context) async {
       return Response.json(
         statusCode: HttpStatus.badGateway,
         body: ApiResponse.error(
-          message: 'Invalid response from template service (status ${streamed.statusCode})',
+          message:
+              'Invalid response from template service (status ${streamed.statusCode})',
         ).toJson(),
       );
     }
