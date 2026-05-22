@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vizualizer/pages/pipeline_app.dart';
-import 'services/api_service.dart';
-import 'services/auth_service.dart';
-import 'services/storage_service.dart';
-import 'services/template_service.dart';
-import 'services/pipeline_service.dart';
-import 'services/master_data_service.dart';
-import 'providers/auth_provider.dart';
-import 'providers/template_provider.dart';
-import 'pages/login_page.dart';
-import 'pages/dashboard_page.dart';
-
+import 'package:vizualizer/app.dart';
+import 'package:vizualizer/data/services/api_service.dart';
+import 'package:vizualizer/data/services/auth_service.dart';
+import 'package:vizualizer/data/services/storage_service.dart';
+import 'package:vizualizer/data/services/template_service.dart';
+import 'package:vizualizer/data/services/pipeline_service.dart';
+import 'package:vizualizer/data/services/master_data_service.dart';
+import 'package:vizualizer/presentation/providers/auth_provider.dart';
+import 'package:vizualizer/presentation/providers/template_provider.dart';
+import 'package:vizualizer/presentation/pages/auth/login_page.dart';
+import 'package:vizualizer/presentation/pages/dashboard/dashboard_page.dart';
 /// Global key used by ApiService to show snackbars without a BuildContext.
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
