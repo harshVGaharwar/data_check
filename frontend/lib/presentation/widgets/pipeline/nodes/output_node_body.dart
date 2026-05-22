@@ -227,40 +227,65 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
               thickness: 5,
               radius: const Radius.circular(3),
               child: SingleChildScrollView(
-              controller: _scrollCtrl,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Template / dept info ──
-                  if (ctrl.sidebarTemplate.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: AppColors.green.withValues(alpha: 0.06),
-                        border: Border.all(
-                          color: AppColors.green.withValues(alpha: 0.2),
+                controller: _scrollCtrl,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Template / dept info ──
+                    if (ctrl.sidebarTemplate.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.assignment_rounded,
-                            size: 13,
-                            color: AppColors.green,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: AppColors.green.withValues(alpha: 0.06),
+                          border: Border.all(
+                            color: AppColors.green.withValues(alpha: 0.2),
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.assignment_rounded,
+                              size: 13,
+                              color: AppColors.green,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Template',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textMuted,
+                                      letterSpacing: 0.4,
+                                    ),
+                                  ),
+                                  Text(
+                                    ctrl.sidebarTemplate,
+                                    style: const TextStyle(
+                                      color: AppColors.text,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 const Text(
-                                  'Template',
+                                  'Dept',
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w600,
@@ -269,268 +294,248 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                                   ),
                                 ),
                                 Text(
-                                  ctrl.sidebarTemplate,
+                                  ctrl.sidebarDept,
                                   style: const TextStyle(
-                                    color: AppColors.text,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textMuted,
+                                    fontSize: 10,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text(
-                                'Dept',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textMuted,
-                                  letterSpacing: 0.4,
-                                ),
-                              ),
-                              Text(
-                                ctrl.sidebarDept,
-                                style: const TextStyle(
-                                  color: AppColors.textMuted,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // ── Column Selection (hidden for 3rd case – per-key selection used instead) ──
-                  if (!isDynamicUniMailing && sourcesWithCols.isNotEmpty) ...[
-                    _sectionHeader(
-                      'COLUMN SELECTION',
-                      Icons.checklist_rounded,
-                      allPrioritiesProvided ? AppColors.blue : AppColors.red,
-                      '${sourcesWithCols.length} sources',
-                    ),
-                    const SizedBox(height: 8),
-                    for (final src in sourcesWithCols) ...[
-                      _OutputFormatCard(
-                        node: src,
-                        ctrl: ctrl,
-                        hidePriority: !isStaticUserDefined,
-                        hideAlias: isStaticUniMailing,
-                      ),
-                      if (src != sourcesWithCols.last)
-                        const SizedBox(height: 8),
-                    ],
-                    const SizedBox(height: 12),
-                  ],
-
-                  // ── Static UniMailing section ──
-                  if (isStaticUniMailing) ...[
-                    _sectionHeader(
-                      'UNIMAILING FORMAT',
-                      Icons.email_rounded,
-                      uniMailingComplete ? AppColors.blue : AppColors.amber,
-                      '$mandatoryFilled / 7 required',
-                    ),
-                    const SizedBox(height: 8),
-                    UniMailingSection(ctrl: ctrl, sourceNodes: allSourceNodes),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // ── Dynamic UniMailing section (3rd case) ──
-                  if (isDynamicUniMailing) ...[
-                    DynamicUniMailingOutputSection(
-                      ctrl: ctrl,
-                      sourceNodes: allSourceNodes,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // ── All-keys-configured banner (Dynamic UniMailing only) ──
-                  if (isDynamicUniMailing &&
-                      ctrl.allDynamicUniMailingKeysConfigured) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: AppColors.blue.withValues(alpha: 0.08),
-                        border: Border.all(
-                          color: AppColors.blue.withValues(alpha: 0.25),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_rounded,
-                            size: 14,
-                            color: AppColors.blue.withValues(alpha: 0.8),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // ── Column Selection (hidden for 3rd case – per-key selection used instead) ──
+                    if (!isDynamicUniMailing && sourcesWithCols.isNotEmpty) ...[
+                      _sectionHeader(
+                        'COLUMN SELECTION',
+                        Icons.checklist_rounded,
+                        allPrioritiesProvided ? AppColors.blue : AppColors.red,
+                        '${sourcesWithCols.length} sources',
+                      ),
+                      const SizedBox(height: 8),
+                      for (final src in sourcesWithCols) ...[
+                        _OutputFormatCard(
+                          node: src,
+                          ctrl: ctrl,
+                          hidePriority: !isStaticUserDefined,
+                          hideAlias: isStaticUniMailing,
+                        ),
+                        if (src != sourcesWithCols.last)
+                          const SizedBox(height: 8),
+                      ],
+                      const SizedBox(height: 12),
+                    ],
+
+                    // ── Static UniMailing section ──
+                    if (isStaticUniMailing) ...[
+                      _sectionHeader(
+                        'UNIMAILING FORMAT',
+                        Icons.email_rounded,
+                        uniMailingComplete ? AppColors.blue : AppColors.amber,
+                        '$mandatoryFilled / 7 required',
+                      ),
+                      const SizedBox(height: 8),
+                      UniMailingSection(
+                        ctrl: ctrl,
+                        sourceNodes: allSourceNodes,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // ── Dynamic UniMailing section (3rd case) ──
+                    if (isDynamicUniMailing) ...[
+                      DynamicUniMailingOutputSection(
+                        ctrl: ctrl,
+                        sourceNodes: allSourceNodes,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // ── All-keys-configured banner (Dynamic UniMailing only) ──
+                    if (isDynamicUniMailing &&
+                        ctrl.allDynamicUniMailingKeysConfigured) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: AppColors.blue.withValues(alpha: 0.08),
+                          border: Border.all(
+                            color: AppColors.blue.withValues(alpha: 0.25),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'All ${ctrl.dynamicUniMailingOutputKeys.length} keys are configured. Please review and submit.',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.blue,
-                                fontWeight: FontWeight.w500,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_rounded,
+                              size: 14,
+                              color: AppColors.blue.withValues(alpha: 0.8),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'All ${ctrl.dynamicUniMailingOutputKeys.length} keys are configured. Please review and submit.',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.blue,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
+                      const SizedBox(height: 10),
+                    ],
 
-                  // ── Submit button (hidden for Dynamic UniMailing until all keys configured) ──
-                  if (!isDynamicUniMailing ||
-                      ctrl.allDynamicUniMailingKeysConfigured)
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 200),
-                      opacity: canSubmit ? 1.0 : 0.55,
-                      child: InkWell(
-                        onTap: () {
-                          if (!canSubmit) {
-                            if (validationMessage.isNotEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.warning_amber_rounded,
-                                        color: Colors.white,
-                                        size: 16,
+                    // ── Submit button (hidden for Dynamic UniMailing until all keys configured) ──
+                    if (!isDynamicUniMailing ||
+                        ctrl.allDynamicUniMailingKeysConfigured)
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: canSubmit ? 1.0 : 0.55,
+                        child: InkWell(
+                          onTap: () {
+                            if (!canSubmit) {
+                              if (validationMessage.isNotEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.warning_amber_rounded,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            validationMessage,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    backgroundColor: AppColors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    margin: const EdgeInsets.all(16),
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                            if (isStaticUserDefined) {
+                              _showConfigPreview(
+                                context,
+                                ctrl,
+                                master,
+                                allSourceNodes,
+                                caseTitle: 'Static & User Defined',
+                              );
+                            } else if (isStaticUniMailing) {
+                              _showConfigPreview(
+                                context,
+                                ctrl,
+                                master,
+                                allSourceNodes,
+                                isUniMailing: true,
+                                caseTitle: 'static & Unimaling ',
+                              );
+                            } else if (isDynamicUniMailing) {
+                              _showConfigPreview(
+                                context,
+                                ctrl,
+                                master,
+                                allSourceNodes,
+                                isDynamicUniMailing: true,
+                                caseTitle: 'Dynamic & Unimailing',
+                              );
+                            } else {
+                              _submit(context, ctrl, master, allSourceNodes);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              gradient: LinearGradient(
+                                colors: canSubmit
+                                    ? [
+                                        AppColors.green,
+                                        AppColors.green.withValues(alpha: 0.8),
+                                      ]
+                                    : [AppColors.border2, AppColors.border2],
+                              ),
+                              boxShadow: canSubmit
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.green.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          validationMessage,
-                                          style: const TextStyle(fontSize: 12),
+                                    ]
+                                  : null,
+                            ),
+                            child: _submitting
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 15,
+                                        color: canSubmit
+                                            ? Colors.white
+                                            : AppColors.textMuted,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Confirm',
+                                        style: TextStyle(
+                                          color: canSubmit
+                                              ? Colors.white
+                                              : AppColors.textMuted,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  backgroundColor: AppColors.red,
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  margin: const EdgeInsets.all(16),
-                                  duration: const Duration(seconds: 3),
-                                ),
-                              );
-                            }
-                            return;
-                          }
-                          if (isStaticUserDefined) {
-                            _showConfigPreview(
-                              context,
-                              ctrl,
-                              master,
-                              allSourceNodes,
-                              caseTitle: 'Static & User Defined',
-                            );
-                          } else if (isStaticUniMailing) {
-                            _showConfigPreview(
-                              context,
-                              ctrl,
-                              master,
-                              allSourceNodes,
-                              isUniMailing: true,
-                              caseTitle: 'static & Unimaling ',
-                            );
-                          } else if (isDynamicUniMailing) {
-                            _showConfigPreview(
-                              context,
-                              ctrl,
-                              master,
-                              allSourceNodes,
-                              isDynamicUniMailing: true,
-                              caseTitle: 'Dynamic & Unimailing',
-                            );
-                          } else {
-                            _submit(context, ctrl, master, allSourceNodes);
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 11),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            gradient: LinearGradient(
-                              colors: canSubmit
-                                  ? [
-                                      AppColors.green,
-                                      AppColors.green.withValues(alpha: 0.8),
-                                    ]
-                                  : [AppColors.border2, AppColors.border2],
-                            ),
-                            boxShadow: canSubmit
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.green.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : null,
                           ),
-                          child: _submitting
-                              ? const Center(
-                                  child: SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle_rounded,
-                                      size: 15,
-                                      color: canSubmit
-                                          ? Colors.white
-                                          : AppColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Confirm',
-                                      style: TextStyle(
-                                        color: canSubmit
-                                            ? Colors.white
-                                            : AppColors.textMuted,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    ],
+      ],
     );
   }
 
@@ -624,7 +629,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     final templateId = ctrl.sidebarTemplateId;
     final deptId = ctrl.sidebarDeptId;
     final templateName = ctrl.sidebarTemplate;
-    final userName = context.read<AuthProvider>().user?.user.name ?? '';
+    final userName = context.read<AuthProvider>().user?.user.employeeCode ?? '';
 
     // ── 1. Sources ──
     const sourceTypeValueToId = {'Manual': 1, 'QRS': 2, 'FC': 3};
@@ -860,9 +865,10 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
             final snapSrcs = (config?['_snapshotSources'] as List? ?? [])
                 .whereType<Map<dynamic, dynamic>>()
                 .toList();
-            final snapJoinMaps = (config?['_snapshotJoinMappings'] as List? ?? [])
-                .whereType<Map<dynamic, dynamic>>()
-                .toList();
+            final snapJoinMaps =
+                (config?['_snapshotJoinMappings'] as List? ?? [])
+                    .whereType<Map<dynamic, dynamic>>()
+                    .toList();
             final snapEdges = (config?['_snapshotEdges'] as List? ?? [])
                 .whereType<Map<dynamic, dynamic>>()
                 .toList();
@@ -926,19 +932,27 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
             }
 
             // Build per-key Edges and connectedSources
-            final keyEdges = snapEdges.map((e) => {
-              'template_id': templateId,
-              'department': deptId,
-              'From': e['fromNodeId']?.toString() ?? '',
-              'To': e['toNodeId']?.toString() ?? '',
-            }).toList();
+            final keyEdges = snapEdges
+                .map(
+                  (e) => {
+                    'template_id': templateId,
+                    'department': deptId,
+                    'From': e['fromNodeId']?.toString() ?? '',
+                    'To': e['toNodeId']?.toString() ?? '',
+                  },
+                )
+                .toList();
 
-            final keyConnected = snapConn.map((cs) => {
-              'TemplateId': templateId,
-              'Department': deptId,
-              'JoinNodeId': cs['joinNodeId']?.toString() ?? '',
-              'SourceId': cs['sourceId']?.toString() ?? '',
-            }).toList();
+            final keyConnected = snapConn
+                .map(
+                  (cs) => {
+                    'TemplateId': templateId,
+                    'Department': deptId,
+                    'JoinNodeId': cs['joinNodeId']?.toString() ?? '',
+                    'SourceId': cs['sourceId']?.toString() ?? '',
+                  },
+                )
+                .toList();
 
             // Build per-key outputColumns using snapshot source for sourceTypeValue lookup
             String snapLookupSrcId(String sourceName) {
@@ -1028,7 +1042,8 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     if (isDynamicUniMailing) {
       for (final k in ctrl.dynamicUniMailingOutputKeys) {
         final cfg = ctrl.savedOutputKeyConfigs[k];
-        for (final s in (cfg?['_snapshotSources'] as List? ?? []).whereType<Map>()) {
+        for (final s
+            in (cfg?['_snapshotSources'] as List? ?? []).whereType<Map>()) {
           final fn = s['fileName']?.toString() ?? '';
           final qfn = s['queryFileName']?.toString() ?? '';
           final bytes = s['columnFileBytes'] as List<int>?;
