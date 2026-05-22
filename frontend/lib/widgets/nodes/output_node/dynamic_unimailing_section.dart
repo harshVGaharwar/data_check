@@ -117,12 +117,12 @@ class _DynamicUniMailingOutputSectionState
 
     String resolveCol(String key) =>
         key.contains('::') ? key.split('::')[1] : key;
-    String resolveSource(String key) {
-      if (!key.contains('::')) return '';
+    PipelineNode? resolveNode(String key) {
+      if (!key.contains('::')) return null;
       final nid = key.split('::')[0];
-      return widget.sourceNodes.where((n) => n.id == nid).firstOrNull?.name ??
-          '';
+      return widget.sourceNodes.where((n) => n.id == nid).firstOrNull;
     }
+    String resolveSource(String key) => resolveNode(key)?.name ?? '';
 
     final selCols = _localSelected
         .map(
@@ -131,6 +131,7 @@ class _DynamicUniMailingOutputSectionState
             'NodeName': resolveSource(k),
             'ColName': resolveCol(k),
             'isUniqueField': _localUniqueFields[k] ?? false,
+            'SourceTypeValue': resolveNode(k)?.sourceTypeValue ?? '',
           },
         )
         .toList();
@@ -189,6 +190,68 @@ class _DynamicUniMailingOutputSectionState
         'CustomColumns': sortedCustom,
       };
     }
+
+    // Snapshot current canvas state so per-key preview and API submission remain
+    // accurate after the canvas is cleared for the next output key.
+    final snapshotSrcs = widget.sourceNodes.asMap().entries.map((se) {
+      final s = se.value;
+      return {
+        'idx': se.key,
+        'id': s.id,
+        'name': s.name,
+        'sourceTypeValue': s.sourceTypeValue,
+        'sourceTypeId': s.sourceTypeId,
+        'separator': s.separator,
+        'fileName': s.fileName,
+        'queryFileName': s.queryFileName,
+        'cols': List<String>.from(s.cols),
+        'selectedCols': List<String>.from(s.selectedCols),
+        'columnUniqueFields': Map<String, dynamic>.from(s.columnUniqueFields),
+        'columnAliases': Map<String, dynamic>.from(s.columnAliases),
+        'columnPriorities': Map<String, dynamic>.from(s.columnPriorities),
+        'columnFileBytes': s.columnFileBytes,
+        'queryFileBytes': s.queryFileBytes,
+      };
+    }).toList();
+
+    final snapJoinNodes =
+        ctrl.nodes.where((n) => n.type == NodeType.join).toList();
+    int snapMidx = 0;
+    final snapshotJoinMappings = <Map<String, dynamic>>[];
+    for (final j in snapJoinNodes) {
+      for (final m in j.mappings.where((m) => m.isValid)) {
+        final lSrc = ctrl.findNode(m.leftSourceId);
+        final rSrc = ctrl.findNode(m.rightSourceId);
+        snapshotJoinMappings.add({
+          'idx': snapMidx++,
+          'joinNodeId': j.id,
+          'leftSourceId': m.leftSourceId,
+          'leftSourceName': lSrc?.name ?? '',
+          'leftCol': m.leftCol,
+          'joinType': m.joinType,
+          'rightSourceId': m.rightSourceId,
+          'rightSourceName': rSrc?.name ?? '',
+          'rightCol': m.rightCol,
+        });
+      }
+    }
+
+    final snapshotEdges = ctrl.edges
+        .map((e) => {'fromNodeId': e.fromNodeId, 'toNodeId': e.toNodeId})
+        .toList();
+
+    final snapshotConnected = <Map<String, dynamic>>[];
+    for (final j in snapJoinNodes) {
+      for (final edge in ctrl.edges.where((e) => e.toNodeId == j.id)) {
+        snapshotConnected
+            .add({'joinNodeId': j.id, 'sourceId': edge.fromNodeId});
+      }
+    }
+
+    config['_snapshotSources'] = snapshotSrcs;
+    config['_snapshotJoinMappings'] = snapshotJoinMappings;
+    config['_snapshotEdges'] = snapshotEdges;
+    config['_snapshotConnected'] = snapshotConnected;
 
     ctrl.saveOutputKeyConfig(currentKey, config);
     setState(_resetFormValues);

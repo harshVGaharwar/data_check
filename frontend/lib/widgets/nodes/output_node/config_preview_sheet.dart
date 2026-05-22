@@ -401,6 +401,137 @@ class _ConfigPreviewSheet extends StatelessWidget {
 
   // ── Helpers for Dynamic UniMailing per-key preview ───────────────────────
 
+  Widget _perKeySnapshotSourcesSection(List<Map<dynamic, dynamic>> snapSrcs) {
+    if (snapSrcs.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(14),
+        child: Text(
+          'No sources configured.',
+          style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+        ),
+      );
+    }
+    const headers = ['Source', 'Type', 'Col File', 'Cols'];
+    const flex = [3, 2, 3, 2];
+    return Column(
+      children: [
+        _tableHeader(headers, flex),
+        ...snapSrcs.asMap().entries.map((e) {
+          final i = e.key;
+          final s = e.value;
+          final cols = s['cols'] as List? ?? [];
+          final fn = s['fileName']?.toString() ?? '';
+          return _tableRow(
+            [
+              s['name']?.toString() ?? '—',
+              s['sourceTypeValue']?.toString() ?? '—',
+              fn.isNotEmpty ? fn : '—',
+              '${cols.length}',
+            ],
+            flex,
+            isLast: i == snapSrcs.length - 1,
+            isEven: i.isEven,
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _perKeySnapshotOperationsSection(
+    List<Map<dynamic, dynamic>> snapJoinMappings,
+  ) {
+    if (snapJoinMappings.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'No join operations configured.',
+          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
+      );
+    }
+    return Column(
+      children: snapJoinMappings.asMap().entries.map((e) {
+        final i = e.key;
+        final m = e.value;
+        final leftSrc = m['leftSourceName']?.toString() ??
+            m['leftSourceId']?.toString() ?? '';
+        final leftCol = m['leftCol']?.toString() ?? '';
+        final joinType = master.operations
+                .where((o) => o.operationName == m['joinType']?.toString())
+                .map((o) => o.operationValue)
+                .firstOrNull ??
+            m['joinType']?.toString() ??
+            '';
+        final rightSrc = m['rightSourceName']?.toString() ??
+            m['rightSourceId']?.toString() ?? '';
+        final rightCol = m['rightCol']?.toString() ?? '';
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: i.isEven
+                ? AppColors.surface
+                : AppColors.surface2.withValues(alpha: 0.4),
+            border: i == snapJoinMappings.length - 1
+                ? null
+                : const Border(
+                    bottom: BorderSide(color: AppColors.border, width: 0.6),
+                  ),
+          ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _chip('$leftSrc.$leftCol', AppColors.blue),
+              _chip(joinType, AppColors.violet, bold: true),
+              _chip('$rightSrc.$rightCol', AppColors.green),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Fallback: shows sources derived from cfg['SelectedColumns'] (no snapshot).
+  Widget _perKeySourcesSection(List<Map<String, dynamic>> savedSelCols) {
+    // Group selected columns by source name
+    final sourceMap = <String, int>{};
+    for (final sc in savedSelCols) {
+      final name = sc['NodeName']?.toString() ?? '';
+      if (name.isNotEmpty) sourceMap[name] = (sourceMap[name] ?? 0) + 1;
+    }
+
+    if (sourceMap.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(14),
+        child: Text(
+          'No sources configured.',
+          style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+        ),
+      );
+    }
+
+    const headers = ['Source', 'Columns Used'];
+    const flex = [4, 2];
+    final entries = sourceMap.entries.toList();
+    return Column(
+      children: [
+        _tableHeader(headers, flex),
+        ...entries.asMap().entries.map(
+          (e) => _tableRow(
+            [
+              e.value.key,
+              '${e.value.value} col${e.value.value == 1 ? '' : 's'}',
+            ],
+            flex,
+            isLast: e.key == entries.length - 1,
+            isEven: e.key.isEven,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _dynKeySelectedCols(
     List<({String source, String column, bool isUnique})> cols,
   ) {
@@ -457,17 +588,41 @@ class _ConfigPreviewSheet extends StatelessWidget {
     );
   }
 
-  Widget _dynKeySection(
-    String key,
-    Map<String, dynamic>? cfg, {
-    required bool hasJoins,
-    required int joinCount,
-  }) {
+  Widget _dynKeySection(String key, Map<String, dynamic>? cfg) {
     final keyType = cfg?['KeyType'] as String? ?? '—';
     final isStatic = keyType == 'Static';
     final typeColor = isStatic ? AppColors.blue : AppColors.green;
 
+    // Per-key canvas snapshot (accurate after canvas is cleared for next key)
+    final snapSrcs = (cfg?['_snapshotSources'] as List? ?? [])
+        .whereType<Map<dynamic, dynamic>>()
+        .toList();
+    final snapJoinMappings = (cfg?['_snapshotJoinMappings'] as List? ?? [])
+        .whereType<Map<dynamic, dynamic>>()
+        .toList();
+    final perKeyHasJoins = snapJoinMappings.isNotEmpty;
+    final perKeyJoinCount = snapJoinMappings.length;
+
+    // Fallback: derive source info from SelectedColumns if no snapshot yet
+    final savedSelCols = (cfg?['SelectedColumns'] as List? ?? [])
+        .whereType<Map>()
+        .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+    final perKeySrcCount = snapSrcs.isNotEmpty
+        ? snapSrcs.length
+        : savedSelCols
+            .map((m) => m['NodeName']?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toSet()
+            .length;
+
     bool resolveUnique(String src, String col) {
+      // Prefer the saved isUniqueField from SelectedColumns (accurate per-key).
+      final saved = savedSelCols
+          .where((m) => m['NodeName'] == src && m['ColName'] == col)
+          .firstOrNull;
+      if (saved != null) return saved['isUniqueField'] as bool? ?? false;
+      // Fallback: look up current canvas node (may be wrong after canvas clear).
       final node = sourceNodes.where((n) => n.name == src).firstOrNull;
       return node?.columnUniqueFields[col] ?? false;
     }
@@ -588,20 +743,22 @@ class _ConfigPreviewSheet extends StatelessWidget {
                     color: AppColors.blue,
                     title: 'Sources',
                     subtitle:
-                        '${sourceNodes.length} source${sourceNodes.length == 1 ? '' : 's'} configured',
+                        '$perKeySrcCount source${perKeySrcCount == 1 ? '' : 's'} configured',
                     initiallyExpanded: false,
-                    child: _sourcesSection(),
+                    child: snapSrcs.isNotEmpty
+                        ? _perKeySnapshotSourcesSection(snapSrcs)
+                        : _perKeySourcesSection(savedSelCols),
                   ),
                   const SizedBox(height: 8),
                   _tile(
                     icon: Icons.merge_type_rounded,
                     color: AppColors.violet,
                     title: 'Operation Details',
-                    subtitle: hasJoins
-                        ? '$joinCount join condition${joinCount == 1 ? '' : 's'}'
+                    subtitle: perKeyHasJoins
+                        ? '$perKeyJoinCount join condition${perKeyJoinCount == 1 ? '' : 's'}'
                         : 'No join operations',
                     initiallyExpanded: false,
-                    child: _operationSection(),
+                    child: _perKeySnapshotOperationsSection(snapJoinMappings),
                   ),
                   const SizedBox(height: 8),
                   _tile(
@@ -760,8 +917,6 @@ class _ConfigPreviewSheet extends StatelessWidget {
                             _dynKeySection(
                               key,
                               ctrl.savedOutputKeyConfigs[key],
-                              hasJoins: hasJoins,
-                              joinCount: joinCount,
                             ),
                             const SizedBox(height: 16),
                           ],

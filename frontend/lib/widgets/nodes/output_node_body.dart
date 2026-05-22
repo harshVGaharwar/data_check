@@ -710,11 +710,12 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
             ctrl.outputFormats.any(
               (f) => f.toLowerCase().contains('unimailing'),
             ));
+    final isDynamicUniMailing = ctrl.isDynamicUniMailing;
 
     final deptIdInt = int.tryParse(deptId) ?? 0;
     final outputColumns = <Map<String, dynamic>>[];
-    // Static UniMailing: outputColumns built from mandatory/custom only (not selectedCols)
-    if (!isStaticUniMailing) {
+    // Dynamic UniMailing uses per-key snapshot-based output columns built in payload section.
+    if (!isStaticUniMailing && !isDynamicUniMailing) {
       int autoRank = 1;
       for (final s in sourceNodes) {
         for (final col in s.selectedCols) {
@@ -794,77 +795,6 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
       }
     }
 
-    // ── 7. Dynamic UniMailing config (3rd case) → flat outputColumns entries ──
-    final isDynamicUniMailing = ctrl.isDynamicUniMailing;
-    if (isDynamicUniMailing) {
-      String lookupSourceId(String sourceName) {
-        final node = sourceNodes.where((n) => n.name == sourceName).firstOrNull;
-        return (sourceTypeValueToId[node?.sourceTypeValue] ?? 0).toString();
-      }
-
-      for (final key in ctrl.dynamicUniMailingOutputKeys) {
-        final config = ctrl.savedOutputKeyConfigs[key];
-        if (config == null) continue;
-        final keyType = config['KeyType'] as String? ?? '';
-
-        if (keyType == 'Static') {
-          final mandatory = config['MandatoryFields'] as List? ?? [];
-          for (final f in mandatory) {
-            final sourceName = f['SourceName'] as String? ?? '';
-            outputColumns.add({
-              'template_id': templateId,
-              'department': deptIdInt.toString(),
-              'sourceid': lookupSourceId(sourceName),
-              'sourceName': sourceName,
-              'SourceColName': f['ColumnName'] as String? ?? '',
-              'ColumnName': f['Field'] as String? ?? '',
-              'Priority': 0,
-            });
-          }
-          final custom = config['CustomColumns'] as List? ?? [];
-          for (final c in custom) {
-            final sourceName = c['SourceName'] as String? ?? '';
-            outputColumns.add({
-              'template_id': templateId,
-              'department': deptIdInt.toString(),
-              'sourceid': lookupSourceId(sourceName),
-              'sourceName': sourceName,
-              'SourceColName': c['ColumnName'] as String? ?? '',
-              'ColumnName': c['Slot'] as String? ?? '',
-              'Priority': 0,
-            });
-          }
-        } else {
-          final c1 = config['C1'] as Map? ?? {};
-          final c1Source = c1['SourceName'] as String? ?? '';
-          if (c1Source.isNotEmpty) {
-            outputColumns.add({
-              'template_id': templateId,
-              'department': deptIdInt.toString(),
-              'sourceid': lookupSourceId(c1Source),
-              'sourceName': c1Source,
-              'SourceColName': c1['ColumnName'] as String? ?? '',
-              'ColumnName': 'C1',
-              'Priority': 0,
-            });
-          }
-          final custom = config['CustomColumns'] as List? ?? [];
-          for (final c in custom) {
-            final sourceName = c['SourceName'] as String? ?? '';
-            outputColumns.add({
-              'template_id': templateId,
-              'department': deptIdInt.toString(),
-              'sourceid': lookupSourceId(sourceName),
-              'sourceName': sourceName,
-              'SourceColName': c['ColumnName'] as String? ?? '',
-              'ColumnName': c['Slot'] as String? ?? '',
-              'Priority': 0,
-            });
-          }
-        }
-      }
-    }
-
     // Build ordered list of dynamicTemplate ids matching dynamicUniMailingOutputKeys order:
     // [srno==0 entry id, then srno>0 entries in order]
     int dynEntryId(Map<String, dynamic> dt) {
@@ -911,79 +841,213 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
       'Jsondata': null,
     };
 
-    // Always an array: static → [{...}], dynamic → [{...}, {...}, ...n]
+    // Always an array: static → [{...}], dynamic → one element per output key with its own canvas data
     final dynamic payload = isDynamicUniMailing
         ? ctrl.dynamicUniMailingOutputKeys.asMap().entries.map((entry) {
             final key = entry.value;
             final config = ctrl.savedOutputKeyConfigs[key];
-            final colCount = config == null
-                ? 0
-                : (() {
-                    final kt = config['KeyType'] as String? ?? '';
-                    if (kt == 'Static') {
-                      return ((config['MandatoryFields'] as List?)?.length ??
-                              0) +
-                          ((config['CustomColumns'] as List?)?.length ?? 0);
-                    } else {
-                      final c1HasValue =
-                          (config['C1'] as Map?)?['SourceName'] != null &&
-                          ((config['C1'] as Map?)!['SourceName'] as String)
-                              .isNotEmpty;
-                      return (c1HasValue ? 1 : 0) +
-                          ((config['CustomColumns'] as List?)?.length ?? 0);
-                    }
-                  })();
+
+            // Per-key canvas snapshot saved at configure time
+            final snapSrcs = (config?['_snapshotSources'] as List? ?? [])
+                .whereType<Map<dynamic, dynamic>>()
+                .toList();
+            final snapJoinMaps = (config?['_snapshotJoinMappings'] as List? ?? [])
+                .whereType<Map<dynamic, dynamic>>()
+                .toList();
+            final snapEdges = (config?['_snapshotEdges'] as List? ?? [])
+                .whereType<Map<dynamic, dynamic>>()
+                .toList();
+            final snapConn = (config?['_snapshotConnected'] as List? ?? [])
+                .whereType<Map<dynamic, dynamic>>()
+                .toList();
+
+            // Build per-key Sources
+            final keySources = snapSrcs.asMap().entries.map((se) {
+              final s = se.value;
+              final tv = s['sourceTypeValue']?.toString() ?? '';
+              final srcId = sourceTypeValueToId[tv] ?? 0;
+              final ucols = (s['columnUniqueFields'] as Map? ?? {});
+              final uniqueCols = ucols.entries
+                  .where((e) => e.value == true)
+                  .map((e) => e.key.toString())
+                  .join(',');
+              final stId = s['sourceTypeId'];
+              final stIdInt = stId is num
+                  ? stId.toInt()
+                  : (int.tryParse('$stId') ?? 0);
+              return {
+                'TemplateId': templateId,
+                'SourceId': stIdInt > 0 ? stIdInt.toString() : '',
+                'SourceName': s['name']?.toString() ?? '',
+                'SourceType': srcId.toString(),
+                'Department': deptId,
+                'Template': templateName,
+                'Separator': s['separator']?.toString() ?? '',
+                'ColumnFile': s['fileName']?.toString() ?? '',
+                'QueryFile': s['queryFileName']?.toString() ?? '',
+                'Columns': (s['cols'] as List? ?? []).join(','),
+                'SelectedColumns': (s['selectedCols'] as List? ?? []).join(','),
+                'SourceSeqNo': (se.key + 1).toString(),
+                'uniquefield': uniqueCols,
+              };
+            }).toList();
+
+            // Build per-key JoinMappings
+            final keyJoinMappings = <Map<String, dynamic>>[];
+            int jIdx = 0;
+            for (final m in snapJoinMaps) {
+              keyJoinMappings.add({
+                'Id': jIdx++,
+                'TemplateId': templateId,
+                'Department': deptId,
+                'JoinNodeId': m['joinNodeId']?.toString() ?? '',
+                'LeftSourceId': m['leftSourceId']?.toString() ?? '',
+                'LeftSourceName': m['leftSourceName']?.toString() ?? '',
+                'LeftColumn': m['leftCol']?.toString() ?? '',
+                'JoinType': master.operations
+                    .where((o) => o.operationName == m['joinType']?.toString())
+                    .map((o) => o.operationValue)
+                    .firstOrNull,
+                'RightSourceId': m['rightSourceId']?.toString() ?? '',
+                'RightSourceName': m['rightSourceName']?.toString() ?? '',
+                'RightColumn': m['rightCol']?.toString() ?? '',
+                'CreatedOn':
+                    '${DateTime.now().toIso8601String().split('T').first}T00:00:00',
+              });
+            }
+
+            // Build per-key Edges and connectedSources
+            final keyEdges = snapEdges.map((e) => {
+              'template_id': templateId,
+              'department': deptId,
+              'From': e['fromNodeId']?.toString() ?? '',
+              'To': e['toNodeId']?.toString() ?? '',
+            }).toList();
+
+            final keyConnected = snapConn.map((cs) => {
+              'TemplateId': templateId,
+              'Department': deptId,
+              'JoinNodeId': cs['joinNodeId']?.toString() ?? '',
+              'SourceId': cs['sourceId']?.toString() ?? '',
+            }).toList();
+
+            // Build per-key outputColumns using snapshot source for sourceTypeValue lookup
+            String snapLookupSrcId(String sourceName) {
+              final snap = snapSrcs
+                  .where((s) => s['name']?.toString() == sourceName)
+                  .firstOrNull;
+              final tv = snap?['sourceTypeValue']?.toString() ?? '';
+              return (sourceTypeValueToId[tv] ?? 0).toString();
+            }
+
+            final keyOutputCols = <Map<String, dynamic>>[];
+            final keyType = config?['KeyType'] as String? ?? '';
+            if (keyType == 'Static') {
+              for (final f in (config?['MandatoryFields'] as List? ?? [])) {
+                final sn = f['SourceName'] as String? ?? '';
+                keyOutputCols.add({
+                  'template_id': templateId,
+                  'department': deptIdInt.toString(),
+                  'sourceid': snapLookupSrcId(sn),
+                  'sourceName': sn,
+                  'SourceColName': f['ColumnName'] as String? ?? '',
+                  'ColumnName': f['Field'] as String? ?? '',
+                  'Priority': 0,
+                });
+              }
+              for (final c in (config?['CustomColumns'] as List? ?? [])) {
+                final sn = c['SourceName'] as String? ?? '';
+                keyOutputCols.add({
+                  'template_id': templateId,
+                  'department': deptIdInt.toString(),
+                  'sourceid': snapLookupSrcId(sn),
+                  'sourceName': sn,
+                  'SourceColName': c['ColumnName'] as String? ?? '',
+                  'ColumnName': c['Slot'] as String? ?? '',
+                  'Priority': 0,
+                });
+              }
+            } else {
+              final c1 = config?['C1'] as Map? ?? {};
+              final c1Src = c1['SourceName'] as String? ?? '';
+              if (c1Src.isNotEmpty) {
+                keyOutputCols.add({
+                  'template_id': templateId,
+                  'department': deptIdInt.toString(),
+                  'sourceid': snapLookupSrcId(c1Src),
+                  'sourceName': c1Src,
+                  'SourceColName': c1['ColumnName'] as String? ?? '',
+                  'ColumnName': 'C1',
+                  'Priority': 0,
+                });
+              }
+              for (final c in (config?['CustomColumns'] as List? ?? [])) {
+                final sn = c['SourceName'] as String? ?? '';
+                keyOutputCols.add({
+                  'template_id': templateId,
+                  'department': deptIdInt.toString(),
+                  'sourceid': snapLookupSrcId(sn),
+                  'sourceName': sn,
+                  'SourceColName': c['ColumnName'] as String? ?? '',
+                  'ColumnName': c['Slot'] as String? ?? '',
+                  'Priority': 0,
+                });
+              }
+            }
+
             final dymanicId = entry.key < dynTemplateIds.length
                 ? dynTemplateIds[entry.key]
                 : entry.key;
             return {
-              ...singlePayload,
+              'TemplateId': templateId,
+              'TemplateType': 3,
               'DymanicId': dymanicId,
-              'outputColumns': outputColumns
-                  .skip(
-                    ctrl.dynamicUniMailingOutputKeys.take(entry.key).fold(0, (
-                      sum,
-                      k,
-                    ) {
-                      final cfg = ctrl.savedOutputKeyConfigs[k];
-                      if (cfg == null) return sum;
-                      final kt = cfg['KeyType'] as String? ?? '';
-                      if (kt == 'Static') {
-                        return sum +
-                            ((cfg['MandatoryFields'] as List?)?.length ?? 0) +
-                            ((cfg['CustomColumns'] as List?)?.length ?? 0);
-                      } else {
-                        final c1HasValue =
-                            (cfg['C1'] as Map?)?['SourceName'] != null &&
-                            ((cfg['C1'] as Map?)!['SourceName'] as String)
-                                .isNotEmpty;
-                        return sum +
-                            (c1HasValue ? 1 : 0) +
-                            ((cfg['CustomColumns'] as List?)?.length ?? 0);
-                      }
-                    }),
-                  )
-                  .take(colCount)
-                  .toList(),
+              'createdBy': userName,
+              'templateMode': ctrl.templateMode.value,
+              'Sources': keySources,
+              'JoinMappings': keyJoinMappings,
+              'Edges': keyEdges,
+              'connectedSources': keyConnected,
+              'outputColumns': keyOutputCols,
+              'Jsondata': null,
             };
           }).toList()
         : [singlePayload];
 
+    // Collect file entries: per-key snapshots for Dynamic, current canvas for Static.
     final fileEntries = <({String key, List<int> bytes, String filename})>[];
-    for (final s in sourceNodes) {
-      if (s.fileName != null && s.fileName!.isNotEmpty) {
-        fileEntries.add((
-          key: 'Files',
-          bytes: s.columnFileBytes ?? [],
-          filename: s.fileName!,
-        ));
+    if (isDynamicUniMailing) {
+      for (final k in ctrl.dynamicUniMailingOutputKeys) {
+        final cfg = ctrl.savedOutputKeyConfigs[k];
+        for (final s in (cfg?['_snapshotSources'] as List? ?? []).whereType<Map>()) {
+          final fn = s['fileName']?.toString() ?? '';
+          final qfn = s['queryFileName']?.toString() ?? '';
+          final bytes = s['columnFileBytes'] as List<int>?;
+          final qbytes = s['queryFileBytes'] as List<int>?;
+          if (fn.isNotEmpty && bytes != null && bytes.isNotEmpty) {
+            fileEntries.add((key: 'Files', bytes: bytes, filename: fn));
+          }
+          if (qfn.isNotEmpty && qbytes != null && qbytes.isNotEmpty) {
+            fileEntries.add((key: 'Files', bytes: qbytes, filename: qfn));
+          }
+        }
       }
-      if (s.queryFileName != null && s.queryFileName!.isNotEmpty) {
-        fileEntries.add((
-          key: 'Files',
-          bytes: s.queryFileBytes ?? [],
-          filename: s.queryFileName!,
-        ));
+    } else {
+      for (final s in sourceNodes) {
+        if (s.fileName != null && s.fileName!.isNotEmpty) {
+          fileEntries.add((
+            key: 'Files',
+            bytes: s.columnFileBytes ?? [],
+            filename: s.fileName!,
+          ));
+        }
+        if (s.queryFileName != null && s.queryFileName!.isNotEmpty) {
+          fileEntries.add((
+            key: 'Files',
+            bytes: s.queryFileBytes ?? [],
+            filename: s.queryFileName!,
+          ));
+        }
       }
     }
 

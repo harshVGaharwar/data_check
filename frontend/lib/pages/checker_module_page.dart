@@ -311,7 +311,11 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
             const SizedBox(height: 2),
             Text(
               'Review and approve manual data by module',
-              style: TextStyle(fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.blue,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -1208,28 +1212,32 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
     final List approvalsArr = rawApprovals is List ? rawApprovals : const [];
 
     final hasOutputFormats = data['OutputFormats'] != null;
-    final approvalsAreFormats = approvalsArr.isNotEmpty &&
+    final approvalsAreFormats =
+        approvalsArr.isNotEmpty &&
         approvalsArr.first is Map &&
         (approvalsArr.first as Map).containsKey('FormatName');
 
     final outputFormats = hasOutputFormats
         ? data['OutputFormats']
         : approvalsAreFormats
-            ? approvalsArr
-            : const [];
+        ? approvalsArr
+        : const [];
 
     // Real API sends a single ApprovalType + ApprovalFile at root level.
     // TemplateCreationViewPage reads 'Approvals' with Approval_Type items.
     final approvalType = data['ApprovalType']?.toString() ?? '';
     final approvalFile = data['ApprovalFile']?.toString() ?? '';
-    final alreadyNormalized = approvalsArr.isNotEmpty &&
+    final alreadyNormalized =
+        approvalsArr.isNotEmpty &&
         approvalsArr.first is Map &&
         (approvalsArr.first as Map).containsKey('Approval_Type');
     final approvals = alreadyNormalized
         ? approvalsArr
         : approvalType.isNotEmpty
-            ? [{'Approval_Type': approvalType, 'ApprovalFile': approvalFile}]
-            : const [];
+        ? [
+            {'Approval_Type': approvalType, 'ApprovalFile': approvalFile},
+          ]
+        : const [];
 
     return {
       ...data,

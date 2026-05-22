@@ -268,6 +268,23 @@ class PipelineController extends ChangeNotifier {
   }
 
   void setSelectedOutputKey(String key) {
+    if (key == selectedOutputKey) return;
+    // Clear canvas when switching output keys in Dynamic UniMailing so each key
+    // gets a fresh canvas instead of retaining the previous key's source nodes.
+    if (isDynamicUniMailing && nodes.isNotEmpty) {
+      nodes.clear();
+      edges.clear();
+      selectedNodeId = null;
+      selectedEdgeId = null;
+      _nodeIdSeq = 0;
+      portDragFromNodeId = null;
+      portDragCurrentPos = null;
+      pendingFocusNodeId = null;
+      outputColumnOrder = [];
+      uniMailingMandatory.clear();
+      uniMailingCustom.clear();
+      canvasVersion++;
+    }
     selectedOutputKey = key;
     notifyListeners();
   }
