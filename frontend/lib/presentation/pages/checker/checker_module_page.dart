@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vizualizer/presentation/widgets/pipeline/pipeline_summary_dialog.dart';
+import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/config_preview_sheet.dart';
 import 'package:vizualizer/core/utils/functions.dart';
 import 'package:vizualizer/core/utils/download_helper.dart';
 import 'package:vizualizer/data/models/checker_tray_item.dart';
@@ -1291,11 +1291,10 @@ String id, String label})> _moduleOptions = [
           return;
         }
         if (!mounted) return;
-        await showPipelineSummaryDialog(
+        ConfigPreviewSheet.showFromRaw(
           context,
-          config: config,
+          config,
           templateName: item.templateName ?? '',
-          deptName: item.departmentName,
         );
 
       default:

@@ -1,12 +1,13 @@
-
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG PREVIEW BOTTOM SHEET  (Static + UserDefined)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:vizualizer/presentation/controllers/pipeline_controller.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
 import 'package:vizualizer/data/models/pipeline_models.dart';
+import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/presentation/providers/pipeline_master_provider.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/mapping_preview_dialog.dart';
 
@@ -20,7 +21,8 @@ class ConfigPreviewSheet extends StatelessWidget {
   final String caseTitle;
   final VoidCallback onConfirm;
 
-  const ConfigPreviewSheet({super.key, 
+  const ConfigPreviewSheet({
+    super.key,
     required this.ctrl,
     required this.master,
     required this.sourceNodes,
@@ -393,7 +395,7 @@ class ConfigPreviewSheet extends StatelessWidget {
           final entry = e.value;
           final val = entry.value;
           return _tableRow(
-            [entry.key, resolveSourceName(val), resolveCol(val), '✓ mapped'],
+            [_slotLabel(entry.key), resolveSourceName(val), resolveCol(val), '✓ mapped'],
             flex,
             isLast: i == sortedCustom.length - 1,
             isEven: (mandatoryRows.length + i).isEven,
@@ -459,17 +461,22 @@ class ConfigPreviewSheet extends StatelessWidget {
       children: snapJoinMappings.asMap().entries.map((e) {
         final i = e.key;
         final m = e.value;
-        final leftSrc = m['leftSourceName']?.toString() ??
-            m['leftSourceId']?.toString() ?? '';
+        final leftSrc =
+            m['leftSourceName']?.toString() ??
+            m['leftSourceId']?.toString() ??
+            '';
         final leftCol = m['leftCol']?.toString() ?? '';
-        final joinType = master.operations
+        final joinType =
+            master.operations
                 .where((o) => o.operationName == m['joinType']?.toString())
                 .map((o) => o.operationValue)
                 .firstOrNull ??
             m['joinType']?.toString() ??
             '';
-        final rightSrc = m['rightSourceName']?.toString() ??
-            m['rightSourceId']?.toString() ?? '';
+        final rightSrc =
+            m['rightSourceName']?.toString() ??
+            m['rightSourceId']?.toString() ??
+            '';
         final rightCol = m['rightCol']?.toString() ?? '';
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -539,8 +546,7 @@ class ConfigPreviewSheet extends StatelessWidget {
   }
 
   Widget _dynKeySelectedCols(
-    List<({
-String source, String column, bool isUnique})> cols,
+    List<({String source, String column, bool isUnique})> cols,
   ) {
     if (cols.isEmpty) {
       return const Padding(
@@ -595,6 +601,14 @@ String source, String column, bool isUnique})> cols,
     );
   }
 
+  static String _slotLabel(String slot) {
+    if (slot.length > 1 && slot[0] == 'C') {
+      final n = int.tryParse(slot.substring(1));
+      if (n != null) return 'Column $n';
+    }
+    return slot;
+  }
+
   Widget _dynKeySection(String key, Map<String, dynamic>? cfg) {
     final keyType = cfg?['KeyType'] as String? ?? '—';
     final isStatic = keyType == 'Static';
@@ -618,10 +632,10 @@ String source, String column, bool isUnique})> cols,
     final perKeySrcCount = snapSrcs.isNotEmpty
         ? snapSrcs.length
         : savedSelCols
-            .map((m) => m['NodeName']?.toString() ?? '')
-            .where((s) => s.isNotEmpty)
-            .toSet()
-            .length;
+              .map((m) => m['NodeName']?.toString() ?? '')
+              .where((s) => s.isNotEmpty)
+              .toSet()
+              .length;
 
     bool resolveUnique(String src, String col) {
       // Prefer the saved isUniqueField from SelectedColumns (accurate per-key).
@@ -635,8 +649,7 @@ String source, String column, bool isUnique})> cols,
     }
 
     final seen = <String>{};
-    final selCols = <({
-String source, String column, bool isUnique})>[];
+    final selCols = <({String source, String column, bool isUnique})>[];
     void addCol(String src, String col) {
       final k = '$src::$col';
       if (src.isNotEmpty && src != '—' && seen.add(k)) {
@@ -661,7 +674,7 @@ String source, String column, bool isUnique})>[];
           final src = c['SourceName'] as String? ?? '—';
           final col = c['ColumnName'] as String? ?? '—';
           addCol(src, col);
-          outRows.add([c['Slot'] as String? ?? '—', src, col]);
+          outRows.add([_slotLabel(c['Slot'] as String? ?? '—'), src, col]);
         }
       } else {
         final c1 = cfg['C1'] as Map? ?? {};
@@ -669,13 +682,13 @@ String source, String column, bool isUnique})>[];
         final col = c1['ColumnName'] as String? ?? '—';
         addCol(src, col);
         if (src.isNotEmpty && src != '—') {
-          outRows.add(['C1', src, col]);
+          outRows.add([_slotLabel('C1'), src, col]);
         }
         for (final c in (cfg['CustomColumns'] as List? ?? [])) {
           final cs = c['SourceName'] as String? ?? '—';
           final cc = c['ColumnName'] as String? ?? '—';
           addCol(cs, cc);
-          outRows.add([c['Slot'] as String? ?? '—', cs, cc]);
+          outRows.add([_slotLabel(c['Slot'] as String? ?? '—'), cs, cc]);
         }
       }
     }
@@ -795,6 +808,109 @@ String source, String column, bool isUnique})>[];
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Read-only view from raw checker config ──────────────────────────────────
+
+  static void showFromRaw(
+    BuildContext context,
+    Map<String, dynamic> config, {
+    String templateName = '',
+  }) {
+    final rawOutputCols = (config['outputColumns'] as List? ?? [])
+        .whereType<Map>()
+        .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+
+    final rawSources = (config['Sources'] as List? ?? [])
+        .whereType<Map>()
+        .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+
+    final sourceNodes = rawSources.map((src) {
+      final name = src['SourceName']?.toString() ?? '';
+      final sourceType = src['SourceType']?.toString() ?? '';
+
+      final colsForSource = rawOutputCols
+          .where((oc) => oc['sourceName']?.toString() == name)
+          .toList();
+
+      final selectedCols = colsForSource
+          .map((oc) => oc['SourceColName']?.toString() ?? '')
+          .where((c) => c.isNotEmpty)
+          .toList();
+
+      final columnAliases = <String, String>{};
+      for (final oc in colsForSource) {
+        final orig = oc['SourceColName']?.toString() ?? '';
+        final alias = oc['ColumnName']?.toString() ?? '';
+        if (orig.isNotEmpty) columnAliases[orig] = alias;
+      }
+
+      final node = PipelineNode(
+        id: name,
+        type: NodeType.manual,
+        name: name,
+        position: Offset.zero,
+        sourceTypeName: sourceType,
+        selectedCols: selectedCols,
+        cols: selectedCols,
+        columnAliases: columnAliases,
+      );
+      for (var i = 0; i < selectedCols.length; i++) {
+        node.columnPriorities[selectedCols[i]] = i + 1;
+      }
+      return node;
+    }).toList();
+
+    final rawJoins = (config['JoinMappings'] as List? ?? [])
+        .whereType<Map>()
+        .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+
+    final mappings = rawJoins
+        .map(
+          (jm) => ColumnMapping(
+            leftSourceId: jm['LeftSourceName']?.toString() ?? '',
+            leftCol: jm['LeftColumn']?.toString() ?? '',
+            joinType: jm['JoinType']?.toString() ?? '',
+            rightSourceId: jm['RightSourceName']?.toString() ?? '',
+            rightCol: jm['RightColumn']?.toString() ?? '',
+          ),
+        )
+        .toList();
+
+    final joinNodes = mappings.isEmpty
+        ? <PipelineNode>[]
+        : [
+            PipelineNode(
+              id: '_raw_join',
+              type: NodeType.join,
+              name: 'Join',
+              position: Offset.zero,
+              mappings: mappings,
+            ),
+          ];
+
+    final ctrl = PipelineController();
+    final master = PipelineMasterProvider(context.read<MasterDataService>());
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.72,
+      ),
+      builder: (_) => ConfigPreviewSheet(
+        ctrl: ctrl,
+        master: master,
+        sourceNodes: sourceNodes,
+        joinNodes: joinNodes,
+        caseTitle: templateName,
+        onConfirm: () => Navigator.of(context, rootNavigator: true).pop(),
       ),
     );
   }

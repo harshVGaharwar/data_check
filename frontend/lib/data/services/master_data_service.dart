@@ -400,7 +400,7 @@ class MasterDataService {
         'department_id': departmentId,
         'Request_id': requestId,
         'AuthorizedBy': checkerBy,
-        'Remart': remark,
+        'Remark': remark,
         'isApproved': isApproved ? 'Y' : 'N',
       };
       final data = await _api.postRawData(

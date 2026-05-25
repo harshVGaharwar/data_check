@@ -65,7 +65,7 @@ class DynamicKeyMappingCard extends StatelessWidget {
             const Icon(Icons.star_rounded, size: 10, color: AppColors.red),
             const SizedBox(width: 4),
             const Text(
-              'MANDATORY (C0, C1)',
+              'MANDATORY (Column 0, Column 1)',
               style: TextStyle(
                 color: AppColors.red,
                 fontSize: 9,
@@ -84,7 +84,7 @@ class DynamicKeyMappingCard extends StatelessWidget {
           child: Column(
             children: [
               UniMappingRow(
-                label: 'C0',
+                label: 'Column 0',
                 labelColor: AppColors.red,
                 currentKey: c0Mapped ? c0 : null,
                 availableKeys: availableKeys,
@@ -95,7 +95,7 @@ class DynamicKeyMappingCard extends StatelessWidget {
                 onChanged: onC0Changed,
               ),
               UniMappingRow(
-                label: 'C1',
+                label: 'Column 1',
                 labelColor: AppColors.red,
                 currentKey: c1Mapped ? c1 : null,
                 availableKeys: availableKeys,
@@ -120,7 +120,7 @@ class DynamicKeyMappingCard extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             const Text(
-              'OPTIONAL (C2–C20)',
+              'OPTIONAL (Column 2–Column 20)',
               style: TextStyle(
                 color: AppColors.violet,
                 fontSize: 9,
@@ -145,7 +145,7 @@ class DynamicKeyMappingCard extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    '+ C${customCount + 2}',
+                    '+ Column ${customCount + 2}',
                     style: const TextStyle(
                       color: AppColors.violet,
                       fontSize: 9,
@@ -171,7 +171,7 @@ class DynamicKeyMappingCard extends StatelessWidget {
                 final isMapped = cur.isNotEmpty && availableKeys.contains(cur);
                 final isLast = slot == customCount + 1;
                 return UniMappingRow(
-                  label: key,
+                  label: 'Column $slot',
                   labelColor: AppColors.violet,
                   currentKey: isMapped ? cur : null,
                   availableKeys: availableKeys,

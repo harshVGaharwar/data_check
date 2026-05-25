@@ -107,7 +107,7 @@ class StaticKeyMappingCard extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             const Text(
-              'OPTIONAL (C1–C50)',
+              'OPTIONAL (Column 1–Column 50)',
               style: TextStyle(
                 color: AppColors.violet,
                 fontSize: 9,
@@ -132,7 +132,7 @@ class StaticKeyMappingCard extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    '+ C${customCount + 1}',
+                    '+ Column ${customCount + 1}',
                     style: const TextStyle(
                       color: AppColors.violet,
                       fontSize: 9,
@@ -158,7 +158,7 @@ class StaticKeyMappingCard extends StatelessWidget {
                 final isMapped = cur.isNotEmpty && availableKeys.contains(cur);
                 final isLast = slot == customCount;
                 return UniMappingRow(
-                  label: key,
+                  label: 'Column $slot',
                   labelColor: AppColors.violet,
                   currentKey: isMapped ? cur : null,
                   availableKeys: availableKeys,

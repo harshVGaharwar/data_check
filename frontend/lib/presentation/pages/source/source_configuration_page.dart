@@ -7,6 +7,7 @@ import 'package:vizualizer/data/models/source_config_request.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/presentation/widgets/common/select_dropdown_overlay.dart';
+
 class SourceConfigurationPage extends StatefulWidget {
   const SourceConfigurationPage({super.key});
 
@@ -573,6 +574,9 @@ class _SourceConfigurationPageState extends State<SourceConfigurationPage>
                         label: 'SValues',
                         hint: 'Enter SValues',
                         controller: _svaluesCtrl,
+                        validator: (v) => (v?.trim().isEmpty ?? true)
+                            ? 'SValuest is required'
+                            : null,
                       ),
                     ],
                   ),
@@ -1074,27 +1078,47 @@ class _SourceTypeDropdownOverlayState
                       child: TextField(
                         controller: _searchCtrl,
                         autofocus: true,
-                        style: const TextStyle(fontSize: 13, color: AppColors.text),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.text,
+                        ),
                         onChanged: (v) => setState(() => _query = v),
                         decoration: InputDecoration(
                           hintText: 'Search source types...',
-                          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                          prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textDim),
+                          hintStyle: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 16,
+                            color: AppColors.textDim,
+                          ),
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           filled: true,
                           fillColor: AppColors.surface2,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.violet, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: AppColors.violet,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -1106,14 +1130,19 @@ class _SourceTypeDropdownOverlayState
                               padding: EdgeInsets.all(16),
                               child: Text(
                                 'No results found',
-                                style: TextStyle(fontSize: 12, color: AppColors.textDim),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textDim,
+                                ),
                               ),
                             )
                           : ListView.separated(
                               shrinkWrap: true,
                               itemCount: _filtered.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(height: 1, color: AppColors.border),
+                              separatorBuilder: (_, __) => const Divider(
+                                height: 1,
+                                color: AppColors.border,
+                              ),
                               itemBuilder: (_, i) {
                                 final item = _filtered[i];
                                 final isSel = widget.selected?.id == item.id;
@@ -1131,19 +1160,26 @@ class _SourceTypeDropdownOverlayState
                                               ? Icons.radio_button_checked
                                               : Icons.radio_button_unchecked,
                                           size: 18,
-                                          color: isSel ? AppColors.violet : AppColors.textDim,
+                                          color: isSel
+                                              ? AppColors.violet
+                                              : AppColors.textDim,
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 item.sourceName,
                                                 style: TextStyle(
                                                   fontSize: 13,
-                                                  fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
-                                                  color: isSel ? AppColors.violet : AppColors.text,
+                                                  fontWeight: isSel
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w400,
+                                                  color: isSel
+                                                      ? AppColors.violet
+                                                      : AppColors.text,
                                                 ),
                                               ),
                                               if (item.sourceValue.isNotEmpty)

@@ -120,7 +120,7 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
             ),
             const SizedBox(width: 4),
             const Text(
-              'CUSTOM COLUMNS (C1–C50)',
+              'CUSTOM COLUMNS (Column 1–Column 50)',
               style: TextStyle(
                 color: AppColors.violet,
                 fontSize: 9,
@@ -170,7 +170,7 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        'Add C${_customCount + 1}',
+                        'Add Column ${_customCount + 1}',
                         style: const TextStyle(
                           color: AppColors.violet,
                           fontSize: 9,
@@ -214,7 +214,7 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
                 final isMapped = avail.keys.contains(current);
                 final isLast = slot == _customCount;
                 return UniMappingRow(
-                  label: key,
+                  label: 'Column $slot',
                   labelColor: AppColors.violet,
                   currentKey: isMapped ? current : null,
                   availableKeys: avail.keys,

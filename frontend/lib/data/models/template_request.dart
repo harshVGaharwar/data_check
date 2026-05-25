@@ -10,9 +10,9 @@ class DynamicOutputModel {
   bool get isValid => sourceCount > 0 && sourceList.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
-    'sourceList': sourceList.map((m) => m['id']).join(','),
-    'sourceCount': sourceCount.toString(),
-    'sourceType': "3",
+    'SourceList': sourceList.map((m) => m['id']).join(','),
+    'SourceCount': sourceCount.toString(),
+    'SourceType': "3",
   };
 }
 
@@ -147,15 +147,15 @@ class TemplateRequest {
     'DynamicTemplate': isDynamic
         ? [
             {
-              'sourceList': sourceList.map((m) => m['id']).join(','),
-              'sourceCount': sourceCount.toString(),
-              'sourceType': "1",
+              'SourceList': sourceList.map((m) => m['id']).join(','),
+              'SourceCount': sourceCount.toString(),
+              'SourceType': "1",
             },
             ...dynamicOutputs.asMap().entries.map(
               (e) => {
-                'sourceList': e.value.sourceList.map((m) => m['id']).join(','),
-                'sourceCount': e.value.sourceCount.toString(),
-                'sourceType': "3",
+                'SourceList': e.value.sourceList.map((m) => m['id']).join(','),
+                'SourceCount': e.value.sourceCount.toString(),
+                'SourceType': "3",
               },
             ),
           ]

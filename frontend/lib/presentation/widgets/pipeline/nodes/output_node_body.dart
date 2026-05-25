@@ -44,6 +44,14 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
   bool _submitting = false;
   final _scrollCtrl = ScrollController();
 
+  static String _slotLabel(String slot) {
+    if (slot.length > 1 && slot[0] == 'C') {
+      final n = int.tryParse(slot.substring(1));
+      if (n != null) return 'Column $n';
+    }
+    return slot;
+  }
+
   @override
   void dispose() {
     _scrollCtrl.dispose();
@@ -803,7 +811,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
               .toString(),
           'sourceName': node?.name ?? '',
           'SourceColName': srcCol,
-          'ColumnName': e.key,
+          'ColumnName': _slotLabel(e.key),
           'Priority': 0,
         });
       }
@@ -986,7 +994,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                   'sourceid': snapLookupSrcId(sn),
                   'sourceName': sn,
                   'SourceColName': c['ColumnName'] as String? ?? '',
-                  'ColumnName': c['Slot'] as String? ?? '',
+                  'ColumnName': _slotLabel(c['Slot'] as String? ?? ''),
                   'Priority': 0,
                 });
               }
@@ -1000,7 +1008,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                   'sourceid': snapLookupSrcId(c1Src),
                   'sourceName': c1Src,
                   'SourceColName': c1['ColumnName'] as String? ?? '',
-                  'ColumnName': 'C1',
+                  'ColumnName': 'Column 1',
                   'Priority': 0,
                 });
               }
@@ -1012,7 +1020,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                   'sourceid': snapLookupSrcId(sn),
                   'sourceName': sn,
                   'SourceColName': c['ColumnName'] as String? ?? '',
-                  'ColumnName': c['Slot'] as String? ?? '',
+                  'ColumnName': _slotLabel(c['Slot'] as String? ?? ''),
                   'Priority': 0,
                 });
               }
