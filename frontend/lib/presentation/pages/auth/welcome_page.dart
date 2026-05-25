@@ -385,14 +385,14 @@ class _FlowStepData {
 
 class _DataFlowCard extends StatelessWidget {
   static const _steps = [
-    _FlowStepData(
-      icon: Icons.storage_rounded,
-      label: 'Source\nConfiguration',
-      desc: 'Register DB, Manual,\nQRS, FC & Laser',
-      team: 'Admin Team',
-      color: AppColors.blue,
-      bg: AppColors.blueDim,
-    ),
+    // _FlowStepData(
+    //   icon: Icons.storage_rounded,
+    //   label: 'Source\nConfiguration',
+    //   desc: 'Register DB, Manual,\nQRS, FC & Laser',
+    //   team: 'Admin Team',
+    //   color: AppColors.blue,
+    //   bg: AppColors.blueDim,
+    // ),
     _FlowStepData(
       icon: Icons.layers_rounded,
       label: 'Template\nCreation',
