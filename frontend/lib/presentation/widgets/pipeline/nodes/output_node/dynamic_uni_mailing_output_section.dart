@@ -10,7 +10,8 @@ import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/stati
 class DynamicUniMailingOutputSection extends StatefulWidget {
   final PipelineController ctrl;
   final List<PipelineNode> sourceNodes;
-  const DynamicUniMailingOutputSection({super.key, 
+  const DynamicUniMailingOutputSection({
+    super.key,
     required this.ctrl,
     required this.sourceNodes,
   });
@@ -19,7 +20,6 @@ class DynamicUniMailingOutputSection extends StatefulWidget {
   State<DynamicUniMailingOutputSection> createState() =>
       _DynamicUniMailingOutputSectionState();
 }
-
 
 class _DynamicUniMailingOutputSectionState
     extends State<DynamicUniMailingOutputSection> {
@@ -40,6 +40,12 @@ class _DynamicUniMailingOutputSectionState
     super.initState();
     _prevKey = widget.ctrl.selectedOutputKey;
     widget.ctrl.addListener(_onCtrlChange);
+    // If a key is already selected on mount, set customCount immediately
+    // (onCtrlChange won't fire because the key hasn't changed)
+    if (widget.ctrl.selectedOutputKey.isNotEmpty) {
+      _customCount =
+          widget.ctrl.isOutputKeyStatic(widget.ctrl.selectedOutputKey) ? 1 : 0;
+    }
     // If no key is selected yet, auto-select the next unconfigured key.
     if (widget.ctrl.selectedOutputKey.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,7 +86,8 @@ class _DynamicUniMailingOutputSectionState
     _workingMandatory.clear();
     _workingCustom.clear();
     _localUniqueFields.clear();
-    _customCount = 0;
+    // Static key: Column 1 shown by default. Dynamic key: no default column.
+    _customCount = _isCurrentKeyStatic ? 1 : 0;
   }
 
   /// Standalone clear: mutates + triggers rebuild (use for the Clear button).
@@ -94,18 +101,28 @@ class _DynamicUniMailingOutputSectionState
       return false;
     }
     if (_isCurrentKeyStatic) {
-      return kMandatoryFields.every(
-        (f) =>
-            (_workingMandatory[f] ?? '').isNotEmpty &&
-            _localSelected.contains(_workingMandatory[f]),
-      );
+      // All added custom columns must be mapped (Column 1 is always required)
+      final allCustomFilled = List.generate(_customCount, (i) {
+        final key = 'C${i + 1}';
+        final val = _workingCustom[key] ?? '';
+        return val.isNotEmpty && _localSelected.contains(val);
+      }).every((ok) => ok);
+      return allCustomFilled;
     } else {
       final c0 = _workingMandatory['C0'] ?? '';
       final c1 = _workingMandatory['C1'] ?? '';
-      return c0.isNotEmpty &&
+      final mandatoryOk =
+          c0.isNotEmpty &&
           _localSelected.contains(c0) &&
           c1.isNotEmpty &&
           _localSelected.contains(c1);
+      // All added optional columns (C2+) must also be filled
+      final allOptionalFilled = List.generate(_customCount, (i) {
+        final key = 'C${i + 2}';
+        final val = _workingCustom[key] ?? '';
+        return val.isNotEmpty && _localSelected.contains(val);
+      }).every((ok) => ok);
+      return mandatoryOk && allOptionalFilled;
     }
   }
 
@@ -162,18 +179,18 @@ class _DynamicUniMailingOutputSectionState
         'KeyName': currentKey,
         'KeyType': 'Static',
         'SelectedColumns': selCols,
-        'MandatoryFields': kMandatoryFields
-            .where((f) => (_workingMandatory[f] ?? '').isNotEmpty)
-            .map(
-              (f) => {
-                'Field': f,
-                'ColumnName': resolveCol(_workingMandatory[f]!),
-                'SourceName': resolveSource(_workingMandatory[f]!),
-                'isUniqueField':
-                    _localUniqueFields[_workingMandatory[f]!] ?? false,
-              },
-            )
-            .toList(),
+        // All 7 unimailing fields always sent; empty string if not mapped
+        'MandatoryFields': kMandatoryFields.map((f) {
+          final val = _workingMandatory[f] ?? '';
+          return {
+            'Field': f,
+            'ColumnName': val.isNotEmpty ? resolveCol(val) : '',
+            'SourceName': val.isNotEmpty ? resolveSource(val) : '',
+            'isUniqueField': val.isNotEmpty
+                ? (_localUniqueFields[val] ?? false)
+                : false,
+          };
+        }).toList(),
         'CustomColumns': sortedCustom,
       };
     } else {
@@ -260,11 +277,209 @@ class _DynamicUniMailingOutputSectionState
     setState(_resetFormValues);
 
     if (!ctrl.allDynamicUniMailingKeysConfigured) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Compute the next key NOW while the widget is still mounted.
+      final allKeys = ctrl.dynamicUniMailingOutputKeys;
+      final nextKey = allKeys
+          .where((k) => !ctrl.savedOutputKeyConfigs.containsKey(k))
+          .firstOrNull;
+      final keyIndex = nextKey != null ? allKeys.indexOf(nextKey) : -1;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        // Show dialog BEFORE clearing — widget is still mounted here.
+        // Canvas clear unmounts this widget, so we must dialog first.
+        if (nextKey != null && keyIndex >= 0) {
+          await _showNextKeyDialog(
+            completedKey: currentKey,
+            nextKeyNumber: keyIndex + 1,
+            nextKeyName: nextKey,
+          );
+        }
+        // After user dismisses (or if no dialog), clear the canvas.
         if (mounted) ctrl.clearCanvasForNextOutputKey();
       });
     }
     // If all keys done: canvas stays, Submit button activates.
+  }
+
+  Future<void> _showNextKeyDialog({
+    required String completedKey,
+    required int nextKeyNumber,
+    required String nextKeyName,
+  }) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.blue.withValues(alpha: 0.12),
+              ),
+              child: Center(
+                child: Text(
+                  '$nextKeyNumber',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.blue,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Key Configuration',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.text,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Completed key
+            Row(
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.green.withValues(alpha: 0.12),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: 13,
+                      color: AppColors.green,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Completed configuration for:',
+                  style: TextStyle(fontSize: 11, color: AppColors.textDim),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.green.withValues(alpha: 0.06),
+                border: Border.all(
+                  color: AppColors.green.withValues(alpha: 0.20),
+                ),
+              ),
+              child: Text(
+                completedKey,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.green,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            // Divider
+            const Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: 14),
+            // Next key
+            Row(
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.blue.withValues(alpha: 0.12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$nextKeyNumber',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.blue,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Now configure:',
+                  style: TextStyle(fontSize: 11, color: AppColors.textDim),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.blue.withValues(alpha: 0.07),
+                border: Border.all(
+                  color: AppColors.blue.withValues(alpha: 0.20),
+                ),
+              ),
+              child: Text(
+                nextKeyName,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Add your source nodes and configure the mappings for this key.',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textMuted,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.blue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Got it',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Map<String, String> _buildColLabels() {

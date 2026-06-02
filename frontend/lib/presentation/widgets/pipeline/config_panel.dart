@@ -7,6 +7,83 @@ import 'package:vizualizer/data/models/pipeline_models.dart';
 import 'package:vizualizer/presentation/controllers/pipeline_controller.dart';
 import 'package:vizualizer/presentation/providers/pipeline_master_provider.dart';
 import 'package:vizualizer/presentation/widgets/common/searchable_dropdown.dart';
+
+/// Shows a confirmation dialog before deleting a pipeline node.
+Future<void> confirmDeleteNode(
+  BuildContext ctx,
+  PipelineController ctrl,
+  String id,
+  String name,
+) async {
+  final ok = await showDialog<bool>(
+    context: ctx,
+    barrierDismissible: false,
+    builder: (dialogCtx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      title: Row(
+        children: [
+          const Icon(
+            Icons.delete_outline_rounded,
+            color: AppColors.red,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Delete Node?',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.red,
+            ),
+          ),
+        ],
+      ),
+      content: RichText(
+        text: TextSpan(
+          style: const TextStyle(
+            fontSize: 13,
+            color: AppColors.text,
+            height: 1.5,
+          ),
+          children: [
+            const TextSpan(text: 'Are you sure you want to delete '),
+            TextSpan(
+              text: name,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const TextSpan(text: '? All connected edges will also be removed.'),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogCtx).pop(false),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(dialogCtx).pop(true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.red,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Delete',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
+  );
+  if (ok == true && ctx.mounted) ctrl.deleteNode(id);
+}
+
 class ConfigPanel extends StatefulWidget {
   const ConfigPanel({super.key});
 
@@ -209,7 +286,8 @@ class _ConfigPanelState extends State<ConfigPanel>
                 Padding(
                   padding: const EdgeInsets.all(14),
                   child: InkWell(
-                    onTap: () => ctrl.deleteNode(node.id),
+                    onTap: () =>
+                        confirmDeleteNode(context, ctrl, node.id, node.name),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -345,10 +423,7 @@ class _ConfigPanelState extends State<ConfigPanel>
 
         // ── Non-manual: Query File Upload ── (step 1 for non-manual)
         if (!isManual) ...[
-          const Text(
-            'Upload Query File (.txt) *',
-            style: AppTextStyles.fieldLabel,
-          ),
+          const Text('Upload Query File', style: AppTextStyles.fieldLabel),
           const SizedBox(height: 4),
           _hl(
             1,
@@ -368,6 +443,20 @@ class _ConfigPanelState extends State<ConfigPanel>
                       );
                       if (result != null && result.files.single.bytes != null) {
                         final fileName = result.files.single.name;
+                        final ext = fileName.contains('.')
+                            ? fileName.split('.').last.toLowerCase()
+                            : '';
+                        if (ext != 'txt') {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Invalid file type: only .txt files are allowed for query upload.',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
                         final queryBytes = result.files.single.bytes!;
                         final queryText = utf8.decode(
                           queryBytes,
@@ -453,7 +542,16 @@ class _ConfigPanelState extends State<ConfigPanel>
                           // Only reject if the file clearly uses a DIFFERENT
                           // separator. A single-column file has no separator
                           // in the first line at all — that is valid.
-                          const knownSeps = [',', '\t', '|', ';', ':', '~', '^', '#'];
+                          const knownSeps = [
+                            ',',
+                            '\t',
+                            '|',
+                            ';',
+                            ':',
+                            '~',
+                            '^',
+                            '#',
+                          ];
                           final usesOtherSep = knownSeps.any(
                             (s) => s != sep && firstLine.contains(s),
                           );
@@ -653,7 +751,9 @@ class _ConfigPanelState extends State<ConfigPanel>
     // Only clear the file if it clearly uses a DIFFERENT separator.
     // A single-column file has no separator in the first line — keep it.
     const knownSeps = [',', '\t', '|', ';', ':', '~', '^', '#'];
-    final usesOtherSep = knownSeps.any((s) => s != sep && firstLine.contains(s));
+    final usesOtherSep = knownSeps.any(
+      (s) => s != sep && firstLine.contains(s),
+    );
     if (!firstLine.contains(sep) && usesOtherSep) {
       // Separator doesn't match current file — update separator and clear
       // the file so user can re-upload with the correct separator.
@@ -869,35 +969,35 @@ class _ConfirmSection extends StatelessWidget {
       // ── Confirmed state ──
       return Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: AppColors.green.withValues(alpha: 0.1),
-              border: Border.all(color: AppColors.green.withValues(alpha: 0.3)),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.check_circle_rounded,
-                  color: AppColors.green,
-                  size: 16,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Confirmed',
-                  style: TextStyle(
-                    color: AppColors.green,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
+          // Container(
+          //   width: double.infinity,
+          //   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          //   decoration: BoxDecoration(
+          //     borderRadius: BorderRadius.circular(8),
+          //     color: AppColors.green.withValues(alpha: 0.1),
+          //     border: Border.all(color: AppColors.green.withValues(alpha: 0.3)),
+          //   ),
+          //   child: const Row(
+          //     mainAxisAlignment: MainAxisAlignment.center,
+          //     children: [
+          //       Icon(
+          //         Icons.check_circle_rounded,
+          //         color: AppColors.green,
+          //         size: 16,
+          //       ),
+          //       SizedBox(width: 8),
+          //       Text(
+          //         'Confirmed',
+          //         style: TextStyle(
+          //           color: AppColors.green,
+          //           fontSize: 12,
+          //           fontWeight: FontWeight.w700,
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
+          // const SizedBox(height: 8),
           InkWell(
             onTap: () => ctrl.editNode(node.id),
             child: Container(

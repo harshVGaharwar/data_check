@@ -134,23 +134,38 @@ class DynamicKeyMappingCard extends StatelessWidget {
                 onTap: onAddCustom,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
+                    horizontal: 10,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                    color: AppColors.violet.withValues(alpha: 0.10),
-                    border: Border.all(
-                      color: AppColors.violet.withValues(alpha: 0.30),
-                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    color: AppColors.blue,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.blue.withValues(alpha: 0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    '+ Column ${customCount + 2}',
-                    style: const TextStyle(
-                      color: AppColors.violet,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.add_rounded,
+                        size: 11,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Add Column ${customCount + 2}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -177,7 +192,7 @@ class DynamicKeyMappingCard extends StatelessWidget {
                   availableKeys: availableKeys,
                   colLabels: colLabels,
                   isLast: isLast,
-                  isRequired: false,
+                  isRequired: true,
                   isMapped: isMapped,
                   onChanged: (v) => onCustomChanged(key, v),
                   onDelete: isLast ? onRemoveCustom : null,

@@ -5,12 +5,14 @@ import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/confi
 import 'package:vizualizer/core/utils/functions.dart';
 import 'package:vizualizer/core/utils/download_helper.dart';
 import 'package:vizualizer/data/models/checker_tray_item.dart';
+import 'package:vizualizer/data/models/template_configuration_response_model.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/presentation/widgets/common/select_dropdown_overlay.dart';
 import 'package:vizualizer/presentation/pages/source/source_configuration_view_page.dart';
 import 'package:vizualizer/presentation/pages/pipeline/template_creation_view_page.dart';
+
 class CheckerModulePage extends StatefulWidget {
   const CheckerModulePage({super.key});
 
@@ -26,8 +28,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
 
   String? _selectedDept;
   String? _selectedModuleId;
-  static const List<({
-String id, String label})> _moduleOptions = [
+  static const List<({String id, String label})> _moduleOptions = [
     (id: '2', label: 'Source Configuration'),
     (id: '1', label: 'Template Creation'),
     (id: '3', label: 'Template Configuration'),
@@ -447,7 +448,6 @@ String id, String label})> _moduleOptions = [
       ? [
           '#',
           'Source ID',
-          'Department',
           'Source Name',
           'Created By',
           'Created Date',
@@ -457,7 +457,6 @@ String id, String label})> _moduleOptions = [
       : [
           '#',
           'ID',
-          'Department',
           'Template',
           'Created By',
           'Created Date',
@@ -497,7 +496,6 @@ String id, String label})> _moduleOptions = [
             return (item.requestId?.toLowerCase().contains(q) ?? false) ||
                 (item.templateId?.toString().contains(q) ?? false) ||
                 (item.sourceId?.toString().contains(q) ?? false) ||
-                item.departmentName.toLowerCase().contains(q) ||
                 (item.templateName?.toLowerCase().contains(q) ?? false) ||
                 (item.sourceName?.toLowerCase().contains(q) ?? false) ||
                 (item.sourceTypeName?.toLowerCase().contains(q) ?? false) ||
@@ -554,7 +552,7 @@ String id, String label})> _moduleOptions = [
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   size: 16,
-                  color: AppColors.textDim,
+                  color: Colors.white,
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -599,12 +597,11 @@ String id, String label})> _moduleOptions = [
                 columnWidths: const {
                   0: FixedColumnWidth(44),
                   1: FlexColumnWidth(1.6),
-                  2: FlexColumnWidth(2),
-                  3: FlexColumnWidth(2),
-                  4: FlexColumnWidth(1.3),
-                  5: FlexColumnWidth(1.7),
-                  6: FixedColumnWidth(110),
-                  7: FlexColumnWidth(2.4),
+                  2: FlexColumnWidth(2.4),
+                  3: FlexColumnWidth(1.5),
+                  4: FlexColumnWidth(1.7),
+                  5: FixedColumnWidth(110),
+                  6: FlexColumnWidth(2.4),
                 },
                 children: [
                   _buildHeaderRow(
@@ -662,9 +659,6 @@ String id, String label})> _moduleOptions = [
         if (item.jsonData?.toString().toLowerCase().contains(q) ?? false) {
           matched.add('View');
         }
-      }
-      if (item.departmentName.toLowerCase().contains(q)) {
-        matched.add('Department');
       }
       if (item.makerBy.toLowerCase().contains(q)) matched.add('Created By');
       if (_formatDate(item.makerDate).toLowerCase().contains(q)) {
@@ -746,7 +740,6 @@ String id, String label})> _moduleOptions = [
     final nameCol = _isSourceConfigModule
         ? item.sourceName ?? '—'
         : item.templateName ?? '—';
-    final deptName = item.departmentName.isEmpty ? '—' : item.departmentName;
     final bg = index.isEven ? Colors.white : const Color(0xFFF9FAFC);
 
     return TableRow(
@@ -786,19 +779,6 @@ String id, String label})> _moduleOptions = [
                 ),
               ),
             ],
-          ),
-        ),
-
-        // Department
-        _tdCell(
-          child: Text(
-            deptName,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.text,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
 
@@ -1141,8 +1121,14 @@ String id, String label})> _moduleOptions = [
 
   bool _canViewItem(CheckerTrayItem item) {
     if (_isSourceConfigModule) return true;
-    if (_isTemplateCreationModule || _isTemplateConfigModule) {
+    if (_isTemplateCreationModule) {
       return extractPayload(item.toMap()) != null;
+    }
+    if (_isTemplateConfigModule) {
+      final jd = item.jsonData;
+      return (jd is Map && jd.isNotEmpty) ||
+          (jd is List && jd.isNotEmpty) ||
+          (jd is String && jd.trim().isNotEmpty);
     }
     return false;
   }
@@ -1180,9 +1166,20 @@ String id, String label})> _moduleOptions = [
       'UnitHead',
       'Priority',
       'createdBy',
+      'TemplateType',
+      'TemplateTypeName',
     ]) {
       if (data[key] != null && !templateMap.containsKey(key)) {
         templateMap[key] = data[key];
+      }
+    }
+
+    // If Department is a numeric ID, replace with DepartmentName
+    final deptName = data['DepartmentName']?.toString().trim() ?? '';
+    if (deptName.isNotEmpty) {
+      final deptVal = templateMap['Department']?.toString().trim() ?? '';
+      if (int.tryParse(deptVal) != null) {
+        templateMap['Department'] = deptName;
       }
     }
 
@@ -1282,8 +1279,10 @@ String id, String label})> _moduleOptions = [
         );
 
       case '3': // Template Configuration
-        final config = extractPayload(item.toMap());
-        if (config == null) {
+        final model = TemplateConfigurationResponseModel.fromJsonData(
+          item.jsonData,
+        );
+        if (!model.hasData) {
           _snack(
             'Pipeline details unavailable for this request.',
             isError: true,
@@ -1291,11 +1290,27 @@ String id, String label})> _moduleOptions = [
           return;
         }
         if (!mounted) return;
-        ConfigPreviewSheet.showFromRaw(
-          context,
-          config,
-          templateName: item.templateName ?? '',
-        );
+        if (model.isDynamic) {
+          ConfigPreviewSheet.showFromRawDynamic(
+            context,
+            model.configs,
+            templateName: item.templateName ?? '',
+          );
+        } else {
+          final config = model.toConfigMap();
+          if (config == null) {
+            _snack(
+              'Pipeline details unavailable for this request.',
+              isError: true,
+            );
+            return;
+          }
+          ConfigPreviewSheet.showFromRaw(
+            context,
+            config,
+            templateName: item.templateName ?? '',
+          );
+        }
 
       default:
         _snack('View not available for this module.', isError: true);
@@ -1351,38 +1366,83 @@ String id, String label})> _moduleOptions = [
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
-                    vertical: 6,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),
                     color: AppColors.bg,
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'ID:',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textDim,
+                  child: _isSourceConfigModule
+                      ? Row(
+                          children: [
+                            const Text(
+                              'Source ID:',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textDim,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              item.sourceId?.toString() ?? '—',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.blue,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Template:',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textDim,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    item.templateName ?? '—',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.text,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Text(
+                                  'Template ID:',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textDim,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  item.templateId?.toString() ?? '—',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.blue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        (_isSourceConfigModule
-                                ? item.sourceId?.toString()
-                                : item.requestId?.isNotEmpty == true
-                                ? item.requestId
-                                : item.templateId?.toString()) ??
-                            '—',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.blue,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 14),
                 const Text(
@@ -1559,8 +1619,7 @@ String id, String label})> _moduleOptions = [
     );
   }
 
-  Widget _countBadge(int n, {
-String label = '', Color color = AppColors.blue}) {
+  Widget _countBadge(int n, {String label = '', Color color = AppColors.blue}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(

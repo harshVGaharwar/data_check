@@ -42,7 +42,7 @@ class OutputKeySelector extends StatelessWidget {
               : selected,
           hint: '— Select Output Key —',
           items: items,
-          disabledItems: ctrl.savedOutputKeyConfigs.keys.toSet(),
+          disabledItems: ctrl.sequentiallyDisabledOutputKeys,
           leadingBuilder: (item) {
             final isDone = ctrl.savedOutputKeyConfigs.containsKey(item);
             return Icon(

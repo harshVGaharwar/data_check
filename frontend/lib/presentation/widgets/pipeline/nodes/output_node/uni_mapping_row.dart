@@ -96,7 +96,7 @@ class UniMappingRow extends StatelessWidget {
                 height: 28,
                 items: availableKeys.map((k) => colLabels[k] ?? k).toList(),
                 value: currentKey != null ? (colLabels[currentKey!] ?? currentKey) : null,
-                hint: isRequired ? '— required —' : '— optional —',
+                hint: isRequired ? '— required —' : '— select —',
                 onChanged: (displayLabel) {
                   if (displayLabel == null) {
                     onChanged(null);

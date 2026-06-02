@@ -4,6 +4,7 @@ import 'package:vizualizer/data/models/master_models.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
+
 class WelcomePage extends StatefulWidget {
   final void Function(int index) onNavigate;
   const WelcomePage({super.key, required this.onNavigate});
@@ -30,8 +31,8 @@ class _WelcomePageState extends State<WelcomePage>
   }
 
   Future<void> _waitForAuth() async {
-    final auth =
-        context.read<AuthProvider>(); // Replace with your actual provider type
+    final auth = context
+        .read<AuthProvider>(); // Replace with your actual provider type
     if (!auth.initialized) {
       await Future.doWhile(() async {
         await Future.delayed(const Duration(milliseconds: 50));
@@ -71,9 +72,7 @@ class _WelcomePageState extends State<WelcomePage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1 — KPI tiles
-            _KpiRow(
-              dashboardData: _dashboardDetails?.dashboardCount ?? [],
-            ),
+            _KpiRow(dashboardData: _dashboardDetails?.dashboardCount ?? []),
             SizedBox(height: 20),
             // 2 — Horizontal data flow
             _DataFlowCard(),
@@ -153,8 +152,7 @@ class _KpiRow extends StatelessWidget {
   //     '5.5% rate',
   //   ),
   // ];
-  const _KpiRow({
-Key? key, required this.dashboardData}) : super(key: key);
+  const _KpiRow({Key? key, required this.dashboardData}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -170,12 +168,13 @@ Key? key, required this.dashboardData}) : super(key: key);
                 width: cardWidth,
                 child: _KpiCard(
                   data: _KpiData(
-                      dashboardData[i].label,
-                      dashboardData[i].count,
-                      dashboardData[i].icon,
-                      dashboardData[i].darkColor,
-                      dashboardData[i].lightColor,
-                      ''),
+                    dashboardData[i].label,
+                    dashboardData[i].count,
+                    dashboardData[i].icon,
+                    dashboardData[i].darkColor,
+                    dashboardData[i].lightColor,
+                    '',
+                  ),
                   delay: Duration(milliseconds: i * 70),
                 ),
               ),
@@ -315,8 +314,11 @@ class _KpiCardState extends State<_KpiCard>
                         color: Color(darkColor!).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.layers_rounded,
-                          color: Color(darkColor), size: 15),
+                      child: Icon(
+                        Icons.layers_rounded,
+                        color: Color(darkColor),
+                        size: 15,
+                      ),
                     ),
                     TweenAnimationBuilder<double>(
                       tween: Tween(
@@ -536,8 +538,9 @@ class _HorizontalFlowStepState extends State<_HorizontalFlowStep> {
           borderRadius: BorderRadius.circular(12),
           color: _hovered ? d.bg : Colors.transparent,
           border: Border.all(
-            color:
-                _hovered ? d.color.withValues(alpha: 0.3) : Colors.transparent,
+            color: _hovered
+                ? d.color.withValues(alpha: 0.3)
+                : Colors.transparent,
           ),
         ),
         child: Column(
@@ -753,8 +756,11 @@ class _AdminInstructionCard extends StatelessWidget {
         children: [
           Row(
             children: const [
-              Icon(Icons.admin_panel_settings_rounded,
-                  size: 18, color: AppColors.violet),
+              Icon(
+                Icons.admin_panel_settings_rounded,
+                size: 18,
+                color: AppColors.violet,
+              ),
               SizedBox(width: 8),
               Text("ADMIN INSTRUCTIONS", style: AppTextStyles.sectionLabel),
             ],

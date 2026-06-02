@@ -6,6 +6,8 @@ class ReportItem {
   final String requestId;
   final String makerBy;
   final String makerDate;
+  final String checkerBy;
+  final String checkerDate;
   final String? status;
 
   const ReportItem({
@@ -16,6 +18,8 @@ class ReportItem {
     required this.requestId,
     required this.makerBy,
     required this.makerDate,
+    required this.checkerBy,
+    required this.checkerDate,
     this.status,
   });
 
@@ -31,6 +35,8 @@ class ReportItem {
       requestId: json['requestId']?.toString() ?? '',
       makerBy: json['makerBy']?.toString() ?? '',
       makerDate: json['makerDate']?.toString() ?? '',
+      checkerBy: json['checkerBy']?.toString() ?? '',
+      checkerDate: json['checkerDate']?.toString() ?? '',
       status: json['status']?.toString() ?? json['isApproved']?.toString(),
     );
   }

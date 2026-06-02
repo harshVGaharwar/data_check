@@ -20,7 +20,20 @@ class UniMailingSectionState extends State<UniMailingSection> {
   void initState() {
     super.initState();
     widget.ctrl.addListener(_onCtrlChange);
-    _customCount = _deriveCustomCount();
+    // Prefer the persisted count; for a fresh config default to 1 (Column 1 shown by default)
+    final derived = _deriveCustomCount();
+    _customCount = widget.ctrl.uniMailingCustomCount > 0
+        ? widget.ctrl.uniMailingCustomCount
+        : derived > 0
+        ? derived
+        : 1;
+    // Sync the default count to the controller after the first frame
+    // so validation knows Column 1 is expected to be filled
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.ctrl.uniMailingCustomCount == 0) {
+        widget.ctrl.setUniMailingCustomCount(_customCount);
+      }
+    });
   }
 
   void _onCtrlChange() => setState(() {});
@@ -64,15 +77,15 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Mandatory fields
+        // UniMailing fields (all optional)
         Row(
           children: [
-            const Icon(Icons.star_rounded, size: 10, color: AppColors.red),
+            const Icon(Icons.email_outlined, size: 10, color: AppColors.violet),
             const SizedBox(width: 4),
             const Text(
-              'MANDATORY FIELDS',
+              'UNIMAILING FIELDS',
               style: TextStyle(
-                color: AppColors.red,
+                color: AppColors.violet,
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.7,
@@ -95,12 +108,12 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
               final isMapped = avail.keys.contains(current);
               return UniMappingRow(
                 label: field,
-                labelColor: AppColors.red,
+                labelColor: AppColors.violet,
                 currentKey: isMapped ? current : null,
                 availableKeys: avail.keys,
                 colLabels: avail.labels,
                 isLast: isLast,
-                isRequired: true,
+                isRequired: false,
                 isMapped: isMapped,
                 onChanged: (v) => ctrl.setUniMailingMandatory(field, v ?? ''),
               );
@@ -128,26 +141,13 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
                 letterSpacing: 0.7,
               ),
             ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: AppColors.violet.withValues(alpha: 0.08),
-              ),
-              child: const Text(
-                'optional',
-                style: TextStyle(
-                  color: AppColors.violet,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
             const Spacer(),
             if (_customCount < 50)
               GestureDetector(
-                onTap: () => setState(() => _customCount++),
+                onTap: () {
+                  setState(() => _customCount++);
+                  widget.ctrl.setUniMailingCustomCount(_customCount);
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -155,10 +155,14 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),
-                    color: AppColors.violet.withValues(alpha: 0.10),
-                    border: Border.all(
-                      color: AppColors.violet.withValues(alpha: 0.30),
-                    ),
+                    color: AppColors.blue,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.blue.withValues(alpha: 0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -166,13 +170,13 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
                       const Icon(
                         Icons.add_rounded,
                         size: 11,
-                        color: AppColors.violet,
+                        color: Colors.white,
                       ),
-                      const SizedBox(width: 3),
+                      const SizedBox(width: 4),
                       Text(
                         'Add Column ${_customCount + 1}',
                         style: const TextStyle(
-                          color: AppColors.violet,
+                          color: Colors.white,
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
                         ),
@@ -220,13 +224,14 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
                   availableKeys: avail.keys,
                   colLabels: avail.labels,
                   isLast: isLast,
-                  isRequired: false,
+                  isRequired: true,
                   isMapped: isMapped,
                   onChanged: (v) => ctrl.setUniMailingCustom(key, v ?? ''),
                   onDelete: isLast
                       ? () {
                           ctrl.setUniMailingCustom(key, '');
                           setState(() => _customCount--);
+                          ctrl.setUniMailingCustomCount(_customCount);
                         }
                       : null,
                 );

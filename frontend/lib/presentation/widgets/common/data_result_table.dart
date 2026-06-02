@@ -161,7 +161,7 @@ class _DataResultTableState<T> extends State<DataResultTable<T>> {
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   size: 16,
-                  color: AppColors.textDim,
+                  color: Colors.white,
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(

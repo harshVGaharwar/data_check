@@ -56,6 +56,8 @@ class PipelineController extends ChangeNotifier {
   final Map<String, String> uniMailingMandatory = {};
   // key: slot name ('C1', 'C2', …)  value: 'nodeId::colName'
   final Map<String, String> uniMailingCustom = {};
+  // number of custom columns the user has added (includes unfilled ones)
+  int uniMailingCustomCount = 0;
 
   // ── Port drag state (same as HTML portDrag) ──
   String? portDragFromNodeId;
@@ -86,8 +88,7 @@ class PipelineController extends ChangeNotifier {
   }
 
   /// Safe srno reader — Flutter Web returns JSON ints as num/double.
-  static int _srno(Map<String, dynamic> dt) =>
-      (dt['srno'] as num?)?.toInt() ?? 0;
+  static int _srno(Map<String, dynamic> dt) => (dt['srno'] as num?)?.toInt() ?? 0;
 
   /// Build output key list from dynamicTemplates (new API) or numberOfOutputs (old API).
   /// Format: 'Key 1 - Static', 'Key 2 - Dynamic', …
@@ -144,6 +145,18 @@ class PipelineController extends ChangeNotifier {
       dynamicUniMailingOutputKeys.every(
         (k) => savedOutputKeyConfigs.containsKey(k),
       );
+
+  /// For sequential configuration: all keys except the next unconfigured one
+  /// are disabled. Saved keys cannot be re-edited; future keys cannot be
+  /// jumped to until prior ones are complete.
+  Set<String> get sequentiallyDisabledOutputKeys {
+    final keys = dynamicUniMailingOutputKeys;
+    final activeKey = keys.firstWhere(
+      (k) => !savedOutputKeyConfigs.containsKey(k),
+      orElse: () => '',
+    );
+    return keys.where((k) => k != activeKey).toSet();
+  }
 
   void saveOutputKeyConfig(String keyName, Map<String, dynamic> config) {
     savedOutputKeyConfigs[keyName] = config;
@@ -230,6 +243,7 @@ String deptId = ''}) {
     outputColumnOrder = [];
     uniMailingMandatory.clear();
     uniMailingCustom.clear();
+    uniMailingCustomCount = 0;
     savedOutputKeyConfigs.clear();
     notifyListeners();
   }
@@ -252,9 +266,19 @@ String deptId = ''}) {
     this.outputFormats = List<String>.from(outputFormats);
     this.numberOfOutputs = numberOfOutputs;
     this.dynamicTemplates = List<Map<String, dynamic>>.from(dynamicTemplates);
-    selectedOutputKey = '';
     outputColumnOrder = [];
+    // Clear saved configs for a new template before computing auto-select.
     if (!isSameTemplate) savedOutputKeyConfigs.clear();
+    // Auto-select the first unconfigured output key for sequential flow.
+    if (isDynamicUniMailing) {
+      final keys = dynamicUniMailingOutputKeys;
+      selectedOutputKey = keys.firstWhere(
+        (k) => !savedOutputKeyConfigs.containsKey(k),
+        orElse: () => keys.isNotEmpty ? keys.first : '',
+      );
+    } else {
+      selectedOutputKey = '';
+    }
     debugPrint(
       '[CTRL] setSidebarTemplate: type=$templateType, formats=$outputFormats, dynamicCount=${this.dynamicTemplates.length}, isDynUni=$isDynamicUniMailing',
     );
@@ -399,6 +423,7 @@ String deptId = ''}) {
     outputColumnOrder = [];
     uniMailingMandatory.clear();
     uniMailingCustom.clear();
+    uniMailingCustomCount = 0;
     savedOutputKeyConfigs.clear();
     canvasVersion++;
     clearVersion++;
@@ -420,6 +445,7 @@ String deptId = ''}) {
     outputColumnOrder = [];
     uniMailingMandatory.clear();
     uniMailingCustom.clear();
+    uniMailingCustomCount = 0;
     // Auto-advance sidebar selection to the next unconfigured key so the user
     // doesn't have to manually pick one from the dropdown after the canvas clears.
     final keys = dynamicUniMailingOutputKeys;
@@ -1047,6 +1073,11 @@ List<int>? bytes}) {
     } else {
       uniMailingCustom[key] = colKey;
     }
+    notifyListeners();
+  }
+
+  void setUniMailingCustomCount(int count) {
+    uniMailingCustomCount = count;
     notifyListeners();
   }
 

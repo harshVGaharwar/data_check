@@ -9,7 +9,9 @@ import 'package:vizualizer/data/models/master_models.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
 
 class TemplateCreationPage extends StatefulWidget {
-  const TemplateCreationPage({super.key});
+  final VoidCallback? onClose;
+
+  const TemplateCreationPage({super.key, this.onClose});
 
   @override
   State<TemplateCreationPage> createState() => _TemplateCreationPageState();
@@ -49,6 +51,12 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   final _sourceLayerLink = LayerLink();
   final _sourceTriggerKey = GlobalKey();
   OverlayEntry? _sourceOverlayEntry;
+
+  // Benefit-type multi-select overlay
+  List<String> _selectedBenefitTypes = [];
+  final _benefitLayerLink = LayerLink();
+  final _benefitTriggerKey = GlobalKey();
+  OverlayEntry? _benefitOverlayEntry;
   static const _frequencies = [
     'Daily',
     'Weekly',
@@ -67,7 +75,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     'Other',
   ];
   static const _priorities = ['Low', 'Medium', 'High', 'Critical'];
-  static const _outputFormats = ['Unimailing', 'User Defined'];
+  static const _outputFormats = [
+    'Unimailing',
+    //  'User Defined'
+  ];
   static const _sourceCountOptions = [
     // '1',
     '2',
@@ -182,6 +193,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   @override
   void dispose() {
     _closeSourceDropdown();
+    _closeBenefitDropdown();
     _scrollCtrl.dispose();
     _nameCtrl.dispose();
     _normalVolCtrl.dispose();
@@ -240,10 +252,44 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     if (mounted) setState(() {});
   }
 
+  void _openBenefitDropdown() {
+    _closeBenefitDropdown();
+    final renderBox =
+        _benefitTriggerKey.currentContext?.findRenderObject() as RenderBox?;
+    final width = renderBox?.size.width ?? 280.0;
+
+    _benefitOverlayEntry = OverlayEntry(
+      builder: (_) => _BenefitMultiSelectOverlay(
+        layerLink: _benefitLayerLink,
+        items: _benefitTypes,
+        initialSelected: Set<String>.from(_selectedBenefitTypes),
+        dropdownWidth: width,
+        onDismiss: _closeBenefitDropdown,
+        onDone: (selected) {
+          setState(() {
+            _selectedBenefitTypes = _benefitTypes
+                .where((t) => selected.contains(t))
+                .toList();
+          });
+          _closeBenefitDropdown();
+        },
+      ),
+    );
+    Overlay.of(context).insert(_benefitOverlayEntry!);
+    setState(() {});
+  }
+
+  void _closeBenefitDropdown() {
+    _benefitOverlayEntry?.remove();
+    _benefitOverlayEntry = null;
+    if (mounted) setState(() {});
+  }
+
   void _syncModel() {
     _model.templateName = _nameCtrl.text.trim();
     _model.normalVolume = int.tryParse(_normalVolCtrl.text) ?? 0;
     _model.peakVolume = int.tryParse(_peakVolCtrl.text) ?? 0;
+    _model.benefitType = _selectedBenefitTypes.join(',');
     _model.benefitAmount = double.tryParse(_benefitAmtCtrl.text) ?? 0;
     _model.benefitInTAT = _tatCtrl.text.trim();
     _model.spocPerson = _spocCtrl.text.trim();
@@ -341,10 +387,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     _approvalFileBytes.clear();
     selectedFormat = null;
     setState(() {
+      _selectedBenefitTypes = [];
       _submitted = false;
       _saving = false;
     });
-    // sourceList and templateType are cleared via _model.reset()
   }
 
   @override
@@ -475,13 +521,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                       if (!_model.isDynamic) ...[
                         const SizedBox(height: 10),
                         _row([
-                          SearchableStringDropdown(
-                            label: 'Benefit Type',
-                            items: _benefitTypes,
-                            value: _model.benefitType,
-                            onChanged: (v) =>
-                                setState(() => _model.benefitType = v),
-                          ),
+                          _benefitTypeMultiSelect(),
                           _tf(
                             'Benefit Amount (₹)',
                             _benefitAmtCtrl,
@@ -516,13 +556,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                       ] else ...[
                         const SizedBox(height: 10),
                         _row([
-                          SearchableStringDropdown(
-                            label: 'Benefit Type',
-                            items: _benefitTypes,
-                            value: _model.benefitType,
-                            onChanged: (v) =>
-                                setState(() => _model.benefitType = v),
-                          ),
+                          _benefitTypeMultiSelect(),
                           _tf(
                             'Benefit Amount (₹)',
                             _benefitAmtCtrl,
@@ -1214,42 +1248,103 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                   ),
                 const SizedBox(height: 28),
 
-                // Save
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: _saving ? null : _save,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                // Action buttons: Close | Clear | Save Template
+                Row(
+                  children: [
+                    // Close
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: _saving
+                              ? null
+                              : () => widget.onClose?.call(),
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          label: const Text(
+                            'Close',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
-                          )
-                        : const Icon(Icons.save_rounded, size: 20),
-                    label: Text(
-                      _saving ? 'Saving...' : 'Save Template',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textDim,
+                            side: const BorderSide(color: AppColors.border2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004C8F),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(
-                        0xFF004C8F,
-                      ).withValues(alpha: 0.6),
-                      disabledForegroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 12),
+                    // Clear
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: _saving ? null : _resetForm,
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: const Text(
+                            'Clear',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.amber,
+                            side: BorderSide(
+                              color: AppColors.amber.withValues(alpha: 0.5),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ),
-                      elevation: 0,
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    // Save Template
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: _saving ? null : _save,
+                          icon: _saving
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.save_rounded, size: 20),
+                          label: Text(
+                            _saving ? 'Saving...' : 'Save Template',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF004C8F),
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: const Color(
+                              0xFF004C8F,
+                            ).withValues(alpha: 0.6),
+                            disabledForegroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 40),
               ],
@@ -1696,6 +1791,95 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     );
   }
 
+  // ── Benefit Type multi-select dropdown ──
+  Widget _benefitTypeMultiSelect() {
+    final isOpen = _benefitOverlayEntry != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Benefit Type', style: AppTextStyles.fieldLabel),
+        const SizedBox(height: 4),
+        CompositedTransformTarget(
+          link: _benefitLayerLink,
+          child: InkWell(
+            key: _benefitTriggerKey,
+            onTap: () =>
+                isOpen ? _closeBenefitDropdown() : _openBenefitDropdown(),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isOpen ? const Color(0xFF004C8F) : AppColors.border,
+                  width: isOpen ? 1.5 : 1,
+                ),
+                color: AppColors.surface2,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _selectedBenefitTypes.isEmpty
+                        ? const Text(
+                            'Select',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: _selectedBenefitTypes.map((t) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  color: const Color(
+                                    0xFF004C8F,
+                                  ).withValues(alpha: 0.1),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF004C8F,
+                                    ).withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Text(
+                                  t,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF004C8F),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 18,
+                      color: AppColors.textDim,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _err(String msg) => TweenAnimationBuilder<double>(
     tween: Tween(begin: 0, end: 1),
     duration: const Duration(milliseconds: 300),
@@ -1961,6 +2145,182 @@ class _SourceMultiSelectOverlayState extends State<_SourceMultiSelectOverlay> {
                     ),
                     const Divider(height: 1, color: AppColors.border),
                     // Footer
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${_selected.length} selected',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textDim,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => widget.onDone(_selected),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF004C8F),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 7,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Done',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Benefit Type multi-select overlay (string-based) ─────────────────────────
+
+class _BenefitMultiSelectOverlay extends StatefulWidget {
+  final LayerLink layerLink;
+  final List<String> items;
+  final Set<String> initialSelected;
+  final double dropdownWidth;
+  final VoidCallback onDismiss;
+  final void Function(Set<String>) onDone;
+
+  const _BenefitMultiSelectOverlay({
+    required this.layerLink,
+    required this.items,
+    required this.initialSelected,
+    required this.dropdownWidth,
+    required this.onDismiss,
+    required this.onDone,
+  });
+
+  @override
+  State<_BenefitMultiSelectOverlay> createState() =>
+      _BenefitMultiSelectOverlayState();
+}
+
+class _BenefitMultiSelectOverlayState
+    extends State<_BenefitMultiSelectOverlay> {
+  late Set<String> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = Set.from(widget.initialSelected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: widget.onDismiss,
+            behavior: HitTestBehavior.translucent,
+            child: const SizedBox.expand(),
+          ),
+        ),
+        CompositedTransformFollower(
+          link: widget.layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 40),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface,
+              child: Container(
+                width: widget.dropdownWidth,
+                constraints: const BoxConstraints(maxHeight: 300),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Divider(height: 1, color: AppColors.border),
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: widget.items.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1, color: AppColors.border),
+                        itemBuilder: (_, i) {
+                          final item = widget.items[i];
+                          final sel = _selected.contains(item);
+                          return InkWell(
+                            onTap: () => setState(() {
+                              if (sel) {
+                                _selected.remove(item);
+                              } else {
+                                _selected.add(item);
+                              }
+                            }),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    sel
+                                        ? Icons.check_box_rounded
+                                        : Icons.check_box_outline_blank_rounded,
+                                    size: 18,
+                                    color: sel
+                                        ? const Color(0xFF004C8F)
+                                        : AppColors.textDim,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      item,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: sel
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color: sel
+                                            ? const Color(0xFF004C8F)
+                                            : AppColors.text,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

@@ -407,15 +407,23 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                         );
 
                                     if (isDynUni) {
-                                      // Clear any stale source types; user must pick an output key
-                                      setState(() {
-                                        _sourceCountError = false;
-                                        _filteredSourceTypes = [];
-                                      });
-                                      _sourceCountPulse.stop();
-                                      _sourceCountPulse.value = 0;
-                                      _sourceTypePulse.stop();
-                                      _sourceTypePulse.value = 0;
+                                      // Auto-select was set in setSidebarTemplate;
+                                      // populate sources for that key immediately.
+                                      if (ctrl.selectedOutputKey.isNotEmpty) {
+                                        _onOutputKeySelected(
+                                          ctrl.selectedOutputKey,
+                                          ctrl,
+                                        );
+                                      } else {
+                                        setState(() {
+                                          _sourceCountError = false;
+                                          _filteredSourceTypes = [];
+                                        });
+                                        _sourceCountPulse.stop();
+                                        _sourceCountPulse.value = 0;
+                                        _sourceTypePulse.stop();
+                                        _sourceTypePulse.value = 0;
+                                      }
                                     } else {
                                       // Static template (User Defined or UniMailing):
                                       // sourceMasterList and sourceCount come from

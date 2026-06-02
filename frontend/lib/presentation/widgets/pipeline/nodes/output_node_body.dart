@@ -7,7 +7,7 @@ import 'package:vizualizer/data/models/pipeline_models.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
 import 'package:vizualizer/presentation/providers/pipeline_master_provider.dart';
 import 'package:vizualizer/data/services/pipeline_service.dart';
-import 'package:vizualizer/presentation/widgets/common/searchable_dropdown.dart';
+
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/config_preview_sheet.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/dynamic_uni_mailing_output_section.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/uni_mapping_row.dart';
@@ -108,11 +108,11 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         sourcesWithCols.isNotEmpty &&
         sourcesWithCols.every((n) => n.selectedCols.isNotEmpty);
 
+    // UniMailing unimailing fields are optional; all added custom columns must be filled
+    final customCount = ctrl.uniMailingCustomCount;
+    final customFilled = ctrl.uniMailingCustom.length;
     final uniMailingComplete =
-        !isStaticUniMailing ||
-        kMandatoryFields.every(
-          (f) => (ctrl.uniMailingMandatory[f] ?? '').isNotEmpty,
-        );
+        !isStaticUniMailing || customCount == 0 || customFilled >= customCount;
 
     // 3rd case overrides canSubmit entirely
     final bool canSubmit;
@@ -133,7 +133,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
             'Select at least one output column for every source';
       } else if (!uniMailingComplete) {
         validationMessage =
-            'Map all 7 mandatory UniMailing fields before submitting';
+            'All added custom columns must be mapped ($customFilled / $customCount filled)';
       } else {
         validationMessage = '';
       }
@@ -344,7 +344,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                         'UNIMAILING FORMAT',
                         Icons.email_rounded,
                         uniMailingComplete ? AppColors.blue : AppColors.amber,
-                        '$mandatoryFilled / 7 required',
+                        '$mandatoryFilled / 7 mapped',
                       ),
                       const SizedBox(height: 8),
                       UniMailingSection(
@@ -776,10 +776,11 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         return sourceNodes.where((n) => n.id == nodeId).firstOrNull;
       }
 
-      for (final e in ctrl.uniMailingMandatory.entries) {
-        if (e.value.isEmpty) continue;
-        final node = resolveNode(e.value);
-        final srcCol = resolveCol(e.value);
+      // Always send all 7 UniMailing fields; use empty strings for unmapped ones
+      for (final field in kMandatoryFields) {
+        final val = ctrl.uniMailingMandatory[field] ?? '';
+        final node = val.isNotEmpty ? resolveNode(val) : null;
+        final srcCol = val.isNotEmpty ? resolveCol(val) : '';
         outputColumns.add({
           'template_id': templateId,
           'department': deptIdInt.toString(),
@@ -787,7 +788,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
               .toString(),
           'sourceName': node?.name ?? '',
           'SourceColName': srcCol,
-          'ColumnName': e.key,
+          'ColumnName': field,
           'Priority': 0,
         });
       }

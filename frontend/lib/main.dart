@@ -9,8 +9,7 @@ import 'package:vizualizer/data/services/pipeline_service.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
 import 'package:vizualizer/presentation/providers/template_provider.dart';
-import 'package:vizualizer/presentation/pages/auth/login_page.dart';
-import 'package:vizualizer/presentation/pages/dashboard/dashboard_page.dart';
+
 /// Global key used by ApiService to show snackbars without a BuildContext.
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 

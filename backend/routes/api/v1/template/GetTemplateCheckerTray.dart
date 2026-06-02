@@ -15,79 +15,54 @@ Future<Response> onRequest(RequestContext context) async {
 
   final params = context.request.uri.queryParameters;
   final deptId = params['DeptId'] ?? '';
-  final templateId = params['templateId'] ?? '';
   final flag = int.tryParse(params['flag'] ?? '') ?? 0;
 
-  if (deptId.isEmpty || templateId.isEmpty || (flag != 4 && flag != 5)) {
+  if (deptId.isEmpty || (flag != 4 && flag != 5)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
       body: ApiResponse.error(
-        message: 'DeptId, templateId and flag (4 or 5) are required',
+        message: 'DeptId and flag (4 or 5) are required',
       ).toJson(),
     );
   }
 
   if (kDevMode) {
-    // Fixed mock data — mirrors the real external API response format.
-    // jsonData arrives as a JSON-encoded string from the real API;
-    // items without data use an empty string.
-    final mockRows = [
+    // jsonData is sent as a JSON-encoded string, matching real API format.
+    // TemplateCheckerTrayItem.fromMap decodes it — same path as production.
+    final rawRows = [
       {
-        'templateId': '6',
+        'templateId': '108',
         'departmentId': '7',
-        'templateName': 'akj',
+        'templateName': 'test static',
         'departmentName': 'RETAIL ASSETS',
         'makerBy': 'J3216',
-        'makerDate': '02/05/2026 5:56:38 PM',
-        'jsonData': '',
-      },
-      {
-        'templateId': '7',
-        'departmentId': '7',
-        'templateName': 'akj',
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '02/05/2026 6:24:14 PM',
-        'jsonData': '',
-      },
-      {
-        'templateId': '11',
-        'departmentId': '7',
-        'templateName': 'test',
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '02/05/2026 6:34:07 PM',
-        'jsonData': '',
-      },
-      {
-        'templateId': '13',
-        'departmentId': '7',
-        'templateName': 'Test Manual',
-        'departmentName': 'RETAIL ASSETS',
-        'makerBy': 'J3216',
-        'makerDate': '04/05/2026 12:18:38 PM',
+        'makerDate': '27/05/2026 2:40:39 PM',
         'jsonData': jsonEncode({
-          'Template': {
-            'TemplateName': 'Test Manual',
-            'Department': '7',
-            'Frequency': 'Daily',
-            'NormalVolume': 1000,
-            'PeakVolume': 10000,
-            'SourceCount': 2,
-            'NumberOfOutput': 1,
-          },
-          'Benefit': {
-            'BenefitAmount': 10000,
-            'BenefitInTAT': '1%',
-          },
+          'TemplateType': '1',
+          'Template': [
+            {
+              'TemplateName': 'test static',
+              'Department': '7',
+              'Frequency': 'Daily',
+              'NormalVolume': 100000,
+              'PeakVolume': 100000000,
+              'SourceCount': 2,
+              'BenefitType': 'Cost Saving',
+              'BenefitAmount': 1000000,
+              'BenefitInTat': '1000000000',
+              'GoLiveDate': '2026-05-27',
+              'DeactivateDate': '2026-05-31',
+              'SpocPerson': 'test',
+              'SpocManager': 'test',
+              'UnitHead': 'test',
+              'Priority': 'Low',
+              'NumberOfOutputs': null,
+              'SourceList': '1',
+            },
+          ],
           'OutputFormats': [
             {'TemplateTempId': null, 'FormatName': 'User Defined'},
           ],
-          'AdditionalData': {'ActivatedDate': '2026-05-04'},
-          'SpocPerson': 'Abc',
-          'SpocManager': 'abd',
-          'UnitHead': 'doli',
-          'Priority': 'Medium',
           'Approvals': [
             {
               'TemplateTempId': null,
@@ -95,11 +70,206 @@ Future<Response> onRequest(RequestContext context) async {
               'ApprovalFile': 'uatApproval.pdf',
             },
           ],
-          'createdBy': 'J3216',
+          'CreatedBy': 'J3216',
+          'jsonData': '',
+          'DepartmentName': 'RETAIL ASSETS',
+          'SourceListNames': 'Manual',
+          'DynamicTemplate': [],
+        }),
+      },
+      {
+        'templateId': '21',
+        'departmentId': '1',
+        'templateName': 'asd',
+        'departmentName': 'Finance',
+        'makerBy': 'J3216',
+        'makerDate': '11/05/2026 3:21:50 PM',
+        'jsonData': jsonEncode({
+          'TemplateType': '1',
+          'Template': [
+            {
+              'TemplateName': 'asd',
+              'Department': '1',
+              'Frequency': 'Daily',
+              'NormalVolume': 5000,
+              'PeakVolume': 50000,
+              'SourceCount': 1,
+              'BenefitType': 'Cost Saving',
+              'BenefitAmount': 200000,
+              'BenefitInTat': '500000',
+              'GoLiveDate': '2026-05-11',
+              'DeactivateDate': '2026-12-31',
+              'SpocPerson': 'John',
+              'SpocManager': 'Jane',
+              'UnitHead': 'Jack',
+              'Priority': 'High',
+              'NumberOfOutputs': null,
+              'SourceList': '1',
+            },
+          ],
+          'OutputFormats': [
+            {'TemplateTempId': null, 'FormatName': 'User Defined'},
+          ],
+          'Approvals': [
+            {
+              'TemplateTempId': null,
+              'Approval_Type': 'UAT test',
+              'ApprovalFile': 'finance_approval.pdf',
+            },
+          ],
+          'CreatedBy': 'J3216',
+          'jsonData': '',
+          'DepartmentName': 'Finance',
+          'SourceListNames': 'Manual',
+          'DynamicTemplate': [],
+        }),
+      },
+      {
+        'templateId': '22',
+        'departmentId': '1',
+        'templateName': 'Finance Dynamic Report',
+        'departmentName': 'Finance',
+        'makerBy': 'J3216',
+        'makerDate': '12/05/2026 10:15:00 AM',
+        'jsonData': jsonEncode({
+          'TemplateType': '3',
+          'TemplateTypeName': '2-Dynamic',
+          'Template': [
+            {
+              'TemplateName': 'Finance Dynamic Report',
+              'Department': '1',
+              'Frequency': 'Monthly',
+              'NormalVolume': 10000,
+              'PeakVolume': 100000,
+              'SourceCount': 3,
+              'BenefitType': 'Revenue Generation',
+              'BenefitAmount': 500000,
+              'BenefitInTat': '750000',
+              'GoLiveDate': '2026-05-12',
+              'DeactivateDate': '2026-12-31',
+              'SpocPerson': 'Alice',
+              'SpocManager': 'Bob',
+              'UnitHead': 'Charlie',
+              'Priority': 'High',
+              'NumberOfOutputs': 3,
+              'SourceList': '1',
+            },
+          ],
+          'OutputFormats': [
+            {'TemplateTempId': null, 'FormatName': 'Unimailing'},
+          ],
+          'Approvals': [
+            {
+              'TemplateTempId': null,
+              'Approval_Type': 'UAT test',
+              'ApprovalFile': 'finance_dynamic_approval.pdf',
+            },
+          ],
+          'CreatedBy': 'J3216',
+          'jsonData': '',
+          'DepartmentName': 'Finance',
+          'SourceListNames': 'Manual',
+          'SourceCount': '3',
+          'SourceType': '1',
+          'DynamicTemplate': [
+            {
+              'SourceList': '1',
+              'SourceListNames': 'Manual',
+              'SourceCount': '2',
+              'SourceType': '3',
+            },
+            {
+              'SourceList': '1,2',
+              'SourceListNames': 'Manual,QDRS',
+              'SourceCount': '2',
+              'SourceType': '3',
+            },
+            {
+              'SourceList': '1,2,3',
+              'SourceListNames': 'Manual,QDRS,Core Banking',
+              'SourceCount': '3',
+              'SourceType': '3',
+            },
+          ],
+        }),
+      },
+      {
+        'templateId': '107',
+        'departmentId': '7',
+        'templateName': 'dynamci+uni',
+        'departmentName': 'RETAIL ASSETS',
+        'makerBy': 'J3216',
+        'makerDate': '25/05/2026 6:36:56 PM',
+        'jsonData': jsonEncode({
+          'TemplateType': '3',
+          'TemplateTypeName': '2-Dynamic',
+          'Template': [
+            {
+              'TemplateName': 'dynamci+uni',
+              'Department': '7',
+              'Frequency': 'Monthly',
+              'NormalVolume': 1,
+              'PeakVolume': 1,
+              'SourceCount': 3,
+              'BenefitType': 'Revenue Generation',
+              'BenefitAmount': 2,
+              'BenefitInTat': '2',
+              'GoLiveDate': '2026-05-25',
+              'DeactivateDate': '2026-05-27',
+              'SpocPerson': 'sdds',
+              'SpocManager': 's',
+              'UnitHead': 's',
+              'Priority': 'Medium',
+              'NumberOfOutputs': 2,
+              'SourceList': '1',
+            },
+          ],
+          'OutputFormats': [
+            {'TemplateTempId': null, 'FormatName': 'Unimailing'},
+          ],
+          'Approvals': [
+            {
+              'TemplateTempId': null,
+              'Approval_Type': 'UAT test',
+              'ApprovalFile': 'image (4).png',
+            },
+          ],
+          'CreatedBy': 'J3216',
+          'jsonData': '',
+          'DepartmentName': 'RETAIL ASSETS',
+          'SourceListNames': 'Manual',
+          'SourceCount': '3',
+          'SourceType': '1',
+          'DynamicTemplate': [
+            {
+              'SourceList': '1',
+              'SourceListNames': 'Manual',
+              'SourceCount': '2',
+              'SourceType': '3',
+            },
+            {
+              'SourceList': '1,2',
+              'SourceListNames': 'Manual,QDRS',
+              'SourceCount': '2',
+              'SourceType': '3',
+            },
+            {
+              'SourceList': '1,2',
+              'SourceListNames': 'Manual,QDRS',
+              'SourceCount': '2',
+              'SourceType': '3',
+            },
+          ],
         }),
       },
     ];
-    return Response.json(body: mockRows);
+    final mockItems = rawRows
+        .where((r) => r['departmentId'].toString() == deptId)
+        .map((r) => TemplateCheckerTrayItem.fromMap(
+              r.map((k, v) => MapEntry(k.toString(), v)),
+            ))
+        .toList();
+    return Response.json(body: mockItems.map((e) => e.toJson()).toList());
   }
 
   // Production: forward to external API
@@ -115,7 +285,7 @@ Future<Response> onRequest(RequestContext context) async {
     final externalResponse = await client
         .get(
           Uri.parse(
-            '$kBaseUrl${ExternalApi.getTemplateCheckerTray}?DeptId=$deptId&templateId=$templateId&flag=$flag',
+            '$kBaseUrl${ExternalApi.getTemplateCheckerTray}?DeptId=$deptId&flag=$flag',
           ),
           headers: {
             'Content-Type': 'application/json',
@@ -137,28 +307,13 @@ Future<Response> onRequest(RequestContext context) async {
               : decoded;
 
       if (data is List) {
-        final normalized = data.whereType<Map>().map((item) {
-          final map = item.map((k, v) => MapEntry(k.toString(), v));
-          final rawJsonData = map['jsonData'];
-          dynamic jsonData;
-
-          if (rawJsonData is Map<String, dynamic>) {
-            jsonData = rawJsonData;
-          } else if (rawJsonData is Map) {
-            jsonData = rawJsonData.map((k, v) => MapEntry(k.toString(), v));
-          } else if (rawJsonData is String && rawJsonData.trim().isNotEmpty) {
-            try {
-              jsonData = jsonDecode(rawJsonData);
-            } catch (_) {
-              jsonData = rawJsonData;
-            }
-          } else {
-            jsonData = rawJsonData ?? '';
-          }
-
-          return {...map, 'jsonData': jsonData};
-        }).toList(growable: false);
-        return Response.json(body: normalized);
+        final items = data
+            .whereType<Map>()
+            .map((item) => TemplateCheckerTrayItem.fromMap(
+                  item.map((k, v) => MapEntry(k.toString(), v)),
+                ).toJson())
+            .toList(growable: false);
+        return Response.json(body: items);
       }
       return Response.json(body: data);
     }

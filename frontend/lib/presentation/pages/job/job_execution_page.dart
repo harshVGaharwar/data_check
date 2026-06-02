@@ -44,7 +44,6 @@ class _JobExecutionPageState extends State<JobExecutionPage> {
     'Job Name',
     'Run ID',
     'Template ID',
-    'Department',
     'Start Time',
     'Last Updated',
     'Status',
@@ -56,11 +55,10 @@ class _JobExecutionPageState extends State<JobExecutionPage> {
     1: FlexColumnWidth(1.8),
     2: FlexColumnWidth(1.6),
     3: FlexColumnWidth(1.2),
-    4: FlexColumnWidth(1.4),
+    4: FlexColumnWidth(1.6),
     5: FlexColumnWidth(1.6),
-    6: FlexColumnWidth(1.6),
-    7: FixedColumnWidth(110),
-    8: FlexColumnWidth(2.2),
+    6: FixedColumnWidth(110),
+    7: FlexColumnWidth(2.2),
   };
 
   @override
@@ -456,7 +454,6 @@ class _JobExecutionPageState extends State<JobExecutionPage> {
       if (item.jobName.toLowerCase().contains(q)) matched.add('Job Name');
       if (item.runId.toLowerCase().contains(q)) matched.add('Run ID');
       if ('${item.templateId}'.contains(q)) matched.add('Template ID');
-      if (item.deptName.toLowerCase().contains(q)) matched.add('Department');
       if (formatTableDate(item.startTime).toLowerCase().contains(q)) {
         matched.add('Start Time');
       }
@@ -533,19 +530,6 @@ class _JobExecutionPageState extends State<JobExecutionPage> {
               color: AppColors.textDim,
               fontWeight: FontWeight.w500,
             ),
-          ),
-        ),
-
-        // Department
-        DataResultTable.tdCell(
-          child: Text(
-            item.deptName.isEmpty ? '—' : item.deptName,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.text,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
 

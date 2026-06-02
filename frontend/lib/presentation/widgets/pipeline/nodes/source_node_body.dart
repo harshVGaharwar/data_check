@@ -4,6 +4,7 @@ import 'package:vizualizer/core/theme/app_theme.dart';
 import 'package:vizualizer/data/models/pipeline_models.dart';
 import 'package:vizualizer/presentation/controllers/pipeline_controller.dart';
 import 'package:vizualizer/presentation/widgets/common/shimmer_button.dart';
+import 'package:vizualizer/presentation/widgets/pipeline/config_panel.dart';
 class SourceNodeBody extends StatelessWidget {
   final PipelineNode node;
   const SourceNodeBody({super.key, required this.node});
@@ -48,8 +49,12 @@ class SourceNodeBody extends StatelessWidget {
                 ),
               ),
               InkWell(
-                onTap: () =>
-                    context.read<PipelineController>().deleteNode(node.id),
+                onTap: () => confirmDeleteNode(
+                  context,
+                  context.read<PipelineController>(),
+                  node.id,
+                  node.name,
+                ),
                 child: const Icon(
                   Icons.delete_outline,
                   color: AppColors.red,

@@ -65,7 +65,7 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     _pages = [
       WelcomePage(onNavigate: (i) => _navigate(i)),
-      const TemplateCreationPage(),
+      TemplateCreationPage(onClose: () => _navigate(0)),
       // const TemplateCreationListPage(),
       const TemplateConfigurationPage(),
       // const TemplateConfigurationListPage(),

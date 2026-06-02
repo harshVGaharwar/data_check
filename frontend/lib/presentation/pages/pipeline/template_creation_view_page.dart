@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
+
 class TemplateCreationViewPage extends StatelessWidget {
   final Map<String, dynamic> data;
 
@@ -40,27 +41,32 @@ class TemplateCreationViewPage extends StatelessWidget {
         .toList();
   }
 
-  String _v(String key, {
-String fallback = '—'}) {
+  String _v(String key, {String fallback = '—'}) {
     final value = _template[key];
     if (value == null || value.toString().trim().isEmpty) return fallback;
     return value.toString();
   }
 
-  // API codes: "1" = Static+UserDefined, "2" = Static+Unimailing, "3" = Dynamic
-  bool get _isDynamic => _v('TemplateType') == '3';
-
-  String get _templateTypeLabel {
-    switch (_v('TemplateType')) {
-      case '1':
-      case '2':
-        return '1 - Static';
-      case '3':
-        return '2 - Dynamic';
-      default:
-        return _v('TemplateType');
+  String get _departmentDisplay {
+    final v = _v('Department');
+    // If it's a numeric ID or missing, resolve from root DepartmentName
+    if (v == '—' || int.tryParse(v) != null) {
+      final name = data['DepartmentName']?.toString().trim() ?? '';
+      if (name.isNotEmpty) return name;
     }
+    return v;
   }
+
+  // TemplateType lives at root of jsonData; _normalizeTemplatePayload copies it
+  // into Template[0], but we also fall back to root for safety.
+  String get _templateType {
+    final v = _template['TemplateType']?.toString().trim() ?? '';
+    if (v.isNotEmpty) return v;
+    return data['TemplateType']?.toString().trim() ?? '';
+  }
+
+  // "1" = Static+UserDefined, "2" = Static+Unimailing, "3" = Dynamic+Unimailing
+  bool get _isDynamic => _templateType == '3';
 
   String get _staticSourceNames {
     final fromRoot = data['SourceListNames']?.toString() ?? '';
@@ -68,22 +74,31 @@ String fallback = '—'}) {
     return _v('SourceList');
   }
 
+  // Handles both PascalCase keys (real API) and camelCase (old format).
   String _sourceNamesFromEntry(Map<String, dynamic> entry) {
+    final names =
+        (entry['SourceListNames'] ?? entry['sourceListNames'])?.toString() ??
+        '';
+    if (names.isNotEmpty) return names;
     final sml = entry['sourceMasterList'];
     if (sml is List && sml.isNotEmpty) {
-      final names = sml
+      final n = sml
           .whereType<Map>()
           .map(
-            (m) =>
-                (m['name'] ?? m['sourceName'] ?? m['SourceName'] ?? '')
-                    .toString(),
+            (m) => (m['name'] ?? m['sourceName'] ?? m['SourceName'] ?? '')
+                .toString(),
           )
           .where((s) => s.isNotEmpty)
           .join(', ');
-      if (names.isNotEmpty) return names;
+      if (n.isNotEmpty) return n;
     }
-    final sl = entry['sourceList']?.toString() ?? '';
+    final sl = (entry['SourceList'] ?? entry['sourceList'])?.toString() ?? '';
     return sl.isNotEmpty ? sl : '—';
+  }
+
+  String _sourceCountFromEntry(Map<String, dynamic> entry) {
+    final v = (entry['SourceCount'] ?? entry['sourceCount'])?.toString() ?? '';
+    return v.isEmpty ? '—' : v;
   }
 
   @override
@@ -101,15 +116,17 @@ String fallback = '—'}) {
         ? ''
         : outputFormatNames.first.toLowerCase();
 
-    // Dynamic template: first entry (sourceType=1) is Static 1, rest are Dynamic 1..N
-    final staticEntry =
-        _dynamicTemplates.isNotEmpty ? _dynamicTemplates.first : null;
-    final dynamicEntries = _dynamicTemplates.length > 1
-        ? _dynamicTemplates.sublist(1)
-        : <Map<String, dynamic>>[];
-
     return Scaffold(
       backgroundColor: AppColors.bg,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.of(context).pop(),
+        backgroundColor: AppColors.blue,
+        icon: const Icon(Icons.fact_check_rounded, color: Colors.white),
+        label: const Text(
+          'Back to Checker',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ),
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -241,7 +258,7 @@ String fallback = '—'}) {
                   children: [
                     _three(
                       _field('Template Name', _v('TemplateName')),
-                      _field('Department', _v('Department')),
+                      _field('Department', _departmentDisplay),
                       _field('Frequency', _v('Frequency')),
                     ),
                     _three(
@@ -276,98 +293,119 @@ String fallback = '—'}) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Template Type + Dynamic Count
-                    _three(
-                      _field('Template Type', _templateTypeLabel),
-                      _isDynamic
-                          ? _field('Dynamic Count', _v('NumberOfOutputs'))
-                          : const SizedBox.shrink(),
-                      const SizedBox.shrink(),
+                    // ── Template Type + Dynamic Count row ─────────────────
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _readonlyDropdown(
+                            'Template Type',
+                            _isDynamic ? '2 - Dynamic' : '1 - Static',
+                          ),
+                        ),
+                        if (_isDynamic) ...[
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _readonlyDropdown(
+                              'Dynamic Count',
+                              _v('NumberOfOutputs'),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 16),
+                        const Expanded(child: SizedBox.shrink()),
+                      ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     const Divider(height: 1, color: AppColors.border),
                     const SizedBox(height: 16),
 
-                    // Static: Source Count + Source Type inline
+                    // ── Static: Source Count + Source Type ────────────────
                     if (!_isDynamic) ...[
-                      _three(
-                        _field('Source Count', _v('SourceCount')),
-                        _field('Source Type', _staticSourceNames),
-                        const SizedBox.shrink(),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _readonlyDropdown(
+                              'Source Count',
+                              _v('SourceCount'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _readonlyDropdown(
+                              'Source Type',
+                              _staticSourceNames,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          const Expanded(child: SizedBox.shrink()),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       const Divider(height: 1, color: AppColors.border),
                       const SizedBox(height: 16),
                     ],
 
-                    // Dynamic: Static 1 + Dynamic 1..N
+                    // ── Dynamic: Static 1 + Dynamic 1..N ─────────────────
+                    // DynamicTemplate[0] = Static 1
+                    // DynamicTemplate[1..] = Dynamic 1, Dynamic 2, ...
                     if (_isDynamic && _dynamicTemplates.isNotEmpty) ...[
-                      if (staticEntry != null) ...[
-                        const Text(
-                          'Static 1',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.text,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _three(
-                          _field(
-                            'Source Count',
-                            staticEntry['sourceCount']?.toString() ?? '—',
-                          ),
-                          _field('Source Type', _sourceNamesFromEntry(staticEntry)),
-                          const SizedBox.shrink(),
-                        ),
-                      ],
-                      ...dynamicEntries.asMap().entries.map((e) {
-                        final idx = e.key + 1;
+                      ..._dynamicTemplates.asMap().entries.map((e) {
                         final entry = e.value;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 12),
-                            Text(
-                              'Dynamic $idx',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.text,
+                        final label = e.key == 0
+                            ? 'Static 1'
+                            : 'Dynamic ${e.key}';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                label,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.text,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            _three(
-                              _field(
-                                'Source Count',
-                                entry['sourceCount']?.toString() ?? '—',
+                              const SizedBox(height: 10),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _readonlyDropdown(
+                                      'Source Count',
+                                      _sourceCountFromEntry(entry),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _readonlyDropdown(
+                                      'Source Type',
+                                      _sourceNamesFromEntry(entry),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  const Expanded(child: SizedBox.shrink()),
+                                ],
                               ),
-                              _field(
-                                'Source Type',
-                                _sourceNamesFromEntry(entry),
-                              ),
-                              const SizedBox.shrink(),
-                            ),
-                          ],
+                            ],
+                          ),
                         );
                       }),
-                      const SizedBox(height: 16),
                       const Divider(height: 1, color: AppColors.border),
                       const SizedBox(height: 16),
                     ],
 
-                    // Output format pills
+                    // ── Output Format ─────────────────────────────────────
                     const Text(
-                      'Output Format',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textDim,
-                      ),
+                      'Select at least one output format',
+                      style: TextStyle(fontSize: 12, color: AppColors.textDim),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     if (_isDynamic)
-                      _togglePill(label: 'Unimailing', selected: true)
+                      _lockedUnimailingChip()
                     else
                       Wrap(
                         spacing: 10,
@@ -413,7 +451,10 @@ String fallback = '—'}) {
                       ? [_fileRow('—', 'No file')]
                       : _approvals.map((a) {
                           final name =
-                              a['Approval_Type']?.toString().trim().isNotEmpty ==
+                              a['Approval_Type']
+                                      ?.toString()
+                                      .trim()
+                                      .isNotEmpty ==
                                   true
                               ? a['Approval_Type'].toString()
                               : 'Approval';
@@ -575,34 +616,116 @@ String fallback = '—'}) {
     );
   }
 
+  // Read-only dropdown — matches SearchableStringDropdown look from creation page.
+  Widget _readonlyDropdown(String label, String value) {
+    final empty = value == '—' || value.trim().isEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textDim,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface2,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  empty ? '—' : value,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: empty ? AppColors.textMuted : AppColors.text,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 20,
+                color: AppColors.textDim,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Matches the exact chip style from the template creation form.
+  static const _kNavy = Color(0xFF004C8F);
+
   Widget _togglePill({required String label, required bool selected}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: selected
-            ? AppColors.blue.withValues(alpha: 0.12)
-            : AppColors.surface2,
-        border: Border.all(color: selected ? AppColors.blue : AppColors.border),
+        color: selected ? _kNavy.withValues(alpha: 0.08) : AppColors.surface2,
+        border: Border.all(
+          color: selected ? _kNavy : AppColors.border,
+          width: selected ? 1.5 : 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            selected
-                ? Icons.radio_button_checked_rounded
-                : Icons.radio_button_unchecked_rounded,
-            size: 16,
-            color: selected ? AppColors.blue : AppColors.textDim,
+            selected ? Icons.radio_button_checked : Icons.radio_button_off,
+            size: 18,
+            color: selected ? _kNavy : AppColors.textDim,
           ),
           const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: selected ? AppColors.blue : AppColors.textDim,
+              fontWeight: FontWeight.w700,
+              color: selected ? _kNavy : AppColors.textDim,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Locked Unimailing chip — shown for Dynamic (matches creation page).
+  Widget _lockedUnimailingChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: _kNavy.withValues(alpha: 0.08),
+        border: Border.all(color: _kNavy, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.radio_button_checked, size: 18, color: _kNavy),
+          const SizedBox(width: 8),
+          const Text(
+            'Unimailing',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _kNavy,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.lock_outline_rounded,
+            size: 13,
+            color: _kNavy.withValues(alpha: 0.6),
           ),
         ],
       ),

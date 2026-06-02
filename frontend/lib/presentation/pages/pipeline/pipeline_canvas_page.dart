@@ -10,6 +10,7 @@ import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node_body.
 import 'package:vizualizer/presentation/widgets/layout/sidebar.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/config_panel.dart';
 import 'package:vizualizer/presentation/widgets/common/status_bar.dart';
+
 class PipelineCanvasPage extends StatefulWidget {
   const PipelineCanvasPage({super.key});
 
@@ -174,26 +175,26 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                       boundaryMargin: const EdgeInsets.all(2000),
                       panEnabled: !isConnecting,
                       scaleEnabled: !isConnecting,
-                      child: Container(
+                      child: SizedBox(
                         width: 3000,
                         height: 2000,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(
-                              0xFF3B82F6,
-                            ).withValues(alpha: 0.4),
-                            width: 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF3B82F6,
-                              ).withValues(alpha: 0.08),
-                              blurRadius: 24,
-                              spreadRadius: 8,
-                            ),
-                          ],
-                        ),
+                        // decoration: BoxDecoration(
+                        //   border: Border.all(
+                        //     color: const Color(
+                        //       0xFF3B82F6,
+                        //     ).withValues(alpha: 0.4),
+                        //     width: 2,
+                        //   ),
+                        //   boxShadow: [
+                        //     BoxShadow(
+                        //       color: const Color(
+                        //         0xFF3B82F6,
+                        //       ).withValues(alpha: 0.08),
+                        //       blurRadius: 24,
+                        //       spreadRadius: 8,
+                        //     ),
+                        //   ],
+                        // ),
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -216,7 +217,6 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                 );
               },
             ),
-
 
             // ── 3. SCREEN-SPACE PORT OVERLAY ──
             // Rebuilt only when _transformCtrl changes, NOT the InteractiveViewer

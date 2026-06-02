@@ -6,6 +6,8 @@ import 'package:vizualizer/data/models/pipeline_config.dart';
 import 'package:vizualizer/presentation/controllers/pipeline_controller.dart';
 import 'package:vizualizer/presentation/providers/pipeline_master_provider.dart';
 import 'package:vizualizer/presentation/widgets/common/searchable_dropdown.dart';
+import 'package:vizualizer/presentation/widgets/pipeline/config_panel.dart';
+
 class JoinNodeBody extends StatefulWidget {
   final PipelineNode node;
   const JoinNodeBody({super.key, required this.node});
@@ -26,9 +28,10 @@ class _JoinNodeBodyState extends State<JoinNodeBody>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
-    _shimmerAnim = Tween<double>(begin: -2.0, end: 2.0).animate(
-      CurvedAnimation(parent: _shimmerCtrl, curve: Curves.easeInOut),
-    );
+    _shimmerAnim = Tween<double>(
+      begin: -2.0,
+      end: 2.0,
+    ).animate(CurvedAnimation(parent: _shimmerCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -62,7 +65,9 @@ class _JoinNodeBodyState extends State<JoinNodeBody>
     final master = context.watch<PipelineMasterProvider>();
 
     // All source nodes connected to this JOIN
-    final inEdges = ctrl.edges.where((e) => e.toNodeId == widget.node.id).toList();
+    final inEdges = ctrl.edges
+        .where((e) => e.toNodeId == widget.node.id)
+        .toList();
     final connectedSources = inEdges
         .map((e) => ctrl.findNode(e.fromNodeId))
         .where((n) => n != null)
@@ -75,7 +80,8 @@ class _JoinNodeBodyState extends State<JoinNodeBody>
         connectedSources.length == 1 &&
         connectedSources[0].selectedCols.isNotEmpty;
 
-    final allSourcesPresent = connectedSources.isEmpty &&
+    final allSourcesPresent =
+        connectedSources.isEmpty &&
         ctrl.requiredSourceCount > 0 &&
         ctrl.sourceNodesOnCanvas >= ctrl.requiredSourceCount;
     _syncAnimation(allSourcesPresent);
@@ -140,7 +146,12 @@ class _JoinNodeBodyState extends State<JoinNodeBody>
               ),
               const SizedBox(width: 6),
               InkWell(
-                onTap: () => ctrl.deleteNode(widget.node.id),
+                onTap: () => confirmDeleteNode(
+                  context,
+                  ctrl,
+                  widget.node.id,
+                  widget.node.name,
+                ),
                 child: Icon(
                   Icons.delete_outline,
                   color: AppColors.red.withValues(alpha: 0.6),
@@ -371,7 +382,8 @@ class _JoinNodeBodyState extends State<JoinNodeBody>
                         ),
                         const SizedBox(width: 6),
                         InkWell(
-                          onTap: () => ctrl.removeMappingFromJoin(widget.node.id, idx),
+                          onTap: () =>
+                              ctrl.removeMappingFromJoin(widget.node.id, idx),
                           borderRadius: BorderRadius.circular(4),
                           child: Container(
                             padding: const EdgeInsets.all(2),
@@ -845,7 +857,7 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'LEFT TABLE',
+                          'LEFT SOURCE',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
@@ -878,7 +890,7 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
                           },
                         ),
                         const SizedBox(height: 6),
-                        const Text('JOIN KEY', style: labelStyle),
+                        const Text('LEFT KEY', style: labelStyle),
                         const SizedBox(height: 3),
                         SearchableDropdownField(
                           items: leftCols,
@@ -953,7 +965,7 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'RIGHT TABLE',
+                          'RIGHT SOURCE',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
@@ -986,7 +998,7 @@ class _JoinMappingInputRowState extends State<_JoinMappingInputRow> {
                           },
                         ),
                         const SizedBox(height: 6),
-                        const Text('MATCH KEY', style: labelStyle),
+                        const Text('RIGHT KEY', style: labelStyle),
                         const SizedBox(height: 3),
                         SearchableDropdownField(
                           items: rightCols,

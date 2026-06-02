@@ -20,6 +20,7 @@ class ConfigPreviewSheet extends StatelessWidget {
   final bool isDynamicUniMailing;
   final String caseTitle;
   final VoidCallback onConfirm;
+  final bool readOnly;
 
   const ConfigPreviewSheet({
     super.key,
@@ -31,6 +32,7 @@ class ConfigPreviewSheet extends StatelessWidget {
     this.isUniMailing = false,
     this.isDynamicUniMailing = false,
     this.caseTitle = '',
+    this.readOnly = false,
   });
 
   static const _cellStyle = TextStyle(fontSize: 10.5, color: AppColors.text);
@@ -41,7 +43,7 @@ class ConfigPreviewSheet extends StatelessWidget {
     letterSpacing: 0.4,
   );
 
-  Widget _tableHeader(List<String> cols, List<int> flex) => Container(
+  static Widget _tableHeader(List<String> cols, List<int> flex) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
     decoration: const BoxDecoration(
       color: AppColors.bg,
@@ -61,7 +63,7 @@ class ConfigPreviewSheet extends StatelessWidget {
     ),
   );
 
-  Widget _tableRow(
+  static Widget _tableRow(
     List<String> cells,
     List<int> flex, {
     bool isLast = false,
@@ -86,8 +88,10 @@ class ConfigPreviewSheet extends StatelessWidget {
             (e) => Expanded(
               flex: flex[e.key],
               child: Text(
-                e.value,
-                style: _cellStyle,
+                e.value.trim().isEmpty ? '—' : e.value,
+                style: e.value.trim().isEmpty
+                    ? _cellStyle.copyWith(color: AppColors.textMuted)
+                    : _cellStyle,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -96,7 +100,7 @@ class ConfigPreviewSheet extends StatelessWidget {
     ),
   );
 
-  Widget _tile({
+  static Widget _tile({
     required IconData icon,
     required Color color,
     required String title,
@@ -199,12 +203,7 @@ class ConfigPreviewSheet extends StatelessWidget {
         final rSrc = sourceNodes
             .where((n) => n.id == m.rightSourceId)
             .firstOrNull;
-        final resolvedJoin =
-            master.operations
-                .where((o) => o.operationName == m.joinType)
-                .map((o) => o.operationValue)
-                .firstOrNull ??
-            m.joinType;
+        final resolvedJoin = _fmtJoinType(m.joinType);
         mappings.add((
           leftSrc: lSrc?.name ?? m.leftSourceId,
           leftCol: m.leftCol,
@@ -256,24 +255,25 @@ class ConfigPreviewSheet extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, Color color, {bool bold = false}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(5),
-      color: color.withValues(alpha: 0.09),
-      border: Border.all(color: color.withValues(alpha: 0.22)),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(
-        fontSize: 10,
-        fontFamily: bold ? null : 'monospace',
-        color: color,
-        fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
-        letterSpacing: bold ? 0.3 : 0,
-      ),
-    ),
-  );
+  static Widget _chip(String label, Color color, {bool bold = false}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(5),
+          color: color.withValues(alpha: 0.09),
+          border: Border.all(color: color.withValues(alpha: 0.22)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontFamily: bold ? null : 'monospace',
+            color: color,
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+            letterSpacing: bold ? 0.3 : 0,
+          ),
+        ),
+      );
 
   Widget _outputSection() {
     int autoRank = 1;
@@ -371,7 +371,7 @@ class ConfigPreviewSheet extends StatelessWidget {
             return ai.compareTo(bi);
           });
 
-    const headers = ['Field', 'Source', 'Column', 'Status'];
+    const headers = ['Source Name', 'Column Name', 'Output Name', 'Status'];
     const flex = [3, 3, 3, 2];
 
     final allRows = [
@@ -380,7 +380,7 @@ class ConfigPreviewSheet extends StatelessWidget {
         final r = e.value;
         final isLast = i == mandatoryRows.length - 1 && sortedCustom.isEmpty;
         return _tableRow(
-          [r.field, r.source, r.column, r.mapped ? '✓ mapped' : '✗ empty'],
+          [r.source, r.column, r.field, r.mapped ? '✓ mapped' : '✗ empty'],
           flex,
           isLast: isLast,
           isEven: i.isEven,
@@ -395,7 +395,12 @@ class ConfigPreviewSheet extends StatelessWidget {
           final entry = e.value;
           final val = entry.value;
           return _tableRow(
-            [_slotLabel(entry.key), resolveSourceName(val), resolveCol(val), '✓ mapped'],
+            [
+              resolveSourceName(val),
+              resolveCol(val),
+              _slotLabel(entry.key),
+              '✓ mapped',
+            ],
             flex,
             isLast: i == sortedCustom.length - 1,
             isEven: (mandatoryRows.length + i).isEven,
@@ -466,13 +471,7 @@ class ConfigPreviewSheet extends StatelessWidget {
             m['leftSourceId']?.toString() ??
             '';
         final leftCol = m['leftCol']?.toString() ?? '';
-        final joinType =
-            master.operations
-                .where((o) => o.operationName == m['joinType']?.toString())
-                .map((o) => o.operationValue)
-                .firstOrNull ??
-            m['joinType']?.toString() ??
-            '';
+        final joinType = _fmtJoinType(m['joinType']?.toString() ?? '');
         final rightSrc =
             m['rightSourceName']?.toString() ??
             m['rightSourceId']?.toString() ??
@@ -584,7 +583,7 @@ class ConfigPreviewSheet extends StatelessWidget {
         ),
       );
     }
-    const headers = ['Field', 'Source', 'Column'];
+    const headers = ['Source Name', 'Column Name', 'Output Name'];
     const flex = [3, 3, 3];
     return Column(
       children: [
@@ -599,6 +598,16 @@ class ConfigPreviewSheet extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// Formats a raw join-type operationName for display.
+  /// e.g. "1 - All from First" → "All from First", "left_join" → "Left Join"
+  static String _fmtJoinType(String raw) {
+    final cleaned = raw.replaceFirst(RegExp(r'^\d+\s*-\s*'), '');
+    return cleaned
+        .split('_')
+        .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
   }
 
   static String _slotLabel(String slot) {
@@ -668,13 +677,13 @@ class ConfigPreviewSheet extends StatelessWidget {
           final src = f['SourceName'] as String? ?? '—';
           final col = f['ColumnName'] as String? ?? '—';
           addCol(src, col);
-          outRows.add([f['Field'] as String? ?? '—', src, col]);
+          outRows.add([src, col, f['Field'] as String? ?? '—']);
         }
         for (final c in (cfg['CustomColumns'] as List? ?? [])) {
           final src = c['SourceName'] as String? ?? '—';
           final col = c['ColumnName'] as String? ?? '—';
           addCol(src, col);
-          outRows.add([_slotLabel(c['Slot'] as String? ?? '—'), src, col]);
+          outRows.add([src, col, _slotLabel(c['Slot'] as String? ?? '—')]);
         }
       } else {
         final c1 = cfg['C1'] as Map? ?? {};
@@ -682,13 +691,13 @@ class ConfigPreviewSheet extends StatelessWidget {
         final col = c1['ColumnName'] as String? ?? '—';
         addCol(src, col);
         if (src.isNotEmpty && src != '—') {
-          outRows.add([_slotLabel('C1'), src, col]);
+          outRows.add([src, col, _slotLabel('C1')]);
         }
         for (final c in (cfg['CustomColumns'] as List? ?? [])) {
           final cs = c['SourceName'] as String? ?? '—';
           final cc = c['ColumnName'] as String? ?? '—';
           addCol(cs, cc);
-          outRows.add([_slotLabel(c['Slot'] as String? ?? '—'), cs, cc]);
+          outRows.add([cs, cc, _slotLabel(c['Slot'] as String? ?? '—')]);
         }
       }
     }
@@ -701,7 +710,7 @@ class ConfigPreviewSheet extends StatelessWidget {
       child: Theme(
         data: ThemeData(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          initiallyExpanded: false,
+          initiallyExpanded: true,
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
           childrenPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
@@ -765,7 +774,7 @@ class ConfigPreviewSheet extends StatelessWidget {
                     title: 'Sources',
                     subtitle:
                         '$perKeySrcCount source${perKeySrcCount == 1 ? '' : 's'} configured',
-                    initiallyExpanded: false,
+                    initiallyExpanded: true,
                     child: snapSrcs.isNotEmpty
                         ? _perKeySnapshotSourcesSection(snapSrcs)
                         : _perKeySourcesSection(savedSelCols),
@@ -778,7 +787,7 @@ class ConfigPreviewSheet extends StatelessWidget {
                     subtitle: perKeyHasJoins
                         ? '$perKeyJoinCount join condition${perKeyJoinCount == 1 ? '' : 's'}'
                         : 'No join operations',
-                    initiallyExpanded: false,
+                    initiallyExpanded: true,
                     child: _perKeySnapshotOperationsSection(snapJoinMappings),
                   ),
                   const SizedBox(height: 8),
@@ -800,7 +809,7 @@ class ConfigPreviewSheet extends StatelessWidget {
                     title: 'Output Configuration',
                     subtitle:
                         '${outRows.length} field${outRows.length == 1 ? '' : 's'} mapped',
-                    initiallyExpanded: false,
+                    initiallyExpanded: true,
                     child: _dynKeyOutputConfig(outRows),
                   ),
                 ],
@@ -910,6 +919,7 @@ class ConfigPreviewSheet extends StatelessWidget {
         sourceNodes: sourceNodes,
         joinNodes: joinNodes,
         caseTitle: templateName,
+        readOnly: true,
         onConfirm: () => Navigator.of(context, rootNavigator: true).pop(),
       ),
     );
@@ -1013,17 +1023,18 @@ class ConfigPreviewSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () =>
-                        Navigator.of(context, rootNavigator: true).pop(),
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: AppColors.textDim,
+                  if (!readOnly)
+                    IconButton(
+                      onPressed: () =>
+                          Navigator.of(context, rootNavigator: true).pop(),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.textDim,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
                 ],
               ),
             ),
@@ -1053,7 +1064,7 @@ class ConfigPreviewSheet extends StatelessWidget {
                           title: 'Sources',
                           subtitle:
                               '${sourceNodes.length} source${sourceNodes.length == 1 ? '' : 's'} configured',
-                          initiallyExpanded: false,
+                          initiallyExpanded: true,
                           child: _sourcesSection(),
                         ),
                         const SizedBox(height: 10),
@@ -1064,7 +1075,7 @@ class ConfigPreviewSheet extends StatelessWidget {
                           subtitle: hasJoins
                               ? '$joinCount join condition${joinCount == 1 ? '' : 's'}'
                               : 'No join operations',
-                          initiallyExpanded: false,
+                          initiallyExpanded: true,
                           child: _operationSection(),
                         ),
                         const SizedBox(height: 10),
@@ -1075,9 +1086,9 @@ class ConfigPreviewSheet extends StatelessWidget {
                           color: AppColors.green,
                           title: 'Output Configuration',
                           subtitle: isUniMailing
-                              ? '${ctrl.uniMailingMandatory.values.where((v) => v.isNotEmpty).length} / ${kMandatoryFields.length} mandatory fields mapped'
+                              ? '${ctrl.uniMailingMandatory.values.where((v) => v.isNotEmpty).length} / ${kMandatoryFields.length} UniMailing fields mapped'
                               : '$totalSelected column${totalSelected == 1 ? '' : 's'} selected',
-                          initiallyExpanded: false,
+                          initiallyExpanded: true,
                           child: isUniMailing
                               ? _uniMailingOutputSection()
                               : _outputSection(),
@@ -1087,52 +1098,504 @@ class ConfigPreviewSheet extends StatelessWidget {
               ),
             ),
 
-            // Confirm button
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border: Border(top: BorderSide(color: AppColors.border)),
-              ),
-              child: InkWell(
-                onTap: onConfirm,
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    gradient: const LinearGradient(
-                      colors: [AppColors.green, Color(0xFF059669)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.green.withValues(alpha: 0.30),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Submit',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+            // Action buttons — Close + Submit (hidden in read-only/checker mode)
+            if (!readOnly)
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(top: BorderSide(color: AppColors.border)),
+                ),
+                child: Row(
+                  children: [
+                    // Close button
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border2),
+                            color: AppColors.surface,
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.close_rounded,
+                                size: 16,
+                                color: AppColors.textDim,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Close',
+                                style: TextStyle(
+                                  color: AppColors.textDim,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 10),
+                    // Submit button
+                    Expanded(
+                      flex: 2,
+                      child: InkWell(
+                        onTap: onConfirm,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            gradient: const LinearGradient(
+                              colors: [AppColors.green, Color(0xFF059669)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.green.withValues(alpha: 0.30),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.check_circle_rounded,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Submit',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Read-only per-key view for Dynamic+Unimailing from checker tray ─────────
+
+  static void showFromRawDynamic(
+    BuildContext context,
+    List<Map<String, dynamic>> keyConfigs, {
+    String templateName = '',
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.72,
+      ),
+      builder: (_) => _RawDynamicPreviewSheet(
+        keyConfigs: keyConfigs,
+        templateName: templateName,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Read-only bottom sheet: Dynamic+Unimailing per-key preview (checker tray)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RawDynamicPreviewSheet extends StatelessWidget {
+  final List<Map<String, dynamic>> keyConfigs;
+  final String templateName;
+
+  const _RawDynamicPreviewSheet({
+    required this.keyConfigs,
+    required this.templateName,
+  });
+
+  // ── per-key sections ──────────────────────────────────────────────────────
+
+  Widget _sourcesSection(List<Map<String, dynamic>> sources) {
+    if (sources.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(14),
+        child: Text(
+          'No sources configured.',
+          style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+        ),
+      );
+    }
+    const headers = [
+      'Source',
+      'Type',
+      'Col File',
+      'Query File',
+      'Separator',
+      'Cols',
+    ];
+    const flex = [3, 2, 3, 3, 2, 2];
+    return Column(
+      children: [
+        ConfigPreviewSheet._tableHeader(headers, flex),
+        ...sources.asMap().entries.map((e) {
+          final i = e.key;
+          final s = e.value;
+          final colsStr = s['Columns']?.toString() ?? '';
+          final colCount = colsStr.isEmpty
+              ? 0
+              : colsStr.split(',').where((c) => c.trim().isNotEmpty).length;
+          return ConfigPreviewSheet._tableRow(
+            [
+              s['SourceName']?.toString() ?? '—',
+              s['SourceType']?.toString() ?? '—',
+              s['ColumnFile']?.toString().isNotEmpty == true
+                  ? s['ColumnFile'].toString()
+                  : '—',
+              s['QueryFile']?.toString().isNotEmpty == true
+                  ? s['QueryFile'].toString()
+                  : '—',
+              s['Separator']?.toString().isNotEmpty == true
+                  ? s['Separator'].toString()
+                  : '—',
+              '$colCount',
+            ],
+            flex,
+            isLast: i == sources.length - 1,
+            isEven: i.isEven,
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _operationsSection(List<Map<String, dynamic>> joins) {
+    if (joins.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'No join operations configured.',
+          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+        ),
+      );
+    }
+    return Column(
+      children: joins.asMap().entries.map((e) {
+        final i = e.key;
+        final jm = e.value;
+        final leftSrc = jm['LeftSourceName']?.toString() ?? '';
+        final leftCol = jm['LeftColumn']?.toString() ?? '';
+        final joinType = ConfigPreviewSheet._fmtJoinType(
+          jm['JoinType']?.toString() ?? '',
+        );
+        final rightSrc = jm['RightSourceName']?.toString() ?? '';
+        final rightCol = jm['RightColumn']?.toString() ?? '';
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: i.isEven
+                ? AppColors.surface
+                : AppColors.surface2.withValues(alpha: 0.4),
+            border: i == joins.length - 1
+                ? null
+                : const Border(
+                    bottom: BorderSide(color: AppColors.border, width: 0.6),
+                  ),
+          ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ConfigPreviewSheet._chip('$leftSrc.$leftCol', AppColors.blue),
+              ConfigPreviewSheet._chip(joinType, AppColors.violet, bold: true),
+              ConfigPreviewSheet._chip('$rightSrc.$rightCol', AppColors.green),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _outputConfigSection(List<Map<String, dynamic>> outputCols) {
+    if (outputCols.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(14),
+        child: Text(
+          'No fields configured.',
+          style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+        ),
+      );
+    }
+    const headers = ['Source Name', 'Column Name', 'Output Name'];
+    const flex = [3, 3, 3];
+    return Column(
+      children: [
+        ConfigPreviewSheet._tableHeader(headers, flex),
+        ...outputCols.asMap().entries.map((e) {
+          final i = e.key;
+          final oc = e.value;
+          return ConfigPreviewSheet._tableRow(
+            [
+              oc['sourceName']?.toString() ?? '—',
+              oc['SourceColName']?.toString() ?? '—',
+              oc['ColumnName']?.toString() ?? '—',
+            ],
+            flex,
+            isLast: i == outputCols.length - 1,
+            isEven: i.isEven,
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _keySection(
+    BuildContext context,
+    int index,
+    Map<String, dynamic> cfg,
+  ) {
+    final dynamicId = cfg['DymanicId'];
+    final dynamicIdInt = dynamicId is int
+        ? dynamicId
+        : int.tryParse(dynamicId?.toString() ?? '') ?? 0;
+    final isStatic = dynamicIdInt == 0;
+    final keyType = isStatic ? 'Static' : 'Dynamic';
+    final typeColor = isStatic ? AppColors.blue : AppColors.green;
+
+    final sources = (cfg['Sources'] as List? ?? [])
+        .whereType<Map>()
+        .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+    final joins = (cfg['JoinMappings'] as List? ?? [])
+        .whereType<Map>()
+        .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+    final outputCols = (cfg['outputColumns'] as List? ?? [])
+        .whereType<Map>()
+        .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Theme(
+        data: ThemeData(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          childrenPadding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          backgroundColor: typeColor.withValues(alpha: 0.04),
+          collapsedBackgroundColor: typeColor.withValues(alpha: 0.04),
+          leading: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: typeColor.withValues(alpha: 0.12),
+            ),
+            child: Icon(Icons.vpn_key_rounded, size: 13, color: typeColor),
+          ),
+          title: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  'Key ${index + 1}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: typeColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(5),
+                  color: typeColor.withValues(alpha: 0.10),
+                  border: Border.all(color: typeColor.withValues(alpha: 0.22)),
+                ),
+                child: Text(
+                  keyType,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: typeColor,
                   ),
                 ),
+              ),
+            ],
+          ),
+          children: [
+            const Divider(height: 1, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                children: [
+                  ConfigPreviewSheet._tile(
+                    icon: Icons.storage_rounded,
+                    color: AppColors.blue,
+                    title: 'Sources',
+                    subtitle:
+                        '${sources.length} source${sources.length == 1 ? '' : 's'} configured',
+                    initiallyExpanded: true,
+                    child: _sourcesSection(sources),
+                  ),
+                  const SizedBox(height: 8),
+                  ConfigPreviewSheet._tile(
+                    icon: Icons.merge_type_rounded,
+                    color: AppColors.violet,
+                    title: 'Operation Details',
+                    subtitle: joins.isEmpty
+                        ? 'No join operations'
+                        : '${joins.length} join condition${joins.length == 1 ? '' : 's'}',
+                    initiallyExpanded: true,
+                    child: _operationsSection(joins),
+                  ),
+                  const SizedBox(height: 8),
+                  ConfigPreviewSheet._tile(
+                    icon: Icons.email_rounded,
+                    color: AppColors.green,
+                    title: 'Output Configuration',
+                    subtitle:
+                        '${outputCols.length} field${outputCols.length == 1 ? '' : 's'} mapped',
+                    initiallyExpanded: true,
+                    child: _outputConfigSection(outputCols),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.98,
+      builder: (_, scrollCtrl) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  color: AppColors.border2,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.blue.withValues(alpha: 0.12),
+                    ),
+                    child: const Icon(
+                      Icons.preview_rounded,
+                      size: 17,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Review Configuration',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.text,
+                          ),
+                        ),
+                        if (templateName.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.violet.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              templateName,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.violet,
+                              ),
+                            ),
+                          ),
+                        ] else
+                          const Text(
+                            'Verify your setup before submitting',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            Expanded(
+              child: ListView(
+                controller: scrollCtrl,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                children: [
+                  for (var i = 0; i < keyConfigs.length; i++) ...[
+                    _keySection(context, i, keyConfigs[i]),
+                    if (i < keyConfigs.length - 1) const SizedBox(height: 16),
+                  ],
+                ],
               ),
             ),
           ],

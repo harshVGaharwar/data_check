@@ -43,21 +43,25 @@ class _ReportPageState extends State<ReportPage> {
   static const _columns = [
     '#',
     'Request ID',
-    'Department',
-    'Template',
-    'Uploaded By',
-    'Upload Date',
+    'Template ID',
+    'Template Name',
+    'Checker By',
+    'Checker Date',
+    'Maker By',
+    'Maker Date',
     'Download',
   ];
 
   static const _columnWidths = {
     0: FixedColumnWidth(44),
-    1: FlexColumnWidth(1.6),
-    2: FlexColumnWidth(2.0),
+    1: FlexColumnWidth(1.4),
+    2: FlexColumnWidth(1.2),
     3: FlexColumnWidth(2.0),
     4: FlexColumnWidth(1.3),
-    5: FlexColumnWidth(1.7),
-    6: FixedColumnWidth(90),
+    5: FlexColumnWidth(1.5),
+    6: FlexColumnWidth(1.3),
+    7: FlexColumnWidth(1.5),
+    8: FixedColumnWidth(90),
   };
 
   @override
@@ -259,8 +263,10 @@ class _ReportPageState extends State<ReportPage> {
               emptyMessage: 'No records found for the selected template.',
               searchFilter: (item, q) =>
                   item.requestId.toLowerCase().contains(q) ||
-                  item.departmentName.toLowerCase().contains(q) ||
+                  item.templateId.toLowerCase().contains(q) ||
                   item.templateName.toLowerCase().contains(q) ||
+                  item.checkerBy.toLowerCase().contains(q) ||
+                  formatTableDate(item.checkerDate).toLowerCase().contains(q) ||
                   item.makerBy.toLowerCase().contains(q) ||
                   item.filename.toLowerCase().contains(q) ||
                   formatTableDate(item.makerDate).toLowerCase().contains(q),
@@ -450,13 +456,15 @@ class _ReportPageState extends State<ReportPage> {
     final matched = <String>{};
     for (final item in items) {
       if (item.requestId.toLowerCase().contains(q)) matched.add('Request ID');
-      if (item.departmentName.toLowerCase().contains(q)) {
-        matched.add('Department');
+      if (item.templateId.toLowerCase().contains(q)) matched.add('Template ID');
+      if (item.templateName.toLowerCase().contains(q)) matched.add('Template Name');
+      if (item.checkerBy.toLowerCase().contains(q)) matched.add('Checker By');
+      if (formatTableDate(item.checkerDate).toLowerCase().contains(q)) {
+        matched.add('Checker Date');
       }
-      if (item.templateName.toLowerCase().contains(q)) matched.add('Template');
-      if (item.makerBy.toLowerCase().contains(q)) matched.add('Uploaded By');
+      if (item.makerBy.toLowerCase().contains(q)) matched.add('Maker By');
       if (formatTableDate(item.makerDate).toLowerCase().contains(q)) {
-        matched.add('Upload Date');
+        matched.add('Maker Date');
       }
       if (item.filename.toLowerCase().contains(q)) matched.add('Download');
     }
@@ -470,6 +478,7 @@ class _ReportPageState extends State<ReportPage> {
         : '';
     final extColor = _extColor(ext);
     final makerBy = item.makerBy.isEmpty ? '—' : item.makerBy;
+    final checkerBy = item.checkerBy.isEmpty ? '—' : item.checkerBy;
     final bg = index.isEven ? Colors.white : const Color(0xFFF9FAFC);
 
     return TableRow(
@@ -508,29 +517,74 @@ class _ReportPageState extends State<ReportPage> {
           ),
         ),
 
-        // Department
+        // Template ID
         DataResultTable.tdCell(
           child: Text(
-            item.departmentName.isEmpty ? '—' : item.departmentName,
+            item.templateId.isEmpty ? '—' : item.templateId,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 12,
-              color: AppColors.text,
+              color: AppColors.textDim,
               fontWeight: FontWeight.w500,
             ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
 
-        // Template
+        // Template Name
         DataResultTable.tdCell(
           child: Text(
             item.templateName.isEmpty ? '—' : item.templateName,
-            style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+            style: const TextStyle(fontSize: 12, color: AppColors.text, fontWeight: FontWeight.w500),
             overflow: TextOverflow.ellipsis,
           ),
         ),
 
-        // Uploaded By
+        // Checker By
+        DataResultTable.tdCell(
+          child: Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.green.withValues(alpha: 0.1),
+                ),
+                child: Center(
+                  child: Text(
+                    checkerBy.isNotEmpty && checkerBy != '—'
+                        ? checkerBy[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.green,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  checkerBy,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Checker Date
+        DataResultTable.tdCell(
+          child: Text(
+            item.checkerDate.isEmpty ? '—' : formatTableDate(item.checkerDate),
+            style: const TextStyle(fontSize: 11, color: AppColors.textDim),
+          ),
+        ),
+
+        // Maker By
         DataResultTable.tdCell(
           child: Row(
             children: [
@@ -543,7 +597,9 @@ class _ReportPageState extends State<ReportPage> {
                 ),
                 child: Center(
                   child: Text(
-                    makerBy.isNotEmpty ? makerBy[0].toUpperCase() : '?',
+                    makerBy.isNotEmpty && makerBy != '—'
+                        ? makerBy[0].toUpperCase()
+                        : '?',
                     style: const TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
@@ -556,10 +612,7 @@ class _ReportPageState extends State<ReportPage> {
               Expanded(
                 child: Text(
                   makerBy,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textDim,
-                  ),
+                  style: const TextStyle(fontSize: 12, color: AppColors.textDim),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -567,7 +620,7 @@ class _ReportPageState extends State<ReportPage> {
           ),
         ),
 
-        // Upload Date
+        // Maker Date
         DataResultTable.tdCell(
           child: Text(
             formatTableDate(item.makerDate),

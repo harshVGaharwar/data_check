@@ -385,44 +385,6 @@ class MasterDataService {
     );
   }
 
-  /// Submit checker approval / rejection
-  Future<({bool success, String message, int reqId})> submitCheckerApproval({
-    required String templateId,
-    required String departmentId,
-    required String requestId,
-    required String checkerBy,
-    required String remark,
-    required bool isApproved,
-  }) async {
-    try {
-      final body = {
-        'Template_id': templateId,
-        'department_id': departmentId,
-        'Request_id': requestId,
-        'AuthorizedBy': checkerBy,
-        'Remark': remark,
-        'isApproved': isApproved ? 'Y' : 'N',
-      };
-      final data = await _api.postRawData(
-        ApiConfig.checkerApprovalEndpoint,
-        body,
-      );
-      if (data is Map<String, dynamic>) {
-        final status = data['status']?.toString() ?? '';
-        final reqId = data['reqID'];
-        final id = reqId is int ? reqId : int.tryParse('$reqId') ?? 0;
-        return (success: status == 'Success', message: status, reqId: id);
-      }
-    } catch (e) {
-      debugPrint('[MasterData] submitCheckerApproval error: $e');
-    }
-    return (
-      success: false,
-      message: 'Network error. Please try again.',
-      reqId: 0,
-    );
-  }
-
   /// Submit checker approval / rejection with module id
   Future<({bool success, String message, int reqId})>
   submitCheckerApprovalWithModule({
@@ -439,8 +401,8 @@ class MasterDataService {
         'Template_id': templateId,
         'department_id': departmentId,
         'Request_id': requestId,
-        'CheckerBy': checkerBy,
-        'Remart': remark,
+        'AuthorizedBy': checkerBy,
+        'Remark': remark,
         'isApproved': isApproved ? 'Y' : 'N',
         'ModuleId': moduleId,
       };

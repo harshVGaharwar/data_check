@@ -1,6 +1,7 @@
 import 'dart:convert';
 class CheckerTrayItem {
   final String departmentName;
+  final String? departmentId;
   final String makerBy;
   final String makerDate;
 
@@ -15,7 +16,9 @@ class CheckerTrayItem {
   // Template Creation / Template Configuration / Manual Upload
   final int? templateId;
   final String? templateName;
-  final Map<String, dynamic>? jsonData;
+  // dynamic: Map<String,dynamic> for Template Creation/Source Config;
+  // List<dynamic> for Template Configuration (one entry per DymanicId pipeline).
+  final dynamic jsonData;
 
   // Manual Upload
   final String? filename;
@@ -26,6 +29,7 @@ class CheckerTrayItem {
 
   const CheckerTrayItem({
     required this.departmentName,
+    this.departmentId,
     required this.makerBy,
     required this.makerDate,
     this.sourceId,
@@ -45,6 +49,7 @@ class CheckerTrayItem {
   factory CheckerTrayItem.fromJson(Map<String, dynamic> json) {
     return CheckerTrayItem(
       departmentName: json['departmentName']?.toString() ?? '',
+      departmentId: json['departmentId']?.toString(),
       makerBy: json['makerBy']?.toString() ?? '',
       makerDate: json['makerDate']?.toString() ?? '',
       sourceId: _parseInt(json['sourceID']),
@@ -55,7 +60,7 @@ class CheckerTrayItem {
       dbVault: json['dbVault']?.toString(),
       templateId: _parseInt(json['templateId'] ?? json['template_id']),
       templateName: json['templateName']?.toString(),
-      jsonData: _parseJsonData(json['jsonData']),
+      jsonData: _parseJsonData(json['jsonData']),// tc , tconfig
       filename: json['filename']?.toString(),
       requestId: json['requestId']?.toString(),
       module: json['module']?.toString(),
@@ -68,14 +73,16 @@ class CheckerTrayItem {
     return int.tryParse(v.toString());
   }
 
-  static Map<String, dynamic>? _parseJsonData(dynamic v) {
+  static dynamic _parseJsonData(dynamic v) {
     if (v is Map<String, dynamic> && v.isNotEmpty) return v;
     if (v is Map && v.isNotEmpty) return v.map((k, e) => MapEntry(k.toString(), e));
+    if (v is List && v.isNotEmpty) return v;
     if (v is String && v.trim().isNotEmpty) {
       try {
         final decoded = jsonDecode(v);
         if (decoded is Map<String, dynamic>) return decoded;
         if (decoded is Map) return decoded.map((k, e) => MapEntry(k.toString(), e));
+        if (decoded is List) return decoded;
       } catch (_) {}
     }
     return null;
@@ -84,6 +91,7 @@ class CheckerTrayItem {
   /// Converts back to a Map for pages that still accept Map<String, dynamic>.
   Map<String, dynamic> toMap() => {
     'departmentName': departmentName,
+    if (departmentId != null) 'departmentId': departmentId,
     'makerBy': makerBy,
     'makerDate': makerDate,
     if (sourceId != null) 'sourceID': sourceId,
