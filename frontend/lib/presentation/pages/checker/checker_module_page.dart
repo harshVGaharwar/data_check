@@ -229,6 +229,7 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
   }
 
   void _snack(String msg, {bool isError = false}) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),

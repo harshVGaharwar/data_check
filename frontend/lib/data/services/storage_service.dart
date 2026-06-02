@@ -31,6 +31,14 @@ class StorageService {
           'ipAddress': session.user.ipAddress,
           'profileDescription': session.user.profileDescription,
           'profileId': session.user.profileId,
+          'menuList': session.user.menuList
+              .map((m) => {
+                    'id': m.id,
+                    'menuName': m.menuName,
+                    'profileId': m.profileId,
+                    'isActive': m.isActive,
+                  })
+              .toList(),
         }),
       ),
     ]);

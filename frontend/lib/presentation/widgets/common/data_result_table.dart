@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
+
 /// Formats an ISO date string to dd/mm/yyyy hh:mm. Returns '—' for null/empty.
 String formatTableDate(String? raw) {
   if (raw == null || raw.isEmpty) return '—';
@@ -153,7 +154,7 @@ class _DataResultTableState<T> extends State<DataResultTable<T>> {
               controller: _searchCtrl,
               style: const TextStyle(fontSize: 13, color: AppColors.text),
               onChanged: (v) => setState(() {
-                _searchQuery = v.trim();
+                _searchQuery = v.trim().toLowerCase();
                 _currentPage = 0;
               }),
               decoration: _inputDecoration(
