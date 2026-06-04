@@ -47,6 +47,16 @@ class PipelineController extends ChangeNotifier {
   // value: complete config map ready for payload
   final Map<String, Map<String, dynamic>> savedOutputKeyConfigs = {};
 
+  // Keys whose Output Selection form was manually cleared by the user.
+  // The canvas snapshot is kept in savedOutputKeyConfigs so the canvas can be
+  // restored, but the form is NOT repopulated when the user switches back.
+  final Set<String> _clearedOutputKeyForms = {};
+
+  /// True while the user is reviewing a previously saved key (canvas was
+  /// restored from snapshot). Resets to false when a fresh output node is
+  /// created via addOutputNode or the canvas is cleared normally.
+  bool isViewingConfiguredKey = false;
+
   // ── Output column order set by user in Step 2 of preview dialog ──
   // Each entry: {'nodeId': String, 'col': String, 'priority': int}
   List<Map<String, dynamic>> outputColumnOrder = [];
@@ -75,6 +85,21 @@ class PipelineController extends ChangeNotifier {
   }
 
   // ── Dynamic UniMailing (3rd case) getters & methods ──
+
+  /// True when: templateType = Static (code "2") AND outputFormats contains UniMailing.
+  bool get isStaticUniMailing {
+    final isStatic =
+        templateType == '2' ||
+        (templateType.toLowerCase().contains('static') &&
+            outputFormats.any(
+              (f) => f.toLowerCase().contains('unimailing'),
+            ));
+    return isStatic &&
+        outputFormats.any((f) => f.toLowerCase().contains('unimailing'));
+  }
+
+  /// True for any UniMailing pipeline — either static or dynamic.
+  bool get isAnyUniMailing => isStaticUniMailing || isDynamicUniMailing;
 
   /// True when: templateType = Dynamic (code "3" or label contains "dynamic")
   /// AND outputFormats contains UniMailing.
@@ -139,32 +164,56 @@ class PipelineController extends ChangeNotifier {
   /// Keys containing 'Static' are the static output key.
   bool isOutputKeyStatic(String keyName) => keyName.contains('Static');
 
-  /// True once every output key has been saved.
+  /// True once every output key has been saved AND none have been cleared.
   bool get allDynamicUniMailingKeysConfigured =>
       isDynamicUniMailing &&
       dynamicUniMailingOutputKeys.every(
-        (k) => savedOutputKeyConfigs.containsKey(k),
+        (k) =>
+            savedOutputKeyConfigs.containsKey(k) &&
+            !_clearedOutputKeyForms.contains(k),
       );
 
-  /// For sequential configuration: all keys except the next unconfigured one
-  /// are disabled. Saved keys cannot be re-edited; future keys cannot be
-  /// jumped to until prior ones are complete.
+  /// For sequential configuration: only future **unconfigured** keys (those
+  /// that come after the next unconfigured key AND are not yet saved) are
+  /// disabled. Already-configured keys are always selectable for review,
+  /// regardless of their position relative to the active key.
   Set<String> get sequentiallyDisabledOutputKeys {
     final keys = dynamicUniMailingOutputKeys;
-    final activeKey = keys.firstWhere(
+    final activeIdx = keys.indexWhere(
       (k) => !savedOutputKeyConfigs.containsKey(k),
-      orElse: () => '',
     );
-    return keys.where((k) => k != activeKey).toSet();
+    if (activeIdx < 0) return {}; // all configured — nothing disabled
+    // Disable keys that are both after the active key AND not yet configured.
+    return keys
+        .skip(activeIdx + 1)
+        .where((k) => !savedOutputKeyConfigs.containsKey(k))
+        .toSet();
   }
 
   void saveOutputKeyConfig(String keyName, Map<String, dynamic> config) {
     savedOutputKeyConfigs[keyName] = config;
+    _clearedOutputKeyForms.remove(keyName);
     notifyListeners();
   }
 
   void removeOutputKeyConfig(String keyName) {
     savedOutputKeyConfigs.remove(keyName);
+    _clearedOutputKeyForms.remove(keyName);
+    notifyListeners();
+  }
+
+  bool isOutputKeyFormCleared(String keyName) =>
+      _clearedOutputKeyForms.contains(keyName);
+
+  void markOutputKeyFormCleared(String keyName) {
+    _clearedOutputKeyForms.add(keyName);
+    notifyListeners();
+  }
+
+  /// Deselects the current output key so the summary view is shown and the
+  /// Confirm button becomes visible. Called after the last key is saved.
+  void clearSelectedOutputKey() {
+    selectedOutputKey = '';
     notifyListeners();
   }
 
@@ -245,6 +294,7 @@ String deptId = ''}) {
     uniMailingCustom.clear();
     uniMailingCustomCount = 0;
     savedOutputKeyConfigs.clear();
+    _clearedOutputKeyForms.clear();
     notifyListeners();
   }
 
@@ -293,8 +343,15 @@ String deptId = ''}) {
 
   void setSelectedOutputKey(String key) {
     if (key == selectedOutputKey) return;
-    // Clear canvas when switching output keys in Dynamic UniMailing so each key
-    // gets a fresh canvas instead of retaining the previous key's source nodes.
+    selectedOutputKey = key;
+
+    // If this key was already saved, restore its canvas snapshot for review.
+    if (savedOutputKeyConfigs.containsKey(key)) {
+      _restoreOutputKeySnapshot(key); // calls notifyListeners internally
+      return;
+    }
+
+    // New (unconfigured) key: clear canvas so the user starts fresh.
     if (isDynamicUniMailing && nodes.isNotEmpty) {
       nodes.clear();
       edges.clear();
@@ -309,7 +366,234 @@ String deptId = ''}) {
       uniMailingCustom.clear();
       canvasVersion++;
     }
-    selectedOutputKey = key;
+    notifyListeners();
+  }
+
+  /// Rebuilds the canvas from the snapshot stored inside [savedOutputKeyConfigs]
+  /// for [key]. Called when the user re-selects a previously configured key.
+  void _restoreOutputKeySnapshot(String key) {
+    final config = savedOutputKeyConfigs[key];
+    if (config == null) return;
+
+    isViewingConfiguredKey = true;
+    nodes.clear();
+    edges.clear();
+    selectedNodeId = null;
+    selectedEdgeId = null;
+    _nodeIdSeq = 0;
+    portDragFromNodeId = null;
+    portDragCurrentPos = null;
+    pendingFocusNodeId = null;
+    outputColumnOrder = [];
+    uniMailingMandatory.clear();
+    uniMailingCustom.clear();
+
+    final snapshotSrcs =
+        (config['_snapshotSources'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ??
+        [];
+    final snapshotJoinMappings =
+        (config['_snapshotJoinMappings'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ??
+        [];
+    final snapshotEdges =
+        (config['_snapshotEdges'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ??
+        [];
+
+    // ── 1. Source nodes (remap old snapshot IDs → fresh IDs) ──
+    const double srcX = 150;
+    const double srcGap = 280;
+    double srcY = 80;
+    final oldIdToNewId = <String, String>{};
+
+    for (final src in snapshotSrcs) {
+      final oldId = src['id']?.toString() ?? '';
+      final srcTypeId = (src['sourceTypeId'] as num?)?.toInt() ?? 0;
+      final nodeType = _nodeTypeFromSourceTypeId(srcTypeId);
+      final newId = _nextId();
+      if (oldId.isNotEmpty) oldIdToNewId[oldId] = newId;
+
+      final node = PipelineNode(
+        id: newId,
+        type: nodeType,
+        name: src['name']?.toString() ?? '',
+        position: Offset(srcX, srcY),
+        department: sidebarDept,
+        template: sidebarTemplate,
+        cols: List<String>.from(src['cols'] as List? ?? []),
+        selectedCols: List<String>.from(src['selectedCols'] as List? ?? []),
+        separator: src['separator']?.toString() ?? ',',
+        fileName: src['fileName'] as String?,
+        queryFileName:
+            (src['queryFileName']?.toString() ?? '').isEmpty
+                ? null
+                : src['queryFileName']?.toString(),
+        sourceTypeValue: src['sourceTypeValue']?.toString() ?? '',
+        sourceTypeId: srcTypeId,
+        sourceTypeName: src['sourceTypeValue']?.toString() ?? '',
+        confirmState: NodeConfirmState.confirmed,
+        columnFileBytes: (src['columnFileBytes'] as List?)?.cast<int>(),
+        queryFileBytes: (src['queryFileBytes'] as List?)?.cast<int>(),
+      );
+
+      final colUniqueRaw = src['columnUniqueFields'];
+      if (colUniqueRaw is Map) {
+        for (final e in colUniqueRaw.entries) {
+          node.columnUniqueFields[e.key.toString()] = e.value == true;
+        }
+      }
+      final colAliasRaw = src['columnAliases'];
+      if (colAliasRaw is Map) {
+        for (final e in colAliasRaw.entries) {
+          node.columnAliases[e.key.toString()] = e.value.toString();
+        }
+      }
+      final colPriorityRaw = src['columnPriorities'];
+      if (colPriorityRaw is Map) {
+        for (final e in colPriorityRaw.entries) {
+          final v = e.value;
+          node.columnPriorities[e.key.toString()] =
+              v is num ? v.toInt() : (int.tryParse('$v') ?? 0);
+        }
+      }
+
+      nodes.add(node);
+      srcY += srcGap;
+    }
+
+    // ── 2. Join nodes (one per unique joinNodeId in snapshot) ──
+    // Collect IDs from both join-mappings AND from _snapshotConnected so that
+    // join nodes with no valid column mappings are still restored.
+    final snapshotConnected =
+        (config['_snapshotConnected'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ??
+        [];
+    final joinNodeOldIds = <String>[];
+    for (final jm in snapshotJoinMappings) {
+      final jnid = jm['joinNodeId']?.toString() ?? '';
+      if (jnid.isNotEmpty && !joinNodeOldIds.contains(jnid)) {
+        joinNodeOldIds.add(jnid);
+      }
+    }
+    for (final conn in snapshotConnected) {
+      final jnid = conn['joinNodeId']?.toString() ?? '';
+      if (jnid.isNotEmpty && !joinNodeOldIds.contains(jnid)) {
+        joinNodeOldIds.add(jnid);
+      }
+    }
+
+    final joinCenterY =
+        snapshotSrcs.isNotEmpty ? (srcY - srcGap) / 2 + 80 : 80.0;
+    final oldJoinIdToNewId = <String, String>{};
+
+    for (final oldJoinId in joinNodeOldIds) {
+      final newJoinId = _nextId();
+      oldJoinIdToNewId[oldJoinId] = newJoinId;
+
+      final mappings =
+          snapshotJoinMappings
+              .where((jm) => jm['joinNodeId']?.toString() == oldJoinId)
+              .map((jm) {
+                final leftOld = jm['leftSourceId']?.toString() ?? '';
+                final rightOld = jm['rightSourceId']?.toString() ?? '';
+                return ColumnMapping(
+                  leftSourceId: oldIdToNewId[leftOld] ?? leftOld,
+                  leftCol: jm['leftCol']?.toString() ?? '',
+                  joinType: _normaliseJoinType(
+                    jm['joinType']?.toString() ?? '',
+                  ),
+                  operationValue: '=',
+                  rightSourceId: oldIdToNewId[rightOld] ?? rightOld,
+                  rightCol: jm['rightCol']?.toString() ?? '',
+                );
+              })
+              .toList();
+
+      nodes.add(
+        PipelineNode(
+          id: newJoinId,
+          type: NodeType.join,
+          name: 'Join Operation',
+          position: Offset(440, joinCenterY - 70),
+          department: sidebarDept,
+          template: sidebarTemplate,
+          mappings: mappings,
+          confirmState:
+              mappings.any((m) => m.isValid)
+                  ? NodeConfirmState.confirmed
+                  : NodeConfirmState.notConfigured,
+        ),
+      );
+    }
+
+    // ── 3. Edges (source/join only — output edge is recreated below) ──
+    for (final e in snapshotEdges) {
+      final oldFrom = e['fromNodeId']?.toString() ?? '';
+      final oldTo = e['toNodeId']?.toString() ?? '';
+      final newFrom =
+          oldIdToNewId[oldFrom] ?? oldJoinIdToNewId[oldFrom] ?? '';
+      final newTo = oldIdToNewId[oldTo] ?? oldJoinIdToNewId[oldTo] ?? '';
+      if (newFrom.isNotEmpty && newTo.isNotEmpty) {
+        edges.add(
+          PipelineEdge(
+            id: _nextEdgeId(),
+            fromNodeId: newFrom,
+            toNodeId: newTo,
+          ),
+        );
+      }
+    }
+
+    // ── 4. Output node ──
+    // The saved snapshot edges include a join→output edge whose toNodeId
+    // belongs to the output node (not in either ID map). Find that join,
+    // recreate the output node, and wire the edge.
+    String? outputJoinNewId;
+    for (final e in snapshotEdges) {
+      final oldFrom = e['fromNodeId']?.toString() ?? '';
+      final oldTo = e['toNodeId']?.toString() ?? '';
+      final newFrom =
+          oldJoinIdToNewId[oldFrom] ?? ''; // must come from a join node
+      final toMapped =
+          oldIdToNewId[oldTo] ?? oldJoinIdToNewId[oldTo] ?? '';
+      if (newFrom.isNotEmpty && toMapped.isEmpty) {
+        // This edge went join → output; record which join.
+        outputJoinNewId = newFrom;
+        break;
+      }
+    }
+    // Fall back to first join if snapshot didn't capture the output edge.
+    outputJoinNewId ??= oldJoinIdToNewId.values.firstOrNull;
+
+    if (outputJoinNewId != null) {
+      final joinNode = nodes.where((n) => n.id == outputJoinNewId).firstOrNull;
+      final outputPos = joinNode != null
+          ? Offset(joinNode.position.dx + 360, joinNode.position.dy)
+          : const Offset(600, 300);
+      final outputId = _nextId();
+      nodes.add(
+        PipelineNode(
+          id: outputId,
+          type: NodeType.output,
+          name: 'Output Preview',
+          position: outputPos,
+        ),
+      );
+      edges.add(
+        PipelineEdge(
+          id: _nextEdgeId(),
+          fromNodeId: outputJoinNewId,
+          toNodeId: outputId,
+        ),
+      );
+    }
+
+    canvasVersion++;
     notifyListeners();
   }
 
@@ -318,6 +602,7 @@ String deptId = ''}) {
   /// Adds an output-preview node to the right of the join node.
   /// Removes any existing output node first (only one allowed).
   PipelineNode addOutputNode(String joinNodeId) {
+    isViewingConfiguredKey = false;
     nodes.removeWhere((n) => n.type == NodeType.output);
     edges.removeWhere((e) => e.toNodeId == 'output' || e.fromNodeId == 'output');
     final joinNode = findNode(joinNodeId);
@@ -402,6 +687,7 @@ String deptId = ''}) {
 
   /// Same as HTML clearCanvas()
   void clearCanvas() {
+    isViewingConfiguredKey = false;
     nodes.clear();
     edges.clear();
     selectedNodeId = null;
@@ -425,6 +711,7 @@ String deptId = ''}) {
     uniMailingCustom.clear();
     uniMailingCustomCount = 0;
     savedOutputKeyConfigs.clear();
+    _clearedOutputKeyForms.clear();
     canvasVersion++;
     clearVersion++;
     notifyListeners();
@@ -434,6 +721,7 @@ String deptId = ''}) {
   /// output key config. Preserves template metadata and savedOutputKeyConfigs
   /// so the user can rebuild the canvas for the next output key.
   void clearCanvasForNextOutputKey() {
+    isViewingConfiguredKey = false;
     nodes.clear();
     edges.clear();
     selectedNodeId = null;
@@ -457,6 +745,33 @@ String deptId = ''}) {
     // sidebarDeptId, requiredSourceCount, templateType, outputFormats,
     // numberOfOutputs, savedOutputKeyConfigs.
     // Intentionally NOT incrementing clearVersion (sidebar keeps dept/template).
+    canvasVersion++;
+    notifyListeners();
+  }
+
+  /// Clears the canvas when a source node is deleted mid-configuration in
+  /// Dynamic UniMailing mode. Removes the active key's saved config so the user
+  /// must reconfigure the key from scratch. Keeps [selectedOutputKey] on the
+  /// same key (unlike [clearCanvasForNextOutputKey] which advances to the next).
+  void clearCanvasForCurrentKey() {
+    final currentKey = selectedOutputKey;
+    isViewingConfiguredKey = false;
+    nodes.clear();
+    edges.clear();
+    selectedNodeId = null;
+    selectedEdgeId = null;
+    _nodeIdSeq = 0;
+    portDragFromNodeId = null;
+    portDragCurrentPos = null;
+    pendingFocusNodeId = null;
+    outputColumnOrder = [];
+    uniMailingMandatory.clear();
+    uniMailingCustom.clear();
+    uniMailingCustomCount = 0;
+    if (currentKey.isNotEmpty) {
+      savedOutputKeyConfigs.remove(currentKey);
+      _clearedOutputKeyForms.add(currentKey);
+    }
     canvasVersion++;
     notifyListeners();
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/uni_mailing_shared.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
@@ -10,10 +11,12 @@ import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/stati
 class DynamicUniMailingOutputSection extends StatefulWidget {
   final PipelineController ctrl;
   final List<PipelineNode> sourceNodes;
+  final void Function(String lastKey)? onShowPreview;
   const DynamicUniMailingOutputSection({
     super.key,
     required this.ctrl,
     required this.sourceNodes,
+    this.onShowPreview,
   });
 
   @override
@@ -25,6 +28,8 @@ class _DynamicUniMailingOutputSectionState
     extends State<DynamicUniMailingOutputSection> {
   // No local key state — driven entirely by ctrl.selectedOutputKey (sidebar).
   String _prevKey = '';
+  bool _saveSuccess = false;
+  Timer? _saveSuccessTimer;
 
   // Working state for the key currently being configured
   final Set<String> _localSelected = {}; // 'nodeId::colName'
@@ -40,14 +45,20 @@ class _DynamicUniMailingOutputSectionState
     super.initState();
     _prevKey = widget.ctrl.selectedOutputKey;
     widget.ctrl.addListener(_onCtrlChange);
-    // If a key is already selected on mount, set customCount immediately
-    // (onCtrlChange won't fire because the key hasn't changed)
-    if (widget.ctrl.selectedOutputKey.isNotEmpty) {
-      _customCount =
-          widget.ctrl.isOutputKeyStatic(widget.ctrl.selectedOutputKey) ? 1 : 0;
-    }
-    // If no key is selected yet, auto-select the next unconfigured key.
-    if (widget.ctrl.selectedOutputKey.isEmpty) {
+
+    final currentKey = widget.ctrl.selectedOutputKey;
+
+    if (widget.ctrl.savedOutputKeyConfigs.containsKey(currentKey) &&
+        !widget.ctrl.isOutputKeyFormCleared(currentKey)) {
+      // Widget is mounting on a previously saved key (canvas restore path).
+      // widget.sourceNodes already holds the restored node IDs, so restore
+      // the form synchronously here — no post-frame callback needed.
+      _restoreFormFromSavedConfig(currentKey);
+    } else if (currentKey.isNotEmpty) {
+      // Fresh unconfigured key — just init customCount.
+      _customCount = widget.ctrl.isOutputKeyStatic(currentKey) ? 1 : 0;
+    } else {
+      // No key selected yet — auto-select the next unconfigured key.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final ctrl = widget.ctrl;
@@ -65,17 +76,128 @@ class _DynamicUniMailingOutputSectionState
   void _onCtrlChange() {
     final newKey = widget.ctrl.selectedOutputKey;
     if (newKey != _prevKey) {
-      setState(() {
-        _prevKey = newKey;
-        _resetFormValues();
-      });
+      _prevKey = newKey;
+      _saveSuccessTimer?.cancel();
+      _saveSuccess = false;
+      // Clear first so no stale nodeId::col keys are visible for one frame.
+      setState(_resetFormValues);
+      // If this key was already configured AND not manually cleared, restore
+      // its form values after the canvas has been rebuilt with fresh node IDs.
+      if (widget.ctrl.savedOutputKeyConfigs.containsKey(newKey) &&
+          !widget.ctrl.isOutputKeyFormCleared(newKey)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          setState(() => _restoreFormFromSavedConfig(newKey));
+        });
+      }
     } else {
       setState(() {});
     }
   }
 
+  /// Populates form state from [savedOutputKeyConfigs[key]] using the current
+  /// [widget.sourceNodes] (which have fresh IDs after canvas restore).
+  void _restoreFormFromSavedConfig(String key) {
+    final config = widget.ctrl.savedOutputKeyConfigs[key];
+    if (config == null) return;
+
+    _localSelected.clear();
+    _workingMandatory.clear();
+    _workingCustom.clear();
+    _localUniqueFields.clear();
+
+    final isStatic = widget.ctrl.isOutputKeyStatic(key);
+    // Build name → new node-id map from the controller's live source nodes.
+    // ctrl.nodes is always fresh (set synchronously in _restoreOutputKeySnapshot)
+    // whereas widget.sourceNodes may still be from the previous frame.
+    final nameToId = <String, String>{
+      for (final n in widget.ctrl.nodes.where((n) => n.type.isSource))
+        n.name: n.id,
+    };
+
+    // Restore selected columns.
+    final selCols =
+        (config['SelectedColumns'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .toList() ??
+        [];
+    for (final sc in selCols) {
+      final nodeName = sc['NodeName']?.toString() ?? '';
+      final colName = sc['ColName']?.toString() ?? '';
+      final newId = nameToId[nodeName];
+      if (newId != null && colName.isNotEmpty) {
+        final selKey = '$newId::$colName';
+        _localSelected.add(selKey);
+        if (sc['isUniqueField'] == true) _localUniqueFields[selKey] = true;
+      }
+    }
+
+    if (isStatic) {
+      // Mandatory UniMailing fields.
+      final mandatoryList =
+          (config['MandatoryFields'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          [];
+      for (final mf in mandatoryList) {
+        final field = mf['Field']?.toString() ?? '';
+        final sourceName = mf['SourceName']?.toString() ?? '';
+        final colName = mf['ColumnName']?.toString() ?? '';
+        if (field.isNotEmpty && colName.isNotEmpty) {
+          final newId = nameToId[sourceName];
+          if (newId != null) _workingMandatory[field] = '$newId::$colName';
+        }
+      }
+      // Custom columns — at least 1 slot always shown for static.
+      final customList =
+          (config['CustomColumns'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          [];
+      _customCount = customList.isNotEmpty ? customList.length : 1;
+      for (final cc in customList) {
+        final slot = cc['Slot']?.toString() ?? '';
+        final sourceName = cc['SourceName']?.toString() ?? '';
+        final colName = cc['ColumnName']?.toString() ?? '';
+        if (slot.isNotEmpty && colName.isNotEmpty) {
+          final newId = nameToId[sourceName];
+          if (newId != null) _workingCustom[slot] = '$newId::$colName';
+        }
+      }
+    } else {
+      // Dynamic key — restore C0 and C1.
+      for (final slot in ['C0', 'C1']) {
+        final map = config[slot] as Map?;
+        if (map == null) continue;
+        final sourceName = map['SourceName']?.toString() ?? '';
+        final colName = map['ColumnName']?.toString() ?? '';
+        if (colName.isNotEmpty) {
+          final newId = nameToId[sourceName];
+          if (newId != null) _workingMandatory[slot] = '$newId::$colName';
+        }
+      }
+      // Custom columns.
+      final customList =
+          (config['CustomColumns'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          [];
+      _customCount = customList.length;
+      for (final cc in customList) {
+        final slot = cc['Slot']?.toString() ?? '';
+        final sourceName = cc['SourceName']?.toString() ?? '';
+        final colName = cc['ColumnName']?.toString() ?? '';
+        if (slot.isNotEmpty && colName.isNotEmpty) {
+          final newId = nameToId[sourceName];
+          if (newId != null) _workingCustom[slot] = '$newId::$colName';
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _saveSuccessTimer?.cancel();
     widget.ctrl.removeListener(_onCtrlChange);
     super.dispose();
   }
@@ -91,7 +213,11 @@ class _DynamicUniMailingOutputSectionState
   }
 
   /// Standalone clear: mutates + triggers rebuild (use for the Clear button).
-  void _clearForm() => setState(_resetFormValues);
+  void _clearForm() {
+    final key = widget.ctrl.selectedOutputKey;
+    if (key.isNotEmpty) widget.ctrl.markOutputKeyFormCleared(key);
+    setState(_resetFormValues);
+  }
 
   bool get _isCurrentKeyStatic =>
       widget.ctrl.isOutputKeyStatic(widget.ctrl.selectedOutputKey);
@@ -194,11 +320,17 @@ class _DynamicUniMailingOutputSectionState
         'CustomColumns': sortedCustom,
       };
     } else {
+      final c0 = _workingMandatory['C0'] ?? '';
       final c1 = _workingMandatory['C1'] ?? '';
       config = {
         'KeyName': currentKey,
         'KeyType': 'Dynamic',
         'SelectedColumns': selCols,
+        'C0': {
+          'ColumnName': resolveCol(c0),
+          'SourceName': resolveSource(c0),
+          'isUniqueField': _localUniqueFields[c0] ?? false,
+        },
         'C1': {
           'ColumnName': resolveCol(c1),
           'SourceName': resolveSource(c1),
@@ -222,8 +354,15 @@ class _DynamicUniMailingOutputSectionState
         'fileName': s.fileName,
         'queryFileName': s.queryFileName,
         'cols': List<String>.from(s.cols),
-        'selectedCols': List<String>.from(s.selectedCols),
-        'columnUniqueFields': Map<String, dynamic>.from(s.columnUniqueFields),
+        'selectedCols': _localSelected
+            .where((k) => k.split('::')[0] == s.id)
+            .map((k) => k.split('::')[1])
+            .toList(),
+        'columnUniqueFields': Map.fromEntries(
+          _localUniqueFields.entries
+              .where((e) => e.key.split('::')[0] == s.id)
+              .map((e) => MapEntry(e.key.split('::')[1], e.value)),
+        ),
         'columnAliases': Map<String, dynamic>.from(s.columnAliases),
         'columnPriorities': Map<String, dynamic>.from(s.columnPriorities),
         'columnFileBytes': s.columnFileBytes,
@@ -273,21 +412,33 @@ class _DynamicUniMailingOutputSectionState
     config['_snapshotEdges'] = snapshotEdges;
     config['_snapshotConnected'] = snapshotConnected;
 
-    ctrl.saveOutputKeyConfig(currentKey, config);
-    setState(_resetFormValues);
+    // Capture BEFORE saving — if this key was already saved we are re-editing
+    // it, not doing a first-time configure. Re-edits should never trigger the
+    // "Next Key" dialog or clear the canvas for a different key.
+    final wasAlreadyConfigured = ctrl.savedOutputKeyConfigs.containsKey(
+      currentKey,
+    );
 
-    if (!ctrl.allDynamicUniMailingKeysConfigured) {
-      // Compute the next key NOW while the widget is still mounted.
+    ctrl.saveOutputKeyConfig(currentKey, config);
+
+    if (!wasAlreadyConfigured && !ctrl.allDynamicUniMailingKeysConfigured) {
+      // First-time save of this key and more keys remain — advance workflow.
+      setState(_resetFormValues);
       final allKeys = ctrl.dynamicUniMailingOutputKeys;
       final nextKey = allKeys
           .where((k) => !ctrl.savedOutputKeyConfigs.containsKey(k))
           .firstOrNull;
       final keyIndex = nextKey != null ? allKeys.indexOf(nextKey) : -1;
 
+      debugPrint(
+        '[NEXT_KEY] completedKey="$currentKey"'
+        ' | allKeys=$allKeys'
+        ' | nextKey="$nextKey"'
+        ' | savedKeys=${ctrl.savedOutputKeyConfigs.keys.toList()}'
+        ' | allConfigured=${ctrl.allDynamicUniMailingKeysConfigured}',
+      );
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        // Show dialog BEFORE clearing — widget is still mounted here.
-        // Canvas clear unmounts this widget, so we must dialog first.
         if (nextKey != null && keyIndex >= 0) {
           await _showNextKeyDialog(
             completedKey: currentKey,
@@ -295,11 +446,34 @@ class _DynamicUniMailingOutputSectionState
             nextKeyName: nextKey,
           );
         }
-        // After user dismisses (or if no dialog), clear the canvas.
         if (mounted) ctrl.clearCanvasForNextOutputKey();
       });
+    } else if (!wasAlreadyConfigured) {
+      // Last key saved for the first time — deselect and show preview.
+      ctrl.clearSelectedOutputKey();
+      final keys = ctrl.dynamicUniMailingOutputKeys;
+      if (keys.isNotEmpty && currentKey == keys.last) {
+        final lastKey = currentKey;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) widget.onShowPreview?.call(lastKey);
+        });
+      }
+    } else {
+      // Re-edit of an already-saved key — flash the button to confirm save.
+      _saveSuccessTimer?.cancel();
+      setState(() => _saveSuccess = true);
+      _saveSuccessTimer = Timer(const Duration(milliseconds: 1500), () {
+        if (mounted) setState(() => _saveSuccess = false);
+      });
+      // Also show preview if this is the last key (only trigger available).
+      final keys = ctrl.dynamicUniMailingOutputKeys;
+      if (keys.isNotEmpty && currentKey == keys.last) {
+        final lastKey = currentKey;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) widget.onShowPreview?.call(lastKey);
+        });
+      }
     }
-    // If all keys done: canvas stays, Submit button activates.
   }
 
   Future<void> _showNextKeyDialog({
@@ -308,176 +482,225 @@ class _DynamicUniMailingOutputSectionState
     required String nextKeyName,
   }) async {
     if (!mounted) return;
+    final allKeys = widget.ctrl.dynamicUniMailingOutputKeys;
+    final total = allKeys.length;
+    final completedCount = nextKeyNumber - 1;
+
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        title: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.blue.withValues(alpha: 0.12),
-              ),
-              child: Center(
-                child: Text(
-                  '$nextKeyNumber',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.blue,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Key Configuration',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.text,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Completed key
-            Row(
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.green.withValues(alpha: 0.12),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 13,
-                      color: AppColors.green,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Completed configuration for:',
-                  style: TextStyle(fontSize: 11, color: AppColors.textDim),
+      builder: (ctx) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 360,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
-            const SizedBox(height: 5),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: AppColors.green.withValues(alpha: 0.06),
-                border: Border.all(
-                  color: AppColors.green.withValues(alpha: 0.20),
-                ),
-              ),
-              child: Text(
-                completedKey,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.green,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            // Divider
-            const Divider(height: 1, color: AppColors.border),
-            const SizedBox(height: 14),
-            // Next key
-            Row(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.blue.withValues(alpha: 0.12),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$nextKeyNumber',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                // ── Header ──
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.blue.withValues(alpha: 0.10),
+                      ),
+                      child: const Icon(
+                        Icons.key_rounded,
+                        size: 17,
                         color: AppColors.blue,
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Key configuration',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.text,
+                          ),
+                        ),
+                        Text(
+                          'Step $nextKeyNumber of $total',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // ── COMPLETED label ──
+                Row(
+                  children: const [
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 12,
+                      color: AppColors.green,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'COMPLETED',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.green,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+
+                // ── Completed key card ──
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(9),
+                    color: AppColors.green.withValues(alpha: 0.06),
+                    border: Border.all(
+                      color: AppColors.green.withValues(alpha: 0.20),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 9,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_rounded,
+                        size: 14,
+                        color: AppColors.green,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              completedKey,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text,
+                              ),
+                            ),
+                            const Text(
+                              'Mapping saved',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(5),
+                          color: AppColors.green.withValues(alpha: 0.13),
+                        ),
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.green,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Now configure:',
-                  style: TextStyle(fontSize: 11, color: AppColors.textDim),
+                const SizedBox(height: 10),
+
+                // ── Progress bar ──
+                Row(
+                  children: List.generate(total, (i) {
+                    final Color segColor;
+                    if (i < completedCount) {
+                      segColor = AppColors.green;
+                    } else if (i == completedCount) {
+                      segColor = AppColors.blue;
+                    } else {
+                      segColor = AppColors.border2;
+                    }
+                    return Expanded(
+                      child: Container(
+                        margin: EdgeInsets.only(right: i < total - 1 ? 3 : 0),
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: segColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 14),
+
+                // ── Footer ──
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 9,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text(
+                          'Got it',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                        SizedBox(width: 5),
+                        Icon(Icons.arrow_forward_rounded, size: 13),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 5),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: AppColors.blue.withValues(alpha: 0.07),
-                border: Border.all(
-                  color: AppColors.blue.withValues(alpha: 0.20),
-                ),
-              ),
-              child: Text(
-                nextKeyName,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.blue,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Add your source nodes and configure the mappings for this key.',
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textMuted,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.blue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Got it',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -550,272 +773,201 @@ class _DynamicUniMailingOutputSectionState
         ),
         const SizedBox(height: 10),
 
-        // ── All configured: show summary list ──
-        if (progress == total) ...[
+        // ── Body: driven by sidebar selectedOutputKey ──
+        if (currentKey.isEmpty) ...[
           Container(
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
+              color: progress == total
+                  ? AppColors.green.withValues(alpha: 0.06)
+                  : AppColors.surface2,
               border: Border.all(
-                color: AppColors.green.withValues(alpha: 0.30),
+                color: progress == total
+                    ? AppColors.green.withValues(alpha: 0.30)
+                    : AppColors.border2,
               ),
             ),
-            child: Column(
-              children: keys.asMap().entries.map((e) {
-                final i = e.key;
-                final k = e.value;
-                final cfg = configured[k];
-                final keyType = cfg?['KeyType'] as String? ?? '';
-                final isLast = i == keys.length - 1;
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: isLast
-                        ? (i == 0
-                              ? BorderRadius.circular(8)
-                              : const BorderRadius.vertical(
-                                  bottom: Radius.circular(8),
-                                ))
-                        : (i == 0
-                              ? const BorderRadius.vertical(
-                                  top: Radius.circular(8),
-                                )
-                              : null),
-                    color: i.isEven
-                        ? AppColors.green.withValues(alpha: 0.04)
-                        : AppColors.surface,
-                    border: isLast
-                        ? null
-                        : const Border(
-                            bottom: BorderSide(
-                              color: AppColors.border,
-                              width: 0.8,
-                            ),
-                          ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        size: 14,
-                        color: AppColors.green,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          k,
-                          style: const TextStyle(
-                            color: AppColors.text,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      if (keyType.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
-                            color: AppColors.green.withValues(alpha: 0.10),
-                            border: Border.all(
-                              color: AppColors.green.withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: Text(
-                            keyType.toLowerCase(),
-                            style: const TextStyle(
-                              color: AppColors.green,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ] else ...[
-          // ── Body: driven by sidebar selectedOutputKey ──
-          if (currentKey.isEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: AppColors.surface2,
-                border: Border.all(color: AppColors.border2),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 14,
-                    color: AppColors.textMuted,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Select an output key from the sidebar to configure.',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            // ── Step A: Column Selection + Unique Field (per source) ──
-            DynUniColSelectionCard(
-              sources: sourcesWithCols,
-              localSelected: Set.from(_localSelected),
-              localUniqueFields: Map.from(_localUniqueFields),
-              onToggle: (key) {
-                setState(() {
-                  if (_localSelected.contains(key)) {
-                    _localSelected.remove(key);
-                    _localUniqueFields.remove(key);
-                    _workingMandatory.removeWhere((_, v) => v == key);
-                    _workingCustom.removeWhere((_, v) => v == key);
-                  } else {
-                    _localSelected.add(key);
-                  }
-                });
-              },
-              onUniqueFieldChanged: (key, val) =>
-                  setState(() => _localUniqueFields[key] = val),
-            ),
-            const SizedBox(height: 10),
-
-            // ── Step B: Mapping (Static or Dynamic) ──
-            if (_isCurrentKeyStatic)
-              StaticKeyMappingCard(
-                workingMandatory: Map.from(_workingMandatory),
-                workingCustom: Map.from(_workingCustom),
-                customCount: _customCount,
-                availableKeys: availForMapping,
-                colLabels: colLabels,
-                onMandatoryChanged: (f, v) =>
-                    setState(() => _workingMandatory[f] = v ?? ''),
-                onCustomChanged: (s, v) =>
-                    setState(() => _workingCustom[s] = v ?? ''),
-                onAddCustom: () => setState(() => _customCount++),
-                onRemoveCustom: () {
-                  _workingCustom.remove('C$_customCount');
-                  setState(() => _customCount--);
-                },
-              )
-            else
-              DynamicKeyMappingCard(
-                workingMandatory: Map.from(_workingMandatory),
-                workingCustom: Map.from(_workingCustom),
-                customCount: _customCount,
-                availableKeys: availForMapping,
-                colLabels: colLabels,
-                onC0Changed: (v) =>
-                    setState(() => _workingMandatory['C0'] = v ?? ''),
-                onC1Changed: (v) =>
-                    setState(() => _workingMandatory['C1'] = v ?? ''),
-                onCustomChanged: (s, v) =>
-                    setState(() => _workingCustom[s] = v ?? ''),
-                onAddCustom: () => setState(() => _customCount++),
-                onRemoveCustom: () {
-                  _workingCustom.remove('C${_customCount + 1}');
-                  setState(() => _customCount--);
-                },
-              ),
-            const SizedBox(height: 10),
-
-            // ── Action buttons ──
-            Row(
+            child: Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _canSave ? _save : null,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 150),
-                      opacity: _canSave ? 1.0 : 0.48,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 9),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          gradient: LinearGradient(
-                            colors: _canSave
-                                ? [
-                                    AppColors.blue,
-                                    AppColors.blue.withValues(alpha: 0.8),
-                                  ]
-                                : [AppColors.border2, AppColors.border2],
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.add_circle_outline_rounded,
-                              size: 13,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Add $currentKey',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                Icon(
+                  progress == total
+                      ? Icons.check_circle_rounded
+                      : Icons.info_outline_rounded,
+                  size: 14,
+                  color: progress == total
+                      ? AppColors.green
+                      : AppColors.textMuted,
                 ),
                 const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _clearForm,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: AppColors.surface2,
-                      border: Border.all(color: AppColors.border2),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.refresh_rounded,
-                          size: 13,
-                          color: AppColors.textDim,
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          'Clear',
-                          style: TextStyle(
-                            color: AppColors.textDim,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                Expanded(
+                  child: Text(
+                    progress == total
+                        ? 'All $total keys configured. Select a key from the sidebar to review or edit.'
+                        : 'Select an output key from the sidebar to configure.',
+                    style: TextStyle(
+                      color: progress == total
+                          ? AppColors.green
+                          : AppColors.textMuted,
+                      fontSize: 11,
                     ),
                   ),
                 ),
               ],
             ),
-          ], // closes inner else (currentKey form)
-        ], // closes outer else (progress < total)
+          ),
+        ] else ...[
+          // ── Step A: Column Selection + Unique Field (per source) ──
+          DynUniColSelectionCard(
+            sources: sourcesWithCols,
+            localSelected: Set.from(_localSelected),
+            localUniqueFields: Map.from(_localUniqueFields),
+            onToggle: (key) {
+              setState(() {
+                if (_localSelected.contains(key)) {
+                  _localSelected.remove(key);
+                  _localUniqueFields.remove(key);
+                  _workingMandatory.removeWhere((_, v) => v == key);
+                  _workingCustom.removeWhere((_, v) => v == key);
+                } else {
+                  _localSelected.add(key);
+                }
+              });
+            },
+            onUniqueFieldChanged: (key, val) =>
+                setState(() => _localUniqueFields[key] = val),
+          ),
+          const SizedBox(height: 10),
+
+          // ── Step B: Mapping (Static or Dynamic) ──
+          if (_isCurrentKeyStatic)
+            StaticKeyMappingCard(
+              workingMandatory: Map.from(_workingMandatory),
+              workingCustom: Map.from(_workingCustom),
+              customCount: _customCount,
+              availableKeys: availForMapping,
+              colLabels: colLabels,
+              onMandatoryChanged: (f, v) =>
+                  setState(() => _workingMandatory[f] = v ?? ''),
+              onCustomChanged: (s, v) =>
+                  setState(() => _workingCustom[s] = v ?? ''),
+              onAddCustom: () => setState(() => _customCount++),
+              onRemoveCustom: () {
+                _workingCustom.remove('C$_customCount');
+                setState(() => _customCount--);
+              },
+            )
+          else
+            DynamicKeyMappingCard(
+              workingMandatory: Map.from(_workingMandatory),
+              workingCustom: Map.from(_workingCustom),
+              customCount: _customCount,
+              availableKeys: availForMapping,
+              colLabels: colLabels,
+              onC0Changed: (v) =>
+                  setState(() => _workingMandatory['C0'] = v ?? ''),
+              onC1Changed: (v) =>
+                  setState(() => _workingMandatory['C1'] = v ?? ''),
+              onCustomChanged: (s, v) =>
+                  setState(() => _workingCustom[s] = v ?? ''),
+              onAddCustom: () => setState(() => _customCount++),
+              onRemoveCustom: () {
+                _workingCustom.remove('C${_customCount + 1}');
+                setState(() => _customCount--);
+              },
+            ),
+          const SizedBox(height: 10),
+
+          // ── Action buttons ──
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: _canSave ? _save : null,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 150),
+                    opacity: _canSave ? 1.0 : 0.48,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          colors: _saveSuccess
+                              ? [
+                                  AppColors.green,
+                                  AppColors.green.withValues(alpha: 0.8),
+                                ]
+                              : _canSave
+                              ? [
+                                  AppColors.blue,
+                                  AppColors.blue.withValues(alpha: 0.8),
+                                ]
+                              : [AppColors.border2, AppColors.border2],
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _saveSuccess
+                                ? Icons.check_circle_rounded
+                                : Icons.add_circle_outline_rounded,
+                            size: 13,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _saveSuccess ? 'Saved ✓' : 'Add $currentKey',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _clearForm,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.surface2,
+                    border: Border.all(color: AppColors.border2),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.refresh_rounded,
+                        size: 13,
+                        color: AppColors.textDim,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Clear',
+                        style: TextStyle(
+                          color: AppColors.textDim,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ], // closes inner else (currentKey form)
       ],
     );
   }

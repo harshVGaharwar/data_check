@@ -9,12 +9,322 @@ import 'package:vizualizer/presentation/providers/pipeline_master_provider.dart'
 import 'package:vizualizer/presentation/widgets/common/searchable_dropdown.dart';
 
 /// Shows a confirmation dialog before deleting a pipeline node.
+///
+/// In Dynamic UniMailing mode the dialog warns that the entire canvas for the
+/// active key will be cleared, and on confirm calls [clearCanvasForCurrentKey]
+/// instead of a single-node delete.
 Future<void> confirmDeleteNode(
   BuildContext ctx,
   PipelineController ctrl,
   String id,
   String name,
+  NodeType nodeType,
 ) async {
+  final dialogTitle = nodeType == NodeType.output
+      ? 'Delete Output Node?'
+      : nodeType == NodeType.join
+      ? 'Delete Join Node?'
+      : 'Delete Source?';
+  final nodeLabel = nodeType == NodeType.output
+      ? 'Output'
+      : nodeType == NodeType.join
+      ? 'Join'
+      : 'Source';
+
+  if (ctrl.isAnyUniMailing) {
+    final keyName = ctrl.selectedOutputKey.isNotEmpty
+        ? ctrl.selectedOutputKey
+        : null;
+    final nodeName = name.isNotEmpty ? name : nodeLabel;
+    final ok = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (dialogCtx) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 400,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.20),
+                  blurRadius: 32,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Top banner ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  decoration: BoxDecoration(
+                    color: AppColors.red.withValues(alpha: 0.06),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.red.withValues(alpha: 0.14),
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 26,
+                          color: AppColors.red,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        dialogTitle,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Body ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Warning box with amber left accent ──
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.fromLTRB(
+                                14,
+                                12,
+                                14,
+                                12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.amberDim,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: AppColors.amber.withValues(
+                                    alpha: 0.25,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 16,
+                                    color: AppColors.amber,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'This action cannot be undone',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.text,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        RichText(
+                                          text: TextSpan(
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.textDim,
+                                              height: 1.5,
+                                            ),
+                                            children: [
+                                              TextSpan(
+                                                text:
+                                                    'Deleting $nodeName will clear the ',
+                                              ),
+                                              const TextSpan(
+                                                text: 'entire canvas',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.text,
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: keyName != null
+                                                    ? ' for $keyName.'
+                                                    : ' for this configuration.',
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 4,
+                                color: AppColors.amber,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // ── What will be cleared ──
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'WHAT WILL BE CLEARED',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textMuted,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _clearItem('Source body & file settings'),
+                            const SizedBox(height: 6),
+                            _clearItem('Join conditions & mappings'),
+                            const SizedBox(height: 6),
+                            _clearItem('Output selection & field mappings'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // ── Footer text ──
+                      RichText(
+                        text: TextSpan(
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textDim,
+                            height: 1.5,
+                          ),
+                          children: [
+                            const TextSpan(text: 'You will need to '),
+                            const TextSpan(
+                              text: 'reconfigure all settings',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ctrl.isDynamicUniMailing
+                                  ? ' for this key again.'
+                                  : ctrl.isStaticUniMailing
+                                  ? ' for this UniMailing configuration again.'
+                                  : ' for this configuration again.',
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // ── Buttons ──
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  Navigator.of(dialogCtx).pop(false),
+                              icon: const Icon(
+                                Icons.arrow_back_rounded,
+                                size: 14,
+                              ),
+                              label: const Text(
+                                'Cancel',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.text,
+                                side: const BorderSide(
+                                  color: AppColors.border2,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 13,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  Navigator.of(dialogCtx).pop(true),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 15,
+                              ),
+                              label: const Text(
+                                'Yes, delete',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.red,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 13,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (ok == true && ctx.mounted) ctrl.clearCanvasForCurrentKey();
+    return;
+  }
+
   final ok = await showDialog<bool>(
     context: ctx,
     barrierDismissible: false,
@@ -31,9 +341,9 @@ Future<void> confirmDeleteNode(
             size: 20,
           ),
           const SizedBox(width: 8),
-          const Text(
-            'Delete Node?',
-            style: TextStyle(
+          Text(
+            dialogTitle,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: AppColors.red,
@@ -83,6 +393,326 @@ Future<void> confirmDeleteNode(
   );
   if (ok == true && ctx.mounted) ctrl.deleteNode(id);
 }
+
+/// Shows a confirmation dialog before editing a confirmed node in UniMailing mode.
+/// Warns that the entire canvas for the current key will be cleared, then calls
+/// [clearCanvasForCurrentKey] on confirm.
+Future<void> confirmEditNode(
+  BuildContext ctx,
+  PipelineController ctrl,
+  String name,
+  NodeType nodeType,
+) async {
+  final dialogTitle = nodeType == NodeType.output
+      ? 'Edit Output Node?'
+      : nodeType == NodeType.join
+      ? 'Edit Join Node?'
+      : 'Edit Source?';
+  final nodeLabel = nodeType == NodeType.output
+      ? 'Output'
+      : nodeType == NodeType.join
+      ? 'Join'
+      : 'Source';
+
+  final keyName = ctrl.selectedOutputKey.isNotEmpty
+      ? ctrl.selectedOutputKey
+      : null;
+  final nodeName = name.isNotEmpty ? name : nodeLabel;
+
+  final ok = await showDialog<bool>(
+    context: ctx,
+    barrierDismissible: false,
+    builder: (dialogCtx) => Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 400,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.20),
+                blurRadius: 32,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Top banner ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 28),
+                decoration: BoxDecoration(
+                  color: AppColors.red.withValues(alpha: 0.06),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.red.withValues(alpha: 0.14),
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        size: 26,
+                        color: AppColors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      dialogTitle,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Body ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Warning box ──
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.amberDim,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppColors.amber.withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  size: 16,
+                                  color: AppColors.amber,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'This action cannot be undone',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.text,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      RichText(
+                                        text: TextSpan(
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textDim,
+                                            height: 1.5,
+                                          ),
+                                          children: [
+                                            TextSpan(
+                                              text: 'Editing $nodeName will clear the ',
+                                            ),
+                                            const TextSpan(
+                                              text: 'entire canvas',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.text,
+                                              ),
+                                            ),
+                                            TextSpan(
+                                              text: keyName != null
+                                                  ? ' for $keyName.'
+                                                  : ' for this configuration.',
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 4,
+                              color: AppColors.amber,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // ── What will be cleared ──
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'WHAT WILL BE CLEARED',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _clearItem('Source body & file settings'),
+                          const SizedBox(height: 6),
+                          _clearItem('Join conditions & mappings'),
+                          const SizedBox(height: 6),
+                          _clearItem('Output selection & field mappings'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // ── Footer ──
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textDim,
+                          height: 1.5,
+                        ),
+                        children: [
+                          const TextSpan(text: 'You will need to '),
+                          const TextSpan(
+                            text: 'reconfigure all settings',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.text,
+                            ),
+                          ),
+                          TextSpan(
+                            text: ctrl.isDynamicUniMailing
+                                ? ' for this key again.'
+                                : ctrl.isStaticUniMailing
+                                ? ' for this UniMailing configuration again.'
+                                : ' for this configuration again.',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // ── Buttons ──
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () =>
+                                Navigator.of(dialogCtx).pop(false),
+                            icon: const Icon(
+                              Icons.arrow_back_rounded,
+                              size: 14,
+                            ),
+                            label: const Text(
+                              'Cancel',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.text,
+                              side: const BorderSide(
+                                color: AppColors.border2,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () =>
+                                Navigator.of(dialogCtx).pop(true),
+                            icon: const Icon(
+                              Icons.edit_rounded,
+                              size: 15,
+                            ),
+                            label: const Text(
+                              'Yes, clear',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.red,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  if (ok == true && ctx.mounted) ctrl.clearCanvasForCurrentKey();
+}
+
+Widget _clearItem(String text) => Row(
+  children: [
+    const Icon(Icons.close_rounded, size: 14, color: AppColors.red),
+    const SizedBox(width: 8),
+    Text(
+      text,
+      style: const TextStyle(
+        fontSize: 12,
+        color: AppColors.text,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  ],
+);
 
 class ConfigPanel extends StatefulWidget {
   const ConfigPanel({super.key});
@@ -287,7 +917,7 @@ class _ConfigPanelState extends State<ConfigPanel>
                   padding: const EdgeInsets.all(14),
                   child: InkWell(
                     onTap: () =>
-                        confirmDeleteNode(context, ctrl, node.id, node.name),
+                        confirmDeleteNode(context, ctrl, node.id, node.name, node.type),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -999,7 +1629,13 @@ class _ConfirmSection extends StatelessWidget {
           // ),
           // const SizedBox(height: 8),
           InkWell(
-            onTap: () => ctrl.editNode(node.id),
+            onTap: () async {
+              if (ctrl.isAnyUniMailing) {
+                await confirmEditNode(context, ctrl, node.name, node.type);
+              } else {
+                ctrl.editNode(node.id);
+              }
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

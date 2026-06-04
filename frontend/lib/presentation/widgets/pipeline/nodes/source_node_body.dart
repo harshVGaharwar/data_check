@@ -54,6 +54,7 @@ class SourceNodeBody extends StatelessWidget {
                   context.read<PipelineController>(),
                   node.id,
                   node.name,
+                  node.type,
                 ),
                 child: const Icon(
                   Icons.delete_outline,

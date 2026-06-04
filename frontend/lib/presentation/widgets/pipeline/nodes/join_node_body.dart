@@ -151,6 +151,7 @@ class _JoinNodeBodyState extends State<JoinNodeBody>
                   ctrl,
                   widget.node.id,
                   widget.node.name,
+                  widget.node.type,
                 ),
                 child: Icon(
                   Icons.delete_outline,

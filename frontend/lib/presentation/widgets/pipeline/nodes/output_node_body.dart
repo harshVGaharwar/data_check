@@ -11,6 +11,7 @@ import 'package:vizualizer/data/services/pipeline_service.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/config_preview_sheet.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/dynamic_uni_mailing_output_section.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/uni_mapping_row.dart';
+import 'package:vizualizer/presentation/widgets/pipeline/config_panel.dart';
 
 part 'output_node/output_format_card.dart';
 part 'output_node/output_column_selector.dart';
@@ -199,9 +200,15 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                     ),
                   ),
                   InkWell(
-                    onTap: () => ctrl.deleteNode(widget.node.id),
+                    onTap: () => confirmDeleteNode(
+                      context,
+                      ctrl,
+                      widget.node.id,
+                      widget.node.name,
+                      widget.node.type,
+                    ),
                     child: Icon(
-                      Icons.close_rounded,
+                      Icons.delete_outline,
                       color: AppColors.red.withValues(alpha: 0.6),
                       size: 16,
                     ),
@@ -226,11 +233,25 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
             );
             _scrollCtrl.jumpTo(next);
           },
+          onVerticalDragEnd: (d) {
+            final velocity = -(d.primaryVelocity ?? 0);
+            if (velocity.abs() < 50) return;
+            final pos = _scrollCtrl.position;
+            final target = (_scrollCtrl.offset + velocity * 0.3).clamp(
+              pos.minScrollExtent,
+              pos.maxScrollExtent,
+            );
+            _scrollCtrl.animateTo(
+              target,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.decelerate,
+            );
+          },
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 600),
             child: RawScrollbar(
               controller: _scrollCtrl,
-              thumbVisibility: true,
+              thumbVisibility: false,
               interactive: true,
               thickness: 5,
               radius: const Radius.circular(3),
@@ -242,7 +263,8 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Template / dept info ──
-                    if (ctrl.sidebarTemplate.isNotEmpty) ...[
+                    if (ctrl.sidebarTemplate.isNotEmpty &&
+                        !isDynamicUniMailing) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -359,52 +381,21 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                       DynamicUniMailingOutputSection(
                         ctrl: ctrl,
                         sourceNodes: allSourceNodes,
+                        onShowPreview: (lastKey) => _showConfigPreview(
+                          context,
+                          ctrl,
+                          master,
+                          allSourceNodes,
+                          isDynamicUniMailing: true,
+                          caseTitle: 'Dynamic & Unimailing',
+                          lastKey: lastKey,
+                        ),
                       ),
                       const SizedBox(height: 12),
                     ],
 
-                    // ── All-keys-configured banner (Dynamic UniMailing only) ──
-                    if (isDynamicUniMailing &&
-                        ctrl.allDynamicUniMailingKeysConfigured) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 9,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: AppColors.blue.withValues(alpha: 0.08),
-                          border: Border.all(
-                            color: AppColors.blue.withValues(alpha: 0.25),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_rounded,
-                              size: 14,
-                              color: AppColors.blue.withValues(alpha: 0.8),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'All ${ctrl.dynamicUniMailingOutputKeys.length} keys are configured. Please review and submit.',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.blue,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-
-                    // ── Submit button (hidden for Dynamic UniMailing until all keys configured) ──
-                    if (!isDynamicUniMailing ||
-                        ctrl.allDynamicUniMailingKeysConfigured)
+                    // ── Submit button (hidden for Dynamic UniMailing — preview shown inline) ──
+                    if (!isDynamicUniMailing)
                       AnimatedOpacity(
                         duration: const Duration(milliseconds: 200),
                         opacity: canSubmit ? 1.0 : 0.55,
@@ -471,7 +462,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                                 caseTitle: 'Dynamic & Unimailing',
                               );
                             } else {
-                              _submit(context, ctrl, master, allSourceNodes);
+                              _submit(context, ctrl, master);
                             }
                           },
                           borderRadius: BorderRadius.circular(8),
@@ -589,7 +580,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     );
   }
 
-  void _showConfigPreview(
+  Future<void> _showConfigPreview(
     BuildContext context,
     PipelineController ctrl,
     PipelineMasterProvider master,
@@ -597,10 +588,11 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     bool isUniMailing = false,
     bool isDynamicUniMailing = false,
     String caseTitle = '',
-  }) {
+    String lastKey = '',
+  }) async {
     final joinNodes = ctrl.nodes.where((n) => n.type == NodeType.join).toList();
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
@@ -619,20 +611,49 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         caseTitle: caseTitle,
         onConfirm: () {
           Navigator.of(ctx, rootNavigator: true).pop();
-          _submit(context, ctrl, master, sourceNodes);
+          _submit(context, ctrl, master);
         },
       ),
     );
+
+    // After sheet is dismissed, restore the last configured key so its
+    // selected columns and mandatory field details are shown in the node body.
+    if (isDynamicUniMailing && lastKey.isNotEmpty && context.mounted) {
+      ctrl.setSelectedOutputKey(lastKey);
+    }
   }
 
   Future<void> _submit(
     BuildContext context,
     PipelineController ctrl,
     PipelineMasterProvider master,
-    List<PipelineNode> sourceNodes,
   ) async {
     if (_submitting) return;
     setState(() => _submitting = true);
+
+    // Always derive sourceNodes fresh at submit time so that any edits made
+    // after the preview sheet was opened are included in the payload.
+    final _submitJoinNodes = ctrl.nodes
+        .where((n) => n.type == NodeType.join)
+        .toList();
+    final submitSourceNodeIds = <String>{};
+    for (final j in _submitJoinNodes) {
+      for (final e in ctrl.edges.where((e) => e.toNodeId == j.id)) {
+        submitSourceNodeIds.add(e.fromNodeId);
+      }
+    }
+    if (_submitJoinNodes.isNotEmpty) {
+      final joinId = _submitJoinNodes.first.id;
+      for (final e in ctrl.edges.where((e) => e.toNodeId == joinId)) {
+        submitSourceNodeIds.add(e.fromNodeId);
+      }
+    }
+    final filteredSources = ctrl.nodes
+        .where((n) => n.type.isSource && submitSourceNodeIds.contains(n.id))
+        .toList();
+    final sourceNodes = filteredSources.isNotEmpty
+        ? filteredSources
+        : ctrl.nodes.where((n) => n.type.isSource).toList();
 
     final templateId = ctrl.sidebarTemplateId;
     final deptId = ctrl.sidebarDeptId;
@@ -1000,6 +1021,19 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                 });
               }
             } else {
+              final c0 = config?['C0'] as Map? ?? {};
+              final c0Src = c0['SourceName'] as String? ?? '';
+              if (c0Src.isNotEmpty) {
+                keyOutputCols.add({
+                  'template_id': templateId,
+                  'department': deptIdInt.toString(),
+                  'sourceid': snapLookupSrcId(c0Src),
+                  'sourceName': c0Src,
+                  'SourceColName': c0['ColumnName'] as String? ?? '',
+                  'ColumnName': 'Column 0',
+                  'Priority': 0,
+                });
+              }
               final c1 = config?['C1'] as Map? ?? {};
               final c1Src = c1['SourceName'] as String? ?? '';
               if (c1Src.isNotEmpty) {

@@ -619,22 +619,93 @@ class ConfigPreviewSheet extends StatelessWidget {
   }
 
   Widget _dynKeySection(String key, Map<String, dynamic>? cfg) {
-    final keyType = cfg?['KeyType'] as String? ?? '—';
+    // ── Unconfigured key — canvas was cleared or never set up ──
+    if (cfg == null) {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.red.withValues(alpha: 0.35)),
+          color: AppColors.red.withValues(alpha: 0.04),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.red.withValues(alpha: 0.12),
+              ),
+              child: const Icon(
+                Icons.vpn_key_rounded,
+                size: 13,
+                color: AppColors.red,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                key,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.red,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(5),
+                color: AppColors.red.withValues(alpha: 0.08),
+                border: Border.all(
+                  color: AppColors.red.withValues(alpha: 0.25),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 10,
+                    color: AppColors.red,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'Not Configured',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final keyType = cfg['KeyType'] as String? ?? '—';
     final isStatic = keyType == 'Static';
     final typeColor = isStatic ? AppColors.blue : AppColors.green;
 
     // Per-key canvas snapshot (accurate after canvas is cleared for next key)
-    final snapSrcs = (cfg?['_snapshotSources'] as List? ?? [])
+    final snapSrcs = (cfg['_snapshotSources'] as List? ?? [])
         .whereType<Map<dynamic, dynamic>>()
         .toList();
-    final snapJoinMappings = (cfg?['_snapshotJoinMappings'] as List? ?? [])
+    final snapJoinMappings = (cfg['_snapshotJoinMappings'] as List? ?? [])
         .whereType<Map<dynamic, dynamic>>()
         .toList();
     final perKeyHasJoins = snapJoinMappings.isNotEmpty;
     final perKeyJoinCount = snapJoinMappings.length;
 
     // Fallback: derive source info from SelectedColumns if no snapshot yet
-    final savedSelCols = (cfg?['SelectedColumns'] as List? ?? [])
+    final savedSelCols = (cfg['SelectedColumns'] as List? ?? [])
         .whereType<Map>()
         .map((m) => m.map((k, v) => MapEntry(k.toString(), v)))
         .toList();
@@ -646,58 +717,57 @@ class ConfigPreviewSheet extends StatelessWidget {
               .toSet()
               .length;
 
-    bool resolveUnique(String src, String col) {
-      // Prefer the saved isUniqueField from SelectedColumns (accurate per-key).
-      final saved = savedSelCols
-          .where((m) => m['NodeName'] == src && m['ColName'] == col)
-          .firstOrNull;
-      if (saved != null) return saved['isUniqueField'] as bool? ?? false;
-      // Fallback: look up current canvas node (may be wrong after canvas clear).
-      final node = sourceNodes.where((n) => n.name == src).firstOrNull;
-      return node?.columnUniqueFields[col] ?? false;
-    }
+    // Selected Columns tile — ALL Step-A selections saved in config.
+    // Built directly from SelectedColumns so it never misses columns that
+    // were selected but not yet mapped to an output slot.
+    final selCols = savedSelCols
+        .map(
+          (sc) => (
+            source: sc['NodeName']?.toString() ?? '',
+            column: sc['ColName']?.toString() ?? '',
+            isUnique: sc['isUniqueField'] as bool? ?? false,
+          ),
+        )
+        .where((c) => c.source.isNotEmpty && c.column.isNotEmpty)
+        .toList();
 
-    final seen = <String>{};
-    final selCols = <({String source, String column, bool isUnique})>[];
-    void addCol(String src, String col) {
-      final k = '$src::$col';
-      if (src.isNotEmpty && src != '—' && seen.add(k)) {
-        selCols.add((
-          source: src,
-          column: col,
-          isUnique: resolveUnique(src, col),
-        ));
-      }
-    }
-
+    // Output Configuration rows — built from the mapping config only.
     final outRows = <List<String>>[];
-    if (cfg != null) {
+    {
       if (isStatic) {
         for (final f in (cfg['MandatoryFields'] as List? ?? [])) {
-          final src = f['SourceName'] as String? ?? '—';
-          final col = f['ColumnName'] as String? ?? '—';
-          addCol(src, col);
-          outRows.add([src, col, f['Field'] as String? ?? '—']);
+          final src = f['SourceName'] as String? ?? '';
+          final col = f['ColumnName'] as String? ?? '';
+          outRows.add([
+            src.isNotEmpty ? src : '—',
+            col.isNotEmpty ? col : '—',
+            f['Field'] as String? ?? '—',
+          ]);
         }
         for (final c in (cfg['CustomColumns'] as List? ?? [])) {
-          final src = c['SourceName'] as String? ?? '—';
-          final col = c['ColumnName'] as String? ?? '—';
-          addCol(src, col);
-          outRows.add([src, col, _slotLabel(c['Slot'] as String? ?? '—')]);
+          final src = c['SourceName'] as String? ?? '';
+          final col = c['ColumnName'] as String? ?? '';
+          outRows.add([
+            src.isNotEmpty ? src : '—',
+            col.isNotEmpty ? col : '—',
+            _slotLabel(c['Slot'] as String? ?? '—'),
+          ]);
         }
       } else {
-        final c1 = cfg['C1'] as Map? ?? {};
-        final src = c1['SourceName'] as String? ?? '—';
-        final col = c1['ColumnName'] as String? ?? '—';
-        addCol(src, col);
-        if (src.isNotEmpty && src != '—') {
-          outRows.add([src, col, _slotLabel('C1')]);
+        for (final slot in ['C0', 'C1']) {
+          final cm = cfg[slot] as Map? ?? {};
+          final src = cm['SourceName'] as String? ?? '';
+          final col = cm['ColumnName'] as String? ?? '';
+          if (src.isNotEmpty && col.isNotEmpty) {
+            outRows.add([src, col, _slotLabel(slot)]);
+          }
         }
         for (final c in (cfg['CustomColumns'] as List? ?? [])) {
-          final cs = c['SourceName'] as String? ?? '—';
-          final cc = c['ColumnName'] as String? ?? '—';
-          addCol(cs, cc);
-          outRows.add([cs, cc, _slotLabel(c['Slot'] as String? ?? '—')]);
+          final cs = c['SourceName'] as String? ?? '';
+          final cc = c['ColumnName'] as String? ?? '';
+          if (cs.isNotEmpty && cc.isNotEmpty) {
+            outRows.add([cs, cc, _slotLabel(c['Slot'] as String? ?? '—')]);
+          }
         }
       }
     }
@@ -807,8 +877,12 @@ class ConfigPreviewSheet extends StatelessWidget {
                         : Icons.dynamic_feed_rounded,
                     color: AppColors.green,
                     title: 'Output Configuration',
-                    subtitle:
-                        '${outRows.length} field${outRows.length == 1 ? '' : 's'} mapped',
+                    subtitle: () {
+                      // Count only truly mapped rows (source is not '—').
+                      final mapped =
+                          outRows.where((r) => r[0] != '—').length;
+                      return '$mapped field${mapped == 1 ? '' : 's'} mapped';
+                    }(),
                     initiallyExpanded: true,
                     child: _dynKeyOutputConfig(outRows),
                   ),
@@ -1143,48 +1217,67 @@ class ConfigPreviewSheet extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    // Submit button
-                    Expanded(
-                      flex: 2,
-                      child: InkWell(
-                        onTap: onConfirm,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          decoration: BoxDecoration(
+                    // Submit button — blocked if any dynamic key is unconfigured
+                    Builder(
+                      builder: (context) {
+                        final blocked = isDynamicUniMailing &&
+                            ctrl.dynamicUniMailingOutputKeys.any(
+                              (k) => !ctrl.savedOutputKeyConfigs.containsKey(k),
+                            );
+                        return Expanded(
+                          flex: 2,
+                          child: InkWell(
+                            onTap: blocked ? null : onConfirm,
                             borderRadius: BorderRadius.circular(10),
-                            gradient: const LinearGradient(
-                              colors: [AppColors.green, Color(0xFF059669)],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.green.withValues(alpha: 0.30),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.check_circle_rounded,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Submit',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
+                            child: Opacity(
+                              opacity: blocked ? 0.45 : 1.0,
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 13),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      AppColors.green,
+                                      Color(0xFF059669),
+                                    ],
+                                  ),
+                                  boxShadow: blocked
+                                      ? null
+                                      : [
+                                          BoxShadow(
+                                            color: AppColors.green.withValues(
+                                              alpha: 0.30,
+                                            ),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Submit',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ),

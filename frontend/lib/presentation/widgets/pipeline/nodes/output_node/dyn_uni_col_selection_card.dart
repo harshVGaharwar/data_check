@@ -128,23 +128,34 @@ class DynUniColSelectionCard extends StatelessWidget {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                            horizontal: 7,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
-                            color: AppColors.blue.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                            color: AppColors.blue.withValues(alpha: 0.12),
                             border: Border.all(
-                              color: AppColors.blue.withValues(alpha: 0.22),
+                              color: AppColors.blue.withValues(alpha: 0.40),
                             ),
                           ),
-                          child: const Text(
-                            'All',
-                            style: TextStyle(
-                              color: AppColors.blue,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.done_all_rounded,
+                                size: 10,
+                                color: AppColors.blue,
+                              ),
+                              SizedBox(width: 3),
+                              Text(
+                                'All',
+                                style: TextStyle(
+                                  color: AppColors.blue,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -158,21 +169,34 @@ class DynUniColSelectionCard extends StatelessWidget {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                            horizontal: 7,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
-                            color: AppColors.surface2,
-                            border: Border.all(color: AppColors.border2),
-                          ),
-                          child: const Text(
-                            'None',
-                            style: TextStyle(
-                              color: AppColors.textDim,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
+                            borderRadius: BorderRadius.circular(6),
+                            color: AppColors.red.withValues(alpha: 0.08),
+                            border: Border.all(
+                              color: AppColors.red.withValues(alpha: 0.35),
                             ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.close_rounded,
+                                size: 10,
+                                color: AppColors.red,
+                              ),
+                              SizedBox(width: 3),
+                              Text(
+                                'None',
+                                style: TextStyle(
+                                  color: AppColors.red,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

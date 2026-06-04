@@ -15,8 +15,6 @@ import 'package:vizualizer/data/models/pipeline_models.dart';
 
 part 'sidebar_widgets.dart';
 
-
-
 class Sidebar extends StatefulWidget {
   const Sidebar({super.key});
 
@@ -119,6 +117,253 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
   }
 
   Future<void> _onDeptSelected(String deptName, PipelineController ctrl) async {
+    // If canvas has unsaved work, confirm before clearing
+    if (ctrl.nodes.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogCtx) => Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 400,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.20),
+                    blurRadius: 32,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Top banner ──
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 28),
+                    decoration: BoxDecoration(
+                      color: AppColors.red.withValues(alpha: 0.06),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.red.withValues(alpha: 0.14),
+                          ),
+                          child: const Icon(
+                            Icons.swap_horiz_rounded,
+                            size: 26,
+                            color: AppColors.red,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Change Department?',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Body ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Warning box
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  12,
+                                  14,
+                                  12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.amberDim,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: AppColors.amber.withValues(
+                                      alpha: 0.25,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 16,
+                                      color: AppColors.amber,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Unsaved canvas work will be lost',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.text,
+                                            ),
+                                          ),
+                                          SizedBox(height: 3),
+                                          Text(
+                                            'Switching department will discard all nodes, joins, and output mappings on the current canvas.',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.textDim,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Positioned(
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 4,
+                                  color: AppColors.amber,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // What will be cleared
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.bg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'WHAT WILL BE CLEARED',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textMuted,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _sidebarClearItem('Source body & file settings'),
+                              const SizedBox(height: 6),
+                              _sidebarClearItem('Join conditions & mappings'),
+                              const SizedBox(height: 6),
+                              _sidebarClearItem(
+                                'Output selection & field mappings',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () =>
+                                    Navigator.of(dialogCtx).pop(false),
+                                icon: const Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'Cancel',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.text,
+                                  side: const BorderSide(
+                                    color: AppColors.border2,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () =>
+                                    Navigator.of(dialogCtx).pop(true),
+                                icon: const Icon(
+                                  Icons.delete_sweep_rounded,
+                                  size: 15,
+                                ),
+                                label: const Text(
+                                  'Clear Canvas',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.red,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      if (confirmed != true || !mounted) return;
+      ctrl.clearCanvas();
+      _resetAnimations();
+    }
+
     ctrl.setSidebarDept(deptName, deptId: _deptMap[deptName]?.toString() ?? '');
     // Dept done → stop dept pulse, start template pulse
     _deptPulse.stop();
@@ -144,6 +389,366 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _onTemplateSelected(String v, PipelineController ctrl) async {
+    // If canvas has unsaved work, confirm before clearing
+    if (ctrl.nodes.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogCtx) => Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 400,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.20),
+                    blurRadius: 32,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Top banner ──
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 28),
+                    decoration: BoxDecoration(
+                      color: AppColors.red.withValues(alpha: 0.06),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.red.withValues(alpha: 0.14),
+                          ),
+                          child: const Icon(
+                            Icons.swap_horiz_rounded,
+                            size: 26,
+                            color: AppColors.red,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Change Template?',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Body ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Warning box
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(
+                                  14,
+                                  12,
+                                  14,
+                                  12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.amberDim,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: AppColors.amber.withValues(
+                                      alpha: 0.25,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 16,
+                                      color: AppColors.amber,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Unsaved canvas work will be lost',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.text,
+                                            ),
+                                          ),
+                                          SizedBox(height: 3),
+                                          Text(
+                                            'Switching template will discard all nodes, joins, and output mappings on the current canvas.',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.textDim,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Positioned(
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 4,
+                                  color: AppColors.amber,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // What will be cleared
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.bg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'WHAT WILL BE CLEARED',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textMuted,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _sidebarClearItem('Source body & file settings'),
+                              const SizedBox(height: 6),
+                              _sidebarClearItem('Join conditions & mappings'),
+                              const SizedBox(height: 6),
+                              _sidebarClearItem(
+                                'Output selection & field mappings',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () =>
+                                    Navigator.of(dialogCtx).pop(false),
+                                icon: const Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'Cancel',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.text,
+                                  side: const BorderSide(
+                                    color: AppColors.border2,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () =>
+                                    Navigator.of(dialogCtx).pop(true),
+                                icon: const Icon(
+                                  Icons.delete_sweep_rounded,
+                                  size: 15,
+                                ),
+                                label: const Text(
+                                  'Clear Canvas',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.red,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      if (confirmed != true || !mounted) return;
+      ctrl.clearCanvas();
+      _sourceCountPulse.stop();
+      _sourceCountPulse.value = 0;
+      _sourceTypePulse.stop();
+      _sourceTypePulse.value = 0;
+      setState(() {
+        _filteredSourceTypes = [];
+        _sourceCountError = false;
+      });
+    }
+
+    if (!mounted) return;
+
+    final info = _templates.firstWhere(
+      (t) => t.templateName == v,
+      orElse: () => TemplateInfo(
+        templateId: 0,
+        templateName: v,
+        department: '',
+        frequency: '',
+        sourceCount: 0,
+        numberOfOutputs: 0,
+        normalVolume: 0,
+        peakVolume: 0,
+        priority: '',
+        benefitType: '',
+        benefitAmount: 0,
+        outputFormats: [],
+      ),
+    );
+    final dynEntry0 = info.dynamicTemplates.isNotEmpty
+        ? info.dynamicTemplates[0]
+        : null;
+    final dynSourceCount =
+        int.tryParse(dynEntry0?['sourceCount']?.toString() ?? '') ?? 0;
+    ctrl.setSidebarTemplate(
+      v,
+      sourceCount: dynSourceCount > 0
+          ? dynSourceCount
+          : (info.sourceCount > 0 ? info.sourceCount : null),
+      templateId: info.templateId,
+      templateType: info.templateType,
+      outputFormats: info.outputFormats,
+      numberOfOutputs: info.numberOfOutputs,
+      dynamicTemplates: info.dynamicTemplates,
+    );
+
+    _templatePulse.stop();
+    _templatePulse.value = 0;
+
+    final isDynUni =
+        (info.templateType == '3' ||
+            info.templateType.toLowerCase().contains('dynamic')) &&
+        info.outputFormats.any((f) => f.toLowerCase().contains('unimailing'));
+
+    if (isDynUni) {
+      if (ctrl.selectedOutputKey.isNotEmpty) {
+        _onOutputKeySelected(ctrl.selectedOutputKey, ctrl);
+      } else {
+        setState(() {
+          _sourceCountError = false;
+          _filteredSourceTypes = [];
+        });
+        _sourceCountPulse.stop();
+        _sourceCountPulse.value = 0;
+        _sourceTypePulse.stop();
+        _sourceTypePulse.value = 0;
+      }
+    } else {
+      final rawList = dynEntry0?['sourceMasterList'] as List?;
+      final sources =
+          rawList
+              ?.whereType<Map<String, dynamic>>()
+              .map(SourceMasterFilterItem.fromJson)
+              .toList() ??
+          [];
+      if (dynEntry0 != null && dynSourceCount > 0) {
+        ctrl.setOutputKeySourceCount(dynSourceCount);
+      }
+      setState(() {
+        _filteredSourceTypes = sources;
+        _sourceCountError = false;
+      });
+
+      final effectiveCount = ctrl.requiredSourceCount;
+      if (effectiveCount == 0) {
+        _sourceTypePulse.stop();
+        _sourceTypePulse.value = 0;
+        _sourceCountPulse.repeat(reverse: true);
+      } else {
+        _sourceCountPulse.repeat(reverse: true);
+        Timer(const Duration(milliseconds: 1000), () {
+          if (!mounted) return;
+          _sourceCountPulse.stop();
+          _sourceCountPulse.value = 0;
+          _sourceTypePulse.repeat(reverse: true);
+        });
+      }
+    }
+  }
+
+  Widget _sidebarClearItem(String text) => Row(
+    children: [
+      const Icon(Icons.close_rounded, size: 14, color: AppColors.red),
+      const SizedBox(width: 8),
+      Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.text,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ],
+  );
+
   /// Called when user picks an output key in the Dynamic+UniMailing flow.
   /// Loads sourceMasterList from the matching dynamicTemplate entry (no API call).
   void _onOutputKeySelected(String key, PipelineController ctrl) {
@@ -167,33 +772,16 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
       _sourceCountError = false;
     });
 
-    // Pulse source count briefly, then hand off to source type pulse
+    // Viewing a saved key — sources loaded but no setup animations.
+    if (ctrl.savedOutputKeyConfigs.containsKey(key)) return;
+
+    // Fresh key being configured — guide user with step animations.
     _sourceCountPulse.repeat(reverse: true);
     Timer(const Duration(milliseconds: 1000), () {
       if (!mounted) return;
       _sourceCountPulse.stop();
       _sourceCountPulse.value = 0;
       if (sources.isNotEmpty) _sourceTypePulse.repeat(reverse: true);
-    });
-  }
-
-  Future<void> _loadFilteredSourceTypes({
-    required String templateId,
-    required String departmentId,
-  }) async {
-    setState(() {
-      _filteredSourceTypes = [];
-      _sourceTypesLoading = true;
-    });
-    final service = context.read<MasterDataService>();
-    final types = await service.getSourceMasterListFilterwise(
-      templateId: templateId,
-      departmentId: departmentId,
-    );
-    if (!mounted) return;
-    setState(() {
-      _filteredSourceTypes = types;
-      _sourceTypesLoading = false;
     });
   }
 
@@ -222,36 +810,34 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     final ctrl = context.watch<PipelineController>();
     if (ctrl.canvasVersion != _lastCanvasVersion) {
       _lastCanvasVersion = ctrl.canvasVersion;
-      // Skip sidebar reset while Dynamic UniMailing output key configuration
-      // is in progress — canvas clears between keys but the sidebar must
-      // keep its dept/template/source-type state intact until all keys are done.
-      final midOutputKeyFlow =
-          ctrl.isDynamicUniMailing && !ctrl.allDynamicUniMailingKeysConfigured;
-      if (!midOutputKeyFlow) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _resetAnimations();
-        });
-      } else {
-        // Between output keys: refresh source types for the auto-advanced key.
-        // _onOutputKeySelected reads from dynamicTemplates (not API), so it
-        // gives the correct sources for whichever key was auto-selected.
+      // Dynamic UniMailing: canvas version changes both during sequential key
+      // configuration AND when the user switches between saved keys for review.
+      // In both cases we must NOT reset the sidebar — instead reload source
+      // types for whichever key is now selected.
+      final isDynUniCanvasChange =
+          ctrl.isDynamicUniMailing && ctrl.selectedOutputKey.isNotEmpty;
+      if (isDynUniCanvasChange) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          if (ctrl.selectedOutputKey.isNotEmpty) {
-            // Re-run key selection to populate sources + animations for new key.
-            _onOutputKeySelected(ctrl.selectedOutputKey, ctrl);
-          } else if (_filteredSourceTypes.isEmpty &&
-              ctrl.sidebarTemplateId > 0 &&
-              ctrl.sidebarDeptId.isNotEmpty) {
-            // Fallback for non-dynamic templates.
-            _loadFilteredSourceTypes(
-              templateId: ctrl.sidebarTemplateId.toString(),
-              departmentId: ctrl.sidebarDeptId,
-            );
-            if (!_sourceTypePulse.isAnimating) {
-              _sourceTypePulse.repeat(reverse: true);
+          // Stop all step animations when viewing an already-configured key —
+          // they are only meant to guide first-time setup.
+          if (ctrl.savedOutputKeyConfigs.containsKey(ctrl.selectedOutputKey)) {
+            for (final c in [
+              _deptPulse,
+              _templatePulse,
+              _sourceCountPulse,
+              _sourceTypePulse,
+            ]) {
+              c.stop();
+              c.value = 0;
             }
           }
+          _onOutputKeySelected(ctrl.selectedOutputKey, ctrl);
+        });
+      } else {
+        // Non-dynamic or no key selected: full sidebar reset.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _resetAnimations();
         });
       }
     }
@@ -347,137 +933,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
                                   enabled: ctrl.sidebarDept.isNotEmpty,
                                   onChanged: (v) {
                                     if (v == null) return;
-                                    final info = _templates.firstWhere(
-                                      (t) => t.templateName == v,
-                                      orElse: () => TemplateInfo(
-                                        templateId: 0,
-                                        templateName: v,
-                                        department: '',
-                                        frequency: '',
-                                        sourceCount: 0,
-                                        numberOfOutputs: 0,
-                                        normalVolume: 0,
-                                        peakVolume: 0,
-                                        priority: '',
-                                        benefitType: '',
-                                        benefitAmount: 0,
-                                        outputFormats: [],
-                                      ),
-                                    );
-                                    final dynEntry0 =
-                                        info.dynamicTemplates.isNotEmpty
-                                        ? info.dynamicTemplates[0]
-                                        : null;
-                                    final dynSourceCount =
-                                        int.tryParse(
-                                          dynEntry0?['sourceCount']
-                                                  ?.toString() ??
-                                              '',
-                                        ) ??
-                                        0;
-                                    ctrl.setSidebarTemplate(
-                                      v,
-                                      sourceCount: dynSourceCount > 0
-                                          ? dynSourceCount
-                                          : (info.sourceCount > 0
-                                                ? info.sourceCount
-                                                : null),
-                                      templateId: info.templateId,
-                                      templateType: info.templateType,
-                                      outputFormats: info.outputFormats,
-                                      numberOfOutputs: info.numberOfOutputs,
-                                      dynamicTemplates: info.dynamicTemplates,
-                                    );
-
-                                    // Template done → stop template pulse
-                                    _templatePulse.stop();
-                                    _templatePulse.value = 0;
-
-                                    // Dynamic + UniMailing: sources come from output-key
-                                    // selection, NOT from a separate API call.
-                                    final isDynUni =
-                                        (info.templateType == '3' ||
-                                            info.templateType
-                                                .toLowerCase()
-                                                .contains('dynamic')) &&
-                                        info.outputFormats.any(
-                                          (f) => f.toLowerCase().contains(
-                                            'unimailing',
-                                          ),
-                                        );
-
-                                    if (isDynUni) {
-                                      // Auto-select was set in setSidebarTemplate;
-                                      // populate sources for that key immediately.
-                                      if (ctrl.selectedOutputKey.isNotEmpty) {
-                                        _onOutputKeySelected(
-                                          ctrl.selectedOutputKey,
-                                          ctrl,
-                                        );
-                                      } else {
-                                        setState(() {
-                                          _sourceCountError = false;
-                                          _filteredSourceTypes = [];
-                                        });
-                                        _sourceCountPulse.stop();
-                                        _sourceCountPulse.value = 0;
-                                        _sourceTypePulse.stop();
-                                        _sourceTypePulse.value = 0;
-                                      }
-                                    } else {
-                                      // Static template (User Defined or UniMailing):
-                                      // sourceMasterList and sourceCount come from
-                                      // dynamicTemplate[0].
-                                      final rawList =
-                                          dynEntry0?['sourceMasterList']
-                                              as List?;
-                                      final sources =
-                                          rawList
-                                              ?.whereType<
-                                                Map<String, dynamic>
-                                              >()
-                                              .map(
-                                                SourceMasterFilterItem.fromJson,
-                                              )
-                                              .toList() ??
-                                          [];
-                                      if (dynEntry0 != null &&
-                                          dynSourceCount > 0) {
-                                        ctrl.setOutputKeySourceCount(
-                                          dynSourceCount,
-                                        );
-                                        setState(() {
-                                          _filteredSourceTypes = sources;
-                                          _sourceCountError = false;
-                                        });
-                                      } else {
-                                        setState(() {
-                                          _filteredSourceTypes = sources;
-                                          _sourceCountError = false;
-                                        });
-                                      }
-
-                                      final effectiveCount =
-                                          ctrl.requiredSourceCount;
-                                      if (effectiveCount == 0) {
-                                        _sourceTypePulse.stop();
-                                        _sourceTypePulse.value = 0;
-                                        _sourceCountPulse.repeat(reverse: true);
-                                      } else {
-                                        _sourceCountPulse.repeat(reverse: true);
-                                        Timer(
-                                          const Duration(milliseconds: 1000),
-                                          () {
-                                            if (!mounted) return;
-                                            _sourceCountPulse.stop();
-                                            _sourceCountPulse.value = 0;
-                                            _sourceTypePulse.repeat(
-                                              reverse: true,
-                                            );
-                                          },
-                                        );
-                                      }
-                                    }
+                                    _onTemplateSelected(v, ctrl);
                                   },
                                 ),
                         ],
