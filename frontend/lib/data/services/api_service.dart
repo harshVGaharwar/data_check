@@ -87,16 +87,18 @@ class ApiService {
           debugPrint('│  ${error.response?.data ?? error.message}');
           debugPrint('└─────────────────────────────────');
 
-          // Skip refresh for login / refresh endpoints (avoid infinite loop)
+          // Skip refresh for login / refresh / logout endpoints (avoid infinite loop)
           final isAuthEndpoint =
-              path.contains('login') || path.contains('refresh');
+              path.contains('login') ||
+              path.contains('refresh') ||
+              path.contains('logout');
 
           if (status == 401 && !isAuthEndpoint) {
             final alreadyRetried = error.requestOptions.extra['__ret'] == true;
 
             try {
               if (!_isRefreshing) {
-                // Only one refresh at a time
+                // Only one refresh aadt a time
                 _isRefreshing = true;
                 final ok = await _performTokenRefresh();
                 _isRefreshing = false;
@@ -150,7 +152,7 @@ class ApiService {
               // Already retried → propagate the error
               return handler.next(error);
             } catch (e) {
-              await _logoutAndClear();
+              debugPrint('[ApiService] Refresh/retry error: $e');
               return handler.resolve(
                 Response(requestOptions: error.requestOptions, statusCode: 401),
               );
@@ -181,9 +183,17 @@ class ApiService {
       headers.remove('Authorization');
     }
 
+    // FormData is single-use — if a factory was stored in extra, use it to
+    // build a fresh FormData and drop the stale boundary from the content-type header.
+    final factory = req.extra['__fd'];
+    final data = factory != null
+        ? (factory as FormData Function())()
+        : req.data;
+    if (factory != null) headers.remove('content-type');
+
     return _dio.request<dynamic>(
       req.path,
-      data: req.data,
+      data: data,
       queryParameters: req.queryParameters,
       options: Options(
         method: req.method,
@@ -191,6 +201,7 @@ class ApiService {
         responseType: req.responseType,
         followRedirects: req.followRedirects,
         receiveTimeout: req.receiveTimeout,
+        extra: req.extra,
       ),
     );
   }
@@ -315,6 +326,23 @@ class ApiService {
         data: formData,
         options: Options(
           contentType: 'multipart/form-data; boundary=${formData.boundary}',
+          extra: {
+            '__fd': () {
+              final fd = FormData();
+              fd.fields.addAll(
+                fields.entries.map((e) => MapEntry(e.key, e.value)),
+              );
+              for (final f in fileEntries) {
+                fd.files.add(
+                  MapEntry(
+                    f.key,
+                    MultipartFile.fromBytes(f.bytes, filename: f.filename),
+                  ),
+                );
+              }
+              return fd;
+            },
+          },
         ),
       );
       return _handleResponse<T>(res, fromData: fromData);
@@ -353,7 +381,29 @@ class ApiService {
       final res = await _dio.post(
         endpoint,
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
+        options: Options(
+          contentType: 'multipart/form-data',
+          extra: {
+            '__fd': () {
+              final fd = FormData();
+              fd.fields.addAll(
+                fields.entries.map((e) => MapEntry(e.key, e.value)),
+              );
+              for (final entry in files.entries) {
+                fd.files.add(
+                  MapEntry(
+                    entry.key,
+                    MultipartFile.fromBytes(
+                      entry.value,
+                      filename: fileNames[entry.key] ?? 'file',
+                    ),
+                  ),
+                );
+              }
+              return fd;
+            },
+          },
+        ),
       );
       return _handleResponse<T>(res, fromData: fromData);
     } on DioException catch (e) {

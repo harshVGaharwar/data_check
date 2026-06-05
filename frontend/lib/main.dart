@@ -24,7 +24,9 @@ void main() {
   // The refreshFn reads the stored refresh token and calls the backend to get
   // a new access token — used by the 401 interceptor in ApiService.
   apiService.configure(
+    
     showMessage: (msg) {
+
       scaffoldMessengerKey.currentState
         ?..clearSnackBars()
         ..showSnackBar(
@@ -43,6 +45,10 @@ void main() {
         userId: session.user.employeeCode,
         storage: storageService,
       );
+    },
+    logoutFn: () async {
+      apiService.setToken(null);
+      await storageService.clearSession();
     },
   );
 
