@@ -45,4 +45,5 @@ class ExternalApi {
   static const String getJobExecutionLog = '/api/template/GetJobExecutionLog';
   static const String refreshToken = '/api/Account/refresh';
   static const String getDashboardCount = '/api/template/GetDashboadCount';
+  static const String getFrequencyList = '/api/template/GetFrequencyList';
 }
