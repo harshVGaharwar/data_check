@@ -172,6 +172,22 @@ class MasterDataService {
     return [];
   }
 
+  /// Fetch frequency list from API
+  Future<List<FrequencyItem>> getFrequencyList() async {
+    try {
+      final data = await _api.getRawData(ApiConfig.frequencyListEndpoint);
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(FrequencyItem.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getFrequencyList error: $e');
+    }
+    return [];
+  }
+
   /// Fetch approval list from API
   Future<List<ApprovalItem>> getApprovalList() async {
     try {

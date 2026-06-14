@@ -8,7 +8,6 @@ import 'package:vizualizer/data/models/template_info.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/presentation/widgets/common/searchable_dropdown.dart';
 import 'package:vizualizer/presentation/widgets/layout/template_config_badget.dart';
-import 'package:vizualizer/presentation/providers/auth_provider.dart';
 import 'package:vizualizer/presentation/widgets/layout/stephighlight.dart';
 import 'package:vizualizer/presentation/widgets/layout/output_key_selector.dart';
 import 'package:vizualizer/data/models/pipeline_models.dart';
@@ -45,6 +44,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
   late final Animation<double> _sourceTypeAnim;
 
   int _lastCanvasVersion = 0;
+  int _lastClearVersion = 0;
 
   @override
   void initState() {
@@ -97,15 +97,6 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
   }
 
   Future<void> _loadDepartments() async {
-    // Wait for auth to finish restoring the session so the token is set before
-    // the API call goes out (matters on page reload).
-    final auth = context.read<AuthProvider>();
-    if (!auth.initialized) {
-      await Future.doWhile(() async {
-        await Future.delayed(const Duration(milliseconds: 50));
-        return mounted && !context.read<AuthProvider>().initialized;
-      });
-    }
     if (!mounted) return;
     final service = context.read<MasterDataService>();
     final map = await service.getDepartmentMap();
@@ -372,6 +363,8 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     setState(() {
       _templates = [];
       _templateLoading = true;
+      _filteredSourceTypes = [];
+      _sourceCountError = false;
     });
 
     final deptId = _deptMap[deptName];
@@ -387,6 +380,14 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
       _templates = templates;
       _templateLoading = false;
     });
+    if (templates.isEmpty) {
+      _templatePulse.stop();
+      _templatePulse.value = 0;
+      _sourceCountPulse.stop();
+      _sourceCountPulse.value = 0;
+      _sourceTypePulse.stop();
+      _sourceTypePulse.value = 0;
+    }
   }
 
   Future<void> _onTemplateSelected(String v, PipelineController ctrl) async {
@@ -808,12 +809,24 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     // Detect canvas clear and reset sidebar animations/state
     final ctrl = context.watch<PipelineController>();
-    if (ctrl.canvasVersion != _lastCanvasVersion) {
+    // Full canvas clear (clearCanvas) — reset sidebar to initial dept-selection state.
+    if (ctrl.clearVersion != _lastClearVersion) {
+      _lastClearVersion = ctrl.clearVersion;
+      _lastCanvasVersion = ctrl.canvasVersion; // keep in sync
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // If a template was re-selected in the same event (e.g. the user
+        // switched templates while the canvas had nodes — clearCanvas() runs
+        // then setSidebarTemplate() immediately repopulates), sidebarTemplate
+        // will be non-empty by the time this fires.  Skip the reset so we
+        // don't wipe the freshly loaded template list and source types.
+        if (ctrl.sidebarTemplate.isEmpty) _resetAnimations();
+      });
+    } else if (ctrl.canvasVersion != _lastCanvasVersion) {
       _lastCanvasVersion = ctrl.canvasVersion;
-      // Dynamic UniMailing: canvas version changes both during sequential key
+      // Dynamic UniMailing only: canvas version changes during sequential key
       // configuration AND when the user switches between saved keys for review.
-      // In both cases we must NOT reset the sidebar — instead reload source
-      // types for whichever key is now selected.
+      // Reload source types for whichever key is now selected.
       final isDynUniCanvasChange =
           ctrl.isDynamicUniMailing && ctrl.selectedOutputKey.isNotEmpty;
       if (isDynUniCanvasChange) {
@@ -834,12 +847,10 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
           }
           _onOutputKeySelected(ctrl.selectedOutputKey, ctrl);
         });
-      } else {
-        // Non-dynamic or no key selected: full sidebar reset.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _resetAnimations();
-        });
       }
+      // Static + UserDefined (type 1) and Static + UniMailing (type 2):
+      // partial canvas clear on node deletion → sidebar keeps its
+      // dept/template/source-type state so the user can reconfigure immediately.
     }
 
     return Container(

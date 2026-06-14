@@ -435,6 +435,7 @@ class _DashboardPageState extends State<DashboardPage> {
 //             }
 //           }
 //         }
+
 //         auth.addListener(listener);
 //       }
 //     });
@@ -597,9 +598,7 @@ class _DashboardPageState extends State<DashboardPage> {
 //         ],
 //       ), // AppBar
 //       drawer: _buildDrawer(),
-//       body: _pages.isEmpty
-//           ? const SizedBox.shrink()
-//           : _pages[_selectedIndex],
+//       body: _pages.isEmpty ? const SizedBox.shrink() : _pages[_selectedIndex],
 //     );
 //   }
 

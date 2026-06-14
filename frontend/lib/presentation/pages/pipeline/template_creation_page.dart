@@ -40,6 +40,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   List<DepartmentItem> _departments = [];
   bool _deptLoading = true;
   bool _deptError = false;
+  List<FrequencyItem> _frequencies = [];
+  bool _freqLoading = true;
+  bool _freqError = false;
   List<ApprovalItem> _approvalOptions = [];
   bool _approvalLoading = true;
   bool _approvalError = false;
@@ -57,15 +60,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   final _benefitLayerLink = LayerLink();
   final _benefitTriggerKey = GlobalKey();
   OverlayEntry? _benefitOverlayEntry;
-  static const _frequencies = [
-    'Daily',
-    'Weekly',
-    'Bi-Weekly',
-    'Monthly',
-    'Quarterly',
-    'Yearly',
-    'On-Demand',
-  ];
+
   static const _benefitTypes = [
     'Cost Saving',
     'Revenue Generation',
@@ -122,6 +117,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       end: 12,
     ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeCtrl);
     _loadDepartments();
+    _loadFrequencies();
     _loadApprovals();
     _loadSourceMasterList();
   }
@@ -154,6 +150,24 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     }
   }
 
+  Future<void> _loadFrequencies() async {
+    setState(() {
+      _freqLoading = true;
+      _freqError = false;
+    });
+    await _waitForAuth();
+    if (!mounted) return;
+    final service = context.read<MasterDataService>();
+    final list = await service.getFrequencyList();
+    if (mounted) {
+      setState(() {
+        _frequencies = list;
+        _freqLoading = false;
+        _freqError = list.isEmpty;
+      });
+    }
+  }
+
   Future<void> _loadApprovals() async {
     setState(() {
       _approvalLoading = true;
@@ -166,6 +180,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     if (mounted) {
       setState(() {
         _approvalOptions = approvals;
+        _model.approvals = approvals.map((a) => a.name).toList();
         _approvalLoading = false;
         _approvalError = approvals.isEmpty;
       });
@@ -192,8 +207,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
   @override
   void dispose() {
-    _closeSourceDropdown();
-    _closeBenefitDropdown();
+    _closeSourceDropdown(rebuild: false);
+    _closeBenefitDropdown(rebuild: false);
     _scrollCtrl.dispose();
     _nameCtrl.dispose();
     _normalVolCtrl.dispose();
@@ -246,10 +261,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     setState(() {}); // refresh arrow rotation
   }
 
-  void _closeSourceDropdown() {
+  void _closeSourceDropdown({bool rebuild = true}) {
     _sourceOverlayEntry?.remove();
     _sourceOverlayEntry = null;
-    if (mounted) setState(() {});
+    if (rebuild && mounted) setState(() {});
   }
 
   void _openBenefitDropdown() {
@@ -279,10 +294,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     setState(() {});
   }
 
-  void _closeBenefitDropdown() {
+  void _closeBenefitDropdown({bool rebuild = true}) {
     _benefitOverlayEntry?.remove();
     _benefitOverlayEntry = null;
-    if (mounted) setState(() {});
+    if (rebuild && mounted) setState(() {});
   }
 
   void _syncModel() {
@@ -313,9 +328,13 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       if (!_model.isGeneralInfoValid) 'General Info',
       if (!_model.isOutputFormatValid) 'Output Format',
       if (!_model.isDynamicOutputsValid) 'Dynamic Outputs',
+      if (!_model.isOnDemandSourceValid)
+        _model.isDynamic
+            ? 'Source Type (On-Demand: Manual required in at least one field)'
+            : 'Source Type (On-Demand: Manual source required)',
       if (!_model.isApprovalValid) 'Approvals (select type)',
       if (_model.isApprovalValid && !_allApprovalFilesUploaded)
-        'Approvals (upload files)',
+        'Approvals (${_model.approvals.length} files required)',
     ];
     if (_missingSections.isNotEmpty) {
       _shakeCtrl.forward(from: 0);
@@ -390,6 +409,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       _selectedBenefitTypes = [];
       _submitted = false;
       _saving = false;
+      _model.approvals = _approvalOptions.map((a) => a.name).toList();
     });
   }
 
@@ -499,13 +519,27 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                   });
                                 },
                               ),
-                        SearchableStringDropdown(
-                          label: 'Frequency *',
-                          items: _frequencies,
-                          value: _model.frequency,
-                          onChanged: (v) =>
-                              setState(() => _model.frequency = v),
-                        ),
+                        _freqLoading
+                            ? _loadingField('Frequency *')
+                            : _freqError
+                            ? _errorField('Frequency *', _loadFrequencies)
+                            : SearchableStringDropdown(
+                                label: 'Frequency *',
+                                items: _frequencies.map((f) => f.name).toList(),
+                                value: _model.frequency,
+                                onChanged: (v) => setState(() {
+                                  _model.frequency = v;
+                                  _model.frequencyId = _frequencies
+                                      .firstWhere(
+                                        (f) => f.name == v,
+                                        orElse: () => const FrequencyItem(
+                                          id: 0,
+                                          name: '',
+                                        ),
+                                      )
+                                      .id;
+                                }),
+                              ),
                       ]),
                       const SizedBox(height: 10),
                       _row([
@@ -700,6 +734,13 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           _sourceMasterMultiSelect(),
                           const SizedBox(),
                         ]),
+                        if (_submitted &&
+                            !_model.isOnDemandSourceValid &&
+                            !_model.isDynamic)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: _err('Please select Manual as Source Type'),
+                          ),
                         const SizedBox(height: 16),
                         const Divider(height: 1, color: AppColors.border),
                       ],
@@ -806,6 +847,15 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                             },
                           ),
                         ),
+                        if (_submitted &&
+                            !_model.isOnDemandSourceValid &&
+                            _model.isDynamic)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, bottom: 8),
+                            child: _err(
+                              'Please select Manual as Source Type in at least one source field',
+                            ),
+                          ),
                       ],
                       const SizedBox(height: 16),
 
@@ -951,7 +1001,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Select required approvals',
+                        'Required approvals (read-only)',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textDim,
@@ -1012,69 +1062,43 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           spacing: 8,
                           runSpacing: 8,
                           children: _approvalOptions.map((a) {
-                            final sel = _model.approvals.contains(a.name);
-                            return InkWell(
-                              onTap: () => setState(() {
-                                if (sel) {
-                                  _model.approvals.remove(a.name);
-                                  _approvalFiles.remove(a.name);
-                                  _approvalFileBytes.remove(a.name);
-                                } else {
-                                  _model.approvals.add(a.name);
-                                }
-                              }),
-                              borderRadius: BorderRadius.circular(8),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 8,
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: AppColors.green.withValues(alpha: 0.08),
+                                border: Border.all(
+                                  color: AppColors.green,
+                                  width: 1.5,
                                 ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: sel
-                                      ? AppColors.green.withValues(alpha: 0.08)
-                                      : AppColors.surface2,
-                                  border: Border.all(
-                                    color: sel
-                                        ? AppColors.green
-                                        : AppColors.border,
-                                    width: sel ? 1.5 : 1,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_box,
+                                    size: 16,
+                                    color: AppColors.green,
                                   ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      sel
-                                          ? Icons.check_box
-                                          : Icons.check_box_outline_blank,
-                                      size: 16,
-                                      color: sel
-                                          ? AppColors.green
-                                          : AppColors.textDim,
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    a.name,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.green,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      a.name,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: sel
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                        color: sel
-                                            ? AppColors.green
-                                            : AppColors.text,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             );
                           }).toList(),
                         ),
                       if (_submitted && !_model.isApprovalValid)
-                        _err('Please select at least one approval'),
+                        _err('Approvals failed to load'),
                     ],
                   ),
                 ),
@@ -1089,9 +1113,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Upload approval document for each selected approval',
-                          style: TextStyle(
+                        Text(
+                          'Upload one document for each of the ${_model.approvals.length} required approvals',
+                          style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textDim,
                           ),
@@ -2426,15 +2450,15 @@ class SearchableStringDropdownState extends State<SearchableStringDropdown> {
     setState(() {});
   }
 
-  void _close() {
+  void _close({bool rebuild = true}) {
     _overlayEntry?.remove();
     _overlayEntry = null;
-    if (mounted) setState(() {});
+    if (rebuild && mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _close();
+    _close(rebuild: false);
     super.dispose();
   }
 
@@ -2916,18 +2940,18 @@ class _DynamicSourceTypeWidgetState extends State<DynamicSourceTypeWidget> {
     setState(() {});
   }
 
-  void _closeDropdown() {
+  void _closeDropdown({bool rebuild = true}) {
     _overlayEntry?.remove();
     _overlayEntry = null;
 
-    if (mounted) {
+    if (rebuild && mounted) {
       setState(() {});
     }
   }
 
   @override
   void dispose() {
-    _closeDropdown();
+    _closeDropdown(rebuild: false);
     super.dispose();
   }
 

@@ -1291,27 +1291,11 @@ class _CheckerModulePageState extends State<CheckerModulePage> {
           return;
         }
         if (!mounted) return;
-        if (model.isDynamic) {
-          ConfigPreviewSheet.showFromRawDynamic(
-            context,
-            model.configs,
-            templateName: item.templateName ?? '',
-          );
-        } else {
-          final config = model.toConfigMap();
-          if (config == null) {
-            _snack(
-              'Pipeline details unavailable for this request.',
-              isError: true,
-            );
-            return;
-          }
-          ConfigPreviewSheet.showFromRaw(
-            context,
-            config,
-            templateName: item.templateName ?? '',
-          );
-        }
+        ConfigPreviewSheet.showFromRawDynamic(
+          context,
+          model.configs,
+          templateName: item.templateName ?? '',
+        );
 
       default:
         _snack('View not available for this module.', isError: true);

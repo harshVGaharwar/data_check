@@ -15,6 +15,7 @@ class ApiConfig {
   // Master Data
   static const String departmentsEndpoint = 'template/GetDepartment';
   static const String approvalListEndpoint = 'template/GetApprovalList';
+  static const String frequencyListEndpoint = 'template/GetFrequencyList';
   static const String templatesEndpoint = 'template/GetTemplates';
   static const String templatesDynamicEndpoint = 'template/GetTemplatesDynamic';
   static const String sourceTypeEndpoint = 'template/GetSourceType';

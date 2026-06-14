@@ -45,14 +45,16 @@ class StorageService {
   }
 
   Future<LoginResponse?> loadSession() async {
-    final token = await _storage.read(key: _tokenKey);
+    final results = await Future.wait([
+      _storage.read(key: _tokenKey),
+      _storage.read(key: _refreshTokenKey),
+      _storage.read(key: _userKey),
+    ]);
+    final token = results[0];
     if (token == null || token.isEmpty) return null;
-
-    final refreshToken = await _storage.read(key: _refreshTokenKey) ?? '';
-    final userJson = await _storage.read(key: _userKey);
-
+    final refreshToken = results[1] ?? '';
+    final userJson = results[2];
     if (userJson == null) return null;
-
     return LoginResponse.fromJson({
       'token': token,
       'refreshToken': refreshToken,

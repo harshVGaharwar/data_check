@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
 import 'package:vizualizer/data/services/storage_service.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -76,7 +77,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Data Fusion',
+                'Data Fusion - Unimaling',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -121,7 +122,10 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 24),
 
                     // Username
-                    const Text('Username', style: AppTextStyles.fieldLabel),
+                    const Text(
+                      'Employee Code *',
+                      style: AppTextStyles.fieldLabel,
+                    ),
                     const SizedBox(height: 6),
                     TextField(
                       controller: _usernameCtrl,
@@ -132,13 +136,13 @@ class _LoginPageState extends State<LoginPage> {
                       onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                       decoration: _inputDecor(
                         Icons.person_outline,
-                        'Enter username',
+                        'Enter employee code',
                       ),
                     ),
                     const SizedBox(height: 16),
 
                     // Password
-                    const Text('Password', style: AppTextStyles.fieldLabel),
+                    const Text('Password *', style: AppTextStyles.fieldLabel),
                     const SizedBox(height: 6),
                     TextField(
                       controller: _passwordCtrl,

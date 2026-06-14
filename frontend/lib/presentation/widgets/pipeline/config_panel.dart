@@ -532,7 +532,8 @@ Future<void> confirmEditNode(
                                           ),
                                           children: [
                                             TextSpan(
-                                              text: 'Editing $nodeName will clear the ',
+                                              text:
+                                                  'Editing $nodeName will clear the ',
                                             ),
                                             const TextSpan(
                                               text: 'entire canvas',
@@ -559,10 +560,7 @@ Future<void> confirmEditNode(
                             left: 0,
                             top: 0,
                             bottom: 0,
-                            child: Container(
-                              width: 4,
-                              color: AppColors.amber,
-                            ),
+                            child: Container(width: 4, color: AppColors.amber),
                           ),
                         ],
                       ),
@@ -635,8 +633,7 @@ Future<void> confirmEditNode(
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () =>
-                                Navigator.of(dialogCtx).pop(false),
+                            onPressed: () => Navigator.of(dialogCtx).pop(false),
                             icon: const Icon(
                               Icons.arrow_back_rounded,
                               size: 14,
@@ -647,12 +644,8 @@ Future<void> confirmEditNode(
                             ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.text,
-                              side: const BorderSide(
-                                color: AppColors.border2,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 13,
-                              ),
+                              side: const BorderSide(color: AppColors.border2),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -662,12 +655,8 @@ Future<void> confirmEditNode(
                         const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () =>
-                                Navigator.of(dialogCtx).pop(true),
-                            icon: const Icon(
-                              Icons.edit_rounded,
-                              size: 15,
-                            ),
+                            onPressed: () => Navigator.of(dialogCtx).pop(true),
+                            icon: const Icon(Icons.edit_rounded, size: 15),
                             label: const Text(
                               'Yes, clear',
                               style: TextStyle(fontWeight: FontWeight.w700),
@@ -676,9 +665,7 @@ Future<void> confirmEditNode(
                               backgroundColor: AppColors.red,
                               foregroundColor: Colors.white,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 13,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -916,8 +903,13 @@ class _ConfigPanelState extends State<ConfigPanel>
                 Padding(
                   padding: const EdgeInsets.all(14),
                   child: InkWell(
-                    onTap: () =>
-                        confirmDeleteNode(context, ctrl, node.id, node.name, node.type),
+                    onTap: () => confirmDeleteNode(
+                      context,
+                      ctrl,
+                      node.id,
+                      node.name,
+                      node.type,
+                    ),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1852,6 +1844,7 @@ class _SourceTypeDropdown extends StatelessWidget {
         color: AppColors.blue.withValues(alpha: 0.05),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1871,16 +1864,16 @@ class _SourceTypeDropdown extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              matchedItem?.sourceName ?? node.sourceTypeName,
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          // Expanded(
+          //   child: Text(
+          //     matchedItem?.sourceName ?? node.sourceTypeName,
+          //     style: const TextStyle(
+          //       color: AppColors.text,
+          //       fontSize: 12,
+          //       fontWeight: FontWeight.w500,
+          //     ),
+          //   ),
+          // ),
           const Icon(Icons.lock_outline, size: 12, color: AppColors.textDim),
         ],
       ),

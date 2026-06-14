@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:vizualizer/data/models/master_models.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
-import 'package:vizualizer/presentation/providers/auth_provider.dart';
 
 class WelcomePage extends StatefulWidget {
   final void Function(int index) onNavigate;
@@ -30,28 +29,13 @@ class _WelcomePageState extends State<WelcomePage>
     _loadDashboard();
   }
 
-  Future<void> _waitForAuth() async {
-    final auth = context
-        .read<AuthProvider>(); // Replace with your actual provider type
-    if (!auth.initialized) {
-      await Future.doWhile(() async {
-        await Future.delayed(const Duration(milliseconds: 50));
-        return mounted && !context.read<AuthProvider>().initialized;
-      });
-    }
-  }
-
   Future<void> _loadDashboard() async {
-    await _waitForAuth();
     if (!mounted) return;
-
-    final service = context
-        .read<MasterDataService>(); // Replace with your actual service type
+    final service = context.read<MasterDataService>();
     final dashboardData = await service.getDashboardCount();
-
     if (mounted) {
       setState(() {
-        _dashboardDetails = dashboardData; // Store the fetched data
+        _dashboardDetails = dashboardData;
       });
     }
   }

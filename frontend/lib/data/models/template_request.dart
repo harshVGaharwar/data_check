@@ -20,6 +20,7 @@ class TemplateRequest {
   String templateName;
   String department;
   String frequency;
+  int frequencyId;
   int normalVolume;
   int peakVolume;
   int sourceCount;
@@ -53,6 +54,7 @@ class TemplateRequest {
     this.templateName = '',
     this.department = '',
     this.frequency = '',
+    this.frequencyId = 0,
     this.normalVolume = 0,
     this.peakVolume = 0,
     this.sourceCount = 0,
@@ -105,7 +107,8 @@ class TemplateRequest {
       {
         'TemplateName': templateName,
         'Department': department,
-        'Frequency': frequency,
+        'Frequency': frequencyId.toString(),
+        'FrequencyName': frequency,
         'NormalVolume': normalVolume,
         'PeakVolume': peakVolume,
         'SourceCount': sourceCount,
@@ -182,6 +185,17 @@ class TemplateRequest {
           sourceList.isNotEmpty &&
           dynamicOutputs.every((d) => d.isValid));
 
+  bool get isOnDemandSourceValid {
+    if (frequency.toLowerCase() != 'on-demand') return true;
+    if (isDynamic) {
+      return sourceList.any((s) => s['sourceType'] == 1) ||
+          dynamicOutputs.any(
+            (d) => d.sourceList.any((s) => s['sourceType'] == 1),
+          );
+    }
+    return sourceList.any((s) => s['sourceType'] == 1);
+  }
+
   bool get isApprovalValid => approvals.isNotEmpty;
 
   bool get isFileUploaded => approvalFiles.isNotEmpty;
@@ -190,6 +204,7 @@ class TemplateRequest {
       isGeneralInfoValid &&
       isOutputFormatValid &&
       isDynamicOutputsValid &&
+      isOnDemandSourceValid &&
       isApprovalValid &&
       isFileUploaded;
 
@@ -197,6 +212,7 @@ class TemplateRequest {
     templateName = '';
     department = '';
     frequency = '';
+    frequencyId = 0;
     normalVolume = 0;
     peakVolume = 0;
     sourceCount = 0;

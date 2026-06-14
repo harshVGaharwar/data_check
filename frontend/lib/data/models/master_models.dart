@@ -1,3 +1,17 @@
+class FrequencyItem {
+  final int id;
+  final String name;
+
+  const FrequencyItem({required this.id, required this.name});
+
+  factory FrequencyItem.fromJson(Map<String, dynamic> json) {
+    return FrequencyItem(
+      id: json['id'] as int? ?? int.tryParse('${json['id']}') ?? 0,
+      name: (json['name'] ?? '').toString(),
+    );
+  }
+}
+
 /// Item returned by GetSourceList
 class SourceListItem {
   final int id;
