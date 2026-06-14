@@ -12,6 +12,7 @@ class ExternalApi {
   static const String departments = '/api/master/GetDepartments';
   static const String approvalList = '/api/template/GetApprovalList';
   static const String getTemplates = '/Template/GetTemplates';
+  static const String getTemplatesDynamic = '/Template/GetTemplatesDynamic';
   static const String getApprovedTemplates = '/Template/GetApprovedTemplates';
   static const String getTemplateConfig = '/Template/GetTemplateConfig';
   static const String getTemplateCreationList =
@@ -32,8 +33,17 @@ class ExternalApi {
   static const String getCheckerTayList = '/api/template/GetCheckerTayList';
   static const String getCheckerTayListWithModule =
       '/api/template/GetCheckerTayListWithModule';
+  static const String getTemplateCheckerTray =
+      '/api/template/GetTemplatesCheckerTray';
+  static const String getSourceMasterCheckerTray =
+      '/api/template/GetsourceMasterCheckerTray';
   static const String uploadManualDataChecker =
       '/api/template/UploadManualDataChecker';
+  static const String approveCheckerTray = '/api/template/ApproveCheckerTray';
   static const String downloadFile = '/api/template/DownloadFile';
+  static const String getReport = '/api/template/GetReport';
+  static const String getJobExecutionLog = '/api/template/GetJobExecutionLog';
   static const String refreshToken = '/api/Account/refresh';
+  static const String getDashboardCount = '/api/template/GetDashboadCount';
+  static const String getFrequencyList = '/api/template/GetFrequencyList';
 }

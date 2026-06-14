@@ -184,6 +184,114 @@ class Template {
 }
 
 // ═══════════════════════════════════════════════════
+// Template Checker Tray Item
+// ═══════════════════════════════════════════════════
+
+/// Represents one row returned by the GetTemplateCheckerTray API.
+/// TemplateType inside jsonData drives the UI:
+///   "1" → Static + User Defined
+///   "2" → Static + Unimailing
+///   "3" → Dynamic + Unimailing  (DynamicTemplate list populated)
+///
+/// [jsonData] is typed as [dynamic] so it survives the production path:
+///   - If the real API sends a valid JSON string  → decoded to Map
+///   - If the real API sends malformed JSON string → raw string kept as-is
+///     (the frontend's _parseJsonData handles both Map and String)
+class TemplateCheckerTrayItem {
+  final String templateId;
+  final String departmentId;
+  final String templateName;
+  final String departmentName;
+  final String makerBy;
+  final String makerDate;
+
+  /// Decoded Map<String,dynamic> in dev/happy-path.
+  /// Raw JSON string when the real API returns malformed JSON (type 3 edge case).
+  final dynamic jsonData;
+
+  const TemplateCheckerTrayItem({
+    required this.templateId,
+    required this.departmentId,
+    required this.templateName,
+    required this.departmentName,
+    required this.makerBy,
+    required this.makerDate,
+    required this.jsonData,
+  });
+
+  /// Build from a raw API map where [jsonData] may be a JSON string or Map.
+  /// Handles the known real-API malformation for TemplateType "3" where an
+  /// extra `}]` appears before "Approvals" and an extra `}` before
+  /// "DynamicTemplate", causing standard jsonDecode to fail.
+  factory TemplateCheckerTrayItem.fromMap(Map<String, dynamic> map) {
+    final raw = map['jsonData'];
+    dynamic jsonData;
+
+    if (raw is Map<String, dynamic>) {
+      jsonData = raw;
+    } else if (raw is Map) {
+      jsonData = raw.map((k, v) => MapEntry(k.toString(), v));
+    } else if (raw is List) {
+      jsonData = raw;
+    } else if (raw is String && raw.trim().isNotEmpty) {
+      // First attempt: direct decode (valid JSON — may be Map or List)
+      try {
+        jsonData = _decodeJsonValue(raw);
+      } catch (_) {
+        // Second attempt: repair known Map malformations then decode
+        try {
+          jsonData = _decodeJsonValue(_repairJsonData(raw));
+        } catch (_) {
+          jsonData = raw; // last resort — pass raw string to frontend
+        }
+      }
+    } else {
+      jsonData = raw ?? '';
+    }
+
+    return TemplateCheckerTrayItem(
+      templateId: map['templateId']?.toString() ?? '',
+      departmentId: map['departmentId']?.toString() ?? '',
+      templateName: map['templateName']?.toString() ?? '',
+      departmentName: map['departmentName']?.toString() ?? '',
+      makerBy: map['makerBy']?.toString() ?? '',
+      makerDate: map['makerDate']?.toString() ?? '',
+      jsonData: jsonData,
+    );
+  }
+
+  /// Decode a JSON string into Map<String,dynamic> or List — whatever the JSON contains.
+  static dynamic _decodeJsonValue(String s) {
+    final decoded = jsonDecode(s);
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return decoded.map((k, v) => MapEntry(k.toString(), v));
+    if (decoded is List) return decoded;
+    throw const FormatException('Unexpected JSON shape');
+  }
+
+  /// Repair the two known malformations in the real API's TemplateType-3 response:
+  ///   1. Spurious `}]` injected before "Approvals" key.
+  ///   2. Spurious `}` injected before "DynamicTemplate" key.
+  static String _repairJsonData(String s) {
+    // Remove extra `}]` before "Approvals":
+    var r = s.replaceFirst(RegExp(r'\}\]\s*,\s*"Approvals"'), ',"Approvals"');
+    // Remove extra `}` before "DynamicTemplate":
+    r = r.replaceFirst(RegExp(r'\}\s*,\s*"DynamicTemplate"'), ',"DynamicTemplate"');
+    return r;
+  }
+
+  Map<String, dynamic> toJson() => {
+    'templateId': templateId,
+    'departmentId': departmentId,
+    'templateName': templateName,
+    'departmentName': departmentName,
+    'makerBy': makerBy,
+    'makerDate': makerDate,
+    'jsonData': jsonData, // Map or raw String — frontend handles both
+  };
+}
+
+// ═══════════════════════════════════════════════════
 // Pipeline Source Config
 // ═══════════════════════════════════════════════════
 class PipelineConfig {

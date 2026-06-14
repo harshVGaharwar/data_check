@@ -59,15 +59,24 @@ Future<Response> onRequest(RequestContext context) async {
     }
   }
 
-  Map<String, dynamic> body;
+  dynamic decoded;
   try {
-    body = jsonDecode(configJson) as Map<String, dynamic>;
+    decoded = jsonDecode(configJson);
+    if (decoded is! Map && decoded is! List) throw const FormatException();
   } catch (_) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
       body: ApiResponse.error(message: 'Invalid Config JSON').toJson(),
     );
   }
+
+  // For Dynamic UniMailing the payload is an array; use first element for
+  // common fields (TemplateId, Sources, etc.).
+  final Map<String, dynamic> body = decoded is List
+      ? (decoded.isNotEmpty
+          ? Map<String, dynamic>.from(decoded.first as Map)
+          : {})
+      : Map<String, dynamic>.from(decoded as Map);
 
   // Dev mode: save locally and return mock response
   if (kDevMode) {
@@ -96,11 +105,13 @@ Future<Response> onRequest(RequestContext context) async {
               .toList() ??
           [],
     );
-    // Store full raw config so GetTemplateConfig can return the complete shape.
-    db.sourceConfigs[configKey] = Map<String, dynamic>.from(body);
+    // Store full raw config (array for Dynamic UniMailing, map otherwise).
+    db.sourceConfigs[configKey] = decoded is List
+        ? {'OutputKeys': decoded}
+        : Map<String, dynamic>.from(decoded as Map);
 
     print('[PIPELINE CONFIG SAVED - DEV] key=$configKey id=$id');
-    print(const JsonEncoder.withIndent('  ').convert(body));
+    print(const JsonEncoder.withIndent('  ').convert(decoded));
     print('[FILES] ${uploadedFiles.map((f) => f.filename).toList()}');
 
     return Response.json(

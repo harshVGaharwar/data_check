@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 
@@ -5,7 +7,59 @@ import '../models/models.dart';
 class Database {
   static final Database _instance = Database._();
   factory Database() => _instance;
-  Database._();
+
+  static const _dynamicTemplatesPath = 'data/dynamic_templates.json';
+
+  /// Tracks only runtime-added templates — persisted to disk
+  final Map<int, List<Map<String, dynamic>>> _dynamicTemplates = {};
+
+  Database._() {
+    _loadDynamicTemplates();
+  }
+
+  void _loadDynamicTemplates() {
+    try {
+      final file = File(_dynamicTemplatesPath);
+      if (!file.existsSync()) return;
+      final data = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      for (final entry in data.entries) {
+        final deptId = int.tryParse(entry.key);
+        if (deptId == null) continue;
+        final list = (entry.value as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        _dynamicTemplates[deptId] = list;
+        templatesByDept.putIfAbsent(deptId, () => []);
+        templatesByDept[deptId]!.addAll(list);
+      }
+      print(
+          '[DB] Loaded ${_dynamicTemplates.values.expand((l) => l).length} dynamic template(s)');
+    } catch (e) {
+      print('[DB] Could not load dynamic templates: $e');
+    }
+  }
+
+  /// Adds a template entry to the in-memory map AND persists it to disk.
+  void persistTemplate(int deptId, Map<String, dynamic> entry) {
+    templatesByDept.putIfAbsent(deptId, () => []);
+    templatesByDept[deptId]!.add(entry);
+    _dynamicTemplates.putIfAbsent(deptId, () => []);
+    _dynamicTemplates[deptId]!.add(entry);
+    _saveDynamicTemplates();
+  }
+
+  void _saveDynamicTemplates() {
+    try {
+      final file = File(_dynamicTemplatesPath);
+      file.parent.createSync(recursive: true);
+      final jsonData = {
+        for (final e in _dynamicTemplates.entries) e.key.toString(): e.value,
+      };
+      file.writeAsStringSync(jsonEncode(jsonData));
+    } catch (e) {
+      print('[DB] Failed to save dynamic templates: $e');
+    }
+  }
 
   final _uuid = const Uuid();
 
@@ -31,365 +85,1048 @@ class Database {
   };
 
   // ── Templates by Department ID ──
+  // 3 cases: Static+UserDefined, Static+UniMailing, Dynamic+UniMailing
   final Map<int, List<Map<String, dynamic>>> templatesByDept = {
     1: [
-      // Finance
+      // ── Case 1: Static + User Defined ──
       {
-        'templateId': 1,
-        'templateName': 'GL Reconciliation',
-        'department': 'Finance',
-        'frequency': 'Monthly',
-        'sourceCount': 3,
-        'numberOfOutputs': 2,
-        'normalVolume': 500,
-        'peakVolume': 1000,
-        'priority': 'High',
-        'benefitType': 'Efficiency',
-        'benefitAmount': 5000,
-        'outputFormats': ['CSV', 'Excel']
+        'TemplateType': '1 - Static',
+        'TemplateId': 10,
+        'TemplateName': '10 - Static User Defined',
+        'Department': '1',
+        'Frequency': 'Monthly',
+        'NormalVolume': 1000,
+        'PeakVolume': 5000,
+        'SourceCount': 2,
+        'BenefitType': 'Cost',
+        'BenefitAmount': 50000,
+        'BenefitInTat': '2 days',
+        'GoLiveDate': '2026-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Rahul Sharma',
+        'SpocManager': 'Amit Kumar',
+        'UnitHead': 'Priya Singh',
+        'Priority': 'Medium',
+        'NumberOfOutputs': null,
+        'SourceList': '1,2',
+        'templateType': '1',
+        'templateId': 10,
+        'templateName': '10 - Static User Defined',
+        'outputFormats': [
+          {'templateTempId': 10, 'formatName': 'User Defined'},
+        ],
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'User Defined'},
+        ],
+        'dynamicTemplate': [
+          {
+            'srno': 0,
+            'id': 0,
+            'sourceList': '1,2',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 10,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '2',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '1',
+          },
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Finance',
+        'departmentName': 'Finance',
+        'SourceListNames': 'Finacle Core, Oracle GL',
+        'sourceListNames': 'Finacle Core, Oracle GL',
       },
+      // ── Case 2: Static + UniMailing ──
       {
-        'templateId': 2,
-        'templateName': 'P&L Report',
-        'department': 'Finance',
-        'frequency': 'Monthly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 200,
-        'peakVolume': 400,
-        'priority': 'High',
-        'benefitType': 'Reporting',
-        'benefitAmount': 3000,
-        'outputFormats': ['Excel']
+        'TemplateType': '1 - Static',
+        'TemplateId': 20,
+        'TemplateName': '20 - Static UniMailing',
+        'Department': '1',
+        'Frequency': 'Weekly',
+        'NormalVolume': 500,
+        'PeakVolume': 2000,
+        'SourceCount': 2,
+        'BenefitType': 'Reporting',
+        'BenefitAmount': 20000,
+        'BenefitInTat': '1 day',
+        'GoLiveDate': '2026-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Rahul Sharma',
+        'SpocManager': 'Amit Kumar',
+        'UnitHead': 'Priya Singh',
+        'Priority': 'High',
+        'NumberOfOutputs': null,
+        'SourceList': '1,2',
+        'templateType': '2',
+        'templateId': 20,
+        'templateName': '20 - Static UniMailing',
+        'outputFormats': [
+          {'templateTempId': 20, 'formatName': 'Unimailing'},
+        ],
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Unimailing'},
+        ],
+        'dynamicTemplate': [
+          {
+            'srno': 0,
+            'id': 0,
+            'sourceList': '1,2',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 20,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '2',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '1',
+          },
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Finance',
+        'departmentName': 'Finance',
+        'SourceListNames': 'Finacle Core, Oracle GL',
+        'sourceListNames': 'Finacle Core, Oracle GL',
       },
+      // ── Case 3: Dynamic + UniMailing ──
       {
-        'templateId': 3,
-        'templateName': 'Budget Variance',
-        'department': 'Finance',
-        'frequency': 'Quarterly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 100,
-        'peakVolume': 200,
-        'priority': 'Medium',
-        'benefitType': 'CostSaving',
-        'benefitAmount': 2000,
-        'outputFormats': ['CSV']
-      },
-      {
-        'templateId': 4,
-        'templateName': 'Cash Flow',
-        'department': 'Finance',
-        'frequency': 'Weekly',
-        'sourceCount': 2,
-        'numberOfOutputs': 2,
-        'normalVolume': 300,
-        'peakVolume': 600,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 4000,
-        'outputFormats': ['CSV', 'Excel']
-      },
-      {
-        'templateId': 5,
-        'templateName': 'Trial Balance',
-        'department': 'Finance',
-        'frequency': 'Monthly',
-        'sourceCount': 1,
-        'numberOfOutputs': 1,
-        'normalVolume': 150,
-        'peakVolume': 300,
-        'priority': 'Medium',
-        'benefitType': 'Reporting',
-        'benefitAmount': 1500,
-        'outputFormats': ['Excel']
+        'TemplateType': '3',
+        'TemplateId': 57,
+        'TemplateName': '57 - dynamic + unimailing',
+        'Department': null,
+        'Frequency': 'Monthly',
+        'NormalVolume': 0,
+        'PeakVolume': 0,
+        'SourceCount': 0,
+        'NumberOfOutputs': 0,
+        'BenefitType': 0,
+        'BenefitAmount': 0,
+        'BenefitInTAT': null,
+        'GoLiveDate': null,
+        'DeactivateDate': null,
+        'SpocPerson': null,
+        'SpocManager': null,
+        'UnitHead': null,
+        'Priority': 0,
+        // camelCase keys below match what the real external API returns
+        'templateType': '3',
+        'templateId': 57,
+        'templateName': '57 - dynamic + unimailing',
+        'outputFormats': [
+          {'templateTempId': 57, 'formatName': 'Unimailing'},
+        ],
+        'dynamicTemplate': [
+          {
+            'srno': 0,
+            'id': 0,
+            'sourceList': '1',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 57,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '1',
+          },
+          {
+            'srno': 10,
+            'id': 21,
+            'sourceList': '1,2',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 57,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '3',
+          },
+          {
+            'srno': 11,
+            'id': 22,
+            'sourceList': '1',
+            'sourceCount': '1',
+            'sourceListName': null,
+            'templateId': 57,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '3',
+          },
+        ],
+        'jsonData': null,
+        'DepartmentName': 'Finance',
+        'departmentName': null,
+        'SourceListNames': null,
+        'sourceListNames': null,
+        'sourceList': '1',
       },
     ],
+    // depts 2–8 intentionally empty — all test cases are in dept 1
     2: [
-      // Operations
       {
-        'templateId': 6,
-        'templateName': 'Daily MIS',
-        'department': 'Operations',
-        'frequency': 'Daily',
-        'sourceCount': 3,
-        'numberOfOutputs': 2,
-        'normalVolume': 1000,
-        'peakVolume': 2000,
-        'priority': 'High',
-        'benefitType': 'Efficiency',
-        'benefitAmount': 6000,
-        'outputFormats': ['CSV']
+        'TemplateId': 6,
+        'TemplateName': 'Daily MIS',
+        'Department': '2',
+        'Frequency': 'Daily',
+        'NormalVolume': 1000,
+        'PeakVolume': 2000,
+        'SourceCount': 3,
+        'BenefitType': 'Efficiency',
+        'BenefitAmount': 6000,
+        'BenefitInTat': '4 hours',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Arjun Patel',
+        'SpocManager': 'Suresh Nair',
+        'UnitHead': 'Kavita Joshi',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 2,
+        'SourceList': '4,5,6',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Operations',
+        'SourceListNames': 'Ops DB,Core DB,MIS DB',
       },
       {
-        'templateId': 7,
-        'templateName': 'Branch Performance',
-        'department': 'Operations',
-        'frequency': 'Monthly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 300,
-        'peakVolume': 600,
-        'priority': 'Medium',
-        'benefitType': 'Reporting',
-        'benefitAmount': 2500,
-        'outputFormats': ['Excel']
+        'TemplateId': 7,
+        'TemplateName': 'Branch Performance',
+        'Department': '2',
+        'Frequency': 'Monthly',
+        'NormalVolume': 300,
+        'PeakVolume': 600,
+        'SourceCount': 2,
+        'BenefitType': 'Reporting',
+        'BenefitAmount': 2500,
+        'BenefitInTat': '2 days',
+        'GoLiveDate': '2025-02-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Meena Iyer',
+        'SpocManager': 'Suresh Nair',
+        'UnitHead': 'Kavita Joshi',
+        'Priority': 'Medium',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '4,5',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Operations',
+        'SourceListNames': 'Ops DB,Core DB',
       },
       {
-        'templateId': 8,
-        'templateName': 'Transaction Summary',
-        'department': 'Operations',
-        'frequency': 'Daily',
-        'sourceCount': 1,
-        'numberOfOutputs': 1,
-        'normalVolume': 5000,
-        'peakVolume': 8000,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 3500,
-        'outputFormats': ['CSV']
+        'TemplateId': 8,
+        'TemplateName': 'Transaction Summary',
+        'Department': '2',
+        'Frequency': 'Daily',
+        'NormalVolume': 5000,
+        'PeakVolume': 8000,
+        'SourceCount': 1,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 3500,
+        'BenefitInTat': '1 hour',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Arjun Patel',
+        'SpocManager': 'Suresh Nair',
+        'UnitHead': 'Kavita Joshi',
+        'Priority': 'High',
+        'TemplateType': '1 - Static',
+        'NumberOfOutputs': null,
+        'SourceList': '4',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'BCU Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Operations',
+        'SourceListNames': 'Ops DB',
       },
       {
-        'templateId': 9,
-        'templateName': 'SLA Report',
-        'department': 'Operations',
-        'frequency': 'Weekly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 200,
-        'peakVolume': 400,
-        'priority': 'Medium',
-        'benefitType': 'Efficiency',
-        'benefitAmount': 2000,
-        'outputFormats': ['Excel']
+        'TemplateId': 9,
+        'TemplateName': 'SLA Report',
+        'Department': '2',
+        'Frequency': 'Weekly',
+        'NormalVolume': 200,
+        'PeakVolume': 400,
+        'SourceCount': 2,
+        'BenefitType': 'Efficiency',
+        'BenefitAmount': 2000,
+        'BenefitInTat': '1 day',
+        'GoLiveDate': '2025-03-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Meena Iyer',
+        'SpocManager': 'Suresh Nair',
+        'UnitHead': 'Kavita Joshi',
+        'Priority': 'Medium',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '4,6',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Operations',
+        'SourceListNames': 'Ops DB,MIS DB',
       },
     ],
     3: [
       // Marketing
       {
-        'templateId': 10,
-        'templateName': 'Campaign Report',
-        'department': 'Marketing',
-        'frequency': 'Weekly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 200,
-        'peakVolume': 400,
-        'priority': 'Medium',
-        'benefitType': 'Revenue',
-        'benefitAmount': 8000,
-        'outputFormats': ['CSV', 'Excel']
+        'TemplateId': 10,
+        'TemplateName': 'Campaign Report',
+        'Department': '3',
+        'Frequency': 'Weekly',
+        'NormalVolume': 200,
+        'PeakVolume': 400,
+        'SourceCount': 2,
+        'BenefitType': 'Revenue',
+        'BenefitAmount': 8000,
+        'BenefitInTat': '2 days',
+        'GoLiveDate': '2025-01-15',
+        'DeactivateDate': null,
+        'SpocPerson': 'Ananya Roy',
+        'SpocManager': 'Deepak Mishra',
+        'UnitHead': 'Sunita Verma',
+        'Priority': 'Medium',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '7,8',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Marketing',
+        'SourceListNames': 'CRM DB,Campaign DB',
       },
       {
-        'templateId': 11,
-        'templateName': 'Customer Segment',
-        'department': 'Marketing',
-        'frequency': 'Monthly',
-        'sourceCount': 3,
-        'numberOfOutputs': 2,
-        'normalVolume': 500,
-        'peakVolume': 1000,
-        'priority': 'High',
-        'benefitType': 'Revenue',
-        'benefitAmount': 12000,
-        'outputFormats': ['Excel']
+        'TemplateId': 11,
+        'TemplateName': 'Customer Segment',
+        'Department': '3',
+        'Frequency': 'Monthly',
+        'NormalVolume': 500,
+        'PeakVolume': 1000,
+        'SourceCount': 3,
+        'BenefitType': 'Revenue',
+        'BenefitAmount': 12000,
+        'BenefitInTat': '3 days',
+        'GoLiveDate': '2025-02-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Ravi Shankar',
+        'SpocManager': 'Deepak Mishra',
+        'UnitHead': 'Sunita Verma',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 2,
+        'SourceList': '7,8,9',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'UAT Sign Off',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Marketing',
+        'SourceListNames': 'CRM DB,Campaign DB,Analytics DB',
       },
     ],
     4: [
       // IT
       {
-        'templateId': 12,
-        'templateName': 'System Health',
-        'department': 'IT',
-        'frequency': 'Daily',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 500,
-        'peakVolume': 1000,
-        'priority': 'High',
-        'benefitType': 'Efficiency',
-        'benefitAmount': 3000,
-        'outputFormats': ['CSV']
+        'TemplateId': 12,
+        'TemplateName': 'System Health',
+        'Department': '4',
+        'Frequency': 'Daily',
+        'NormalVolume': 500,
+        'PeakVolume': 1000,
+        'SourceCount': 2,
+        'BenefitType': 'Efficiency',
+        'BenefitAmount': 3000,
+        'BenefitInTat': '1 hour',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Kiran Desai',
+        'SpocManager': 'Ashok Tiwari',
+        'UnitHead': 'Ramesh Pillai',
+        'Priority': 'High',
+        'TemplateType': '1 - Static',
+        'NumberOfOutputs': null,
+        'SourceList': '10,11',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'IT',
+        'SourceListNames': 'Server Logs,App Monitor',
       },
       {
-        'templateId': 13,
-        'templateName': 'API Metrics',
-        'department': 'IT',
-        'frequency': 'Daily',
-        'sourceCount': 1,
-        'numberOfOutputs': 1,
-        'normalVolume': 2000,
-        'peakVolume': 5000,
-        'priority': 'High',
-        'benefitType': 'Efficiency',
-        'benefitAmount': 2000,
-        'outputFormats': ['CSV']
+        'TemplateId': 13,
+        'TemplateName': 'API Metrics',
+        'Department': '4',
+        'Frequency': 'Daily',
+        'NormalVolume': 2000,
+        'PeakVolume': 5000,
+        'SourceCount': 1,
+        'BenefitType': 'Efficiency',
+        'BenefitAmount': 2000,
+        'BenefitInTat': '30 mins',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Kiran Desai',
+        'SpocManager': 'Ashok Tiwari',
+        'UnitHead': 'Ramesh Pillai',
+        'Priority': 'High',
+        'TemplateType': '1 - Static',
+        'NumberOfOutputs': null,
+        'SourceList': '10',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'IT',
+        'SourceListNames': 'Server Logs',
       },
       {
-        'templateId': 14,
-        'templateName': 'Uptime Report',
-        'department': 'IT',
-        'frequency': 'Weekly',
-        'sourceCount': 1,
-        'numberOfOutputs': 1,
-        'normalVolume': 100,
-        'peakVolume': 200,
-        'priority': 'Low',
-        'benefitType': 'Compliance',
-        'benefitAmount': 1000,
-        'outputFormats': ['Excel']
+        'TemplateId': 14,
+        'TemplateName': 'Uptime Report',
+        'Department': '4',
+        'Frequency': 'Weekly',
+        'NormalVolume': 100,
+        'PeakVolume': 200,
+        'SourceCount': 1,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 1000,
+        'BenefitInTat': '1 day',
+        'GoLiveDate': '2025-01-15',
+        'DeactivateDate': null,
+        'SpocPerson': 'Nitin Kulkarni',
+        'SpocManager': 'Ashok Tiwari',
+        'UnitHead': 'Ramesh Pillai',
+        'Priority': 'Low',
+        'TemplateType': '1 - Static',
+        'NumberOfOutputs': null,
+        'SourceList': '11',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'IT',
+        'SourceListNames': 'App Monitor',
       },
     ],
     5: [
       // HR
       {
-        'templateId': 15,
-        'templateName': 'Headcount Report',
-        'department': 'HR',
-        'frequency': 'Monthly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 100,
-        'peakVolume': 200,
-        'priority': 'Medium',
-        'benefitType': 'Efficiency',
-        'benefitAmount': 1500,
-        'outputFormats': ['Excel']
+        'TemplateId': 15,
+        'TemplateName': 'Headcount Report',
+        'Department': '5',
+        'Frequency': 'Monthly',
+        'NormalVolume': 100,
+        'PeakVolume': 200,
+        'SourceCount': 2,
+        'BenefitType': 'Efficiency',
+        'BenefitAmount': 1500,
+        'BenefitInTat': '2 days',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Pooja Bhatt',
+        'SpocManager': 'Girish Nanda',
+        'UnitHead': 'Lakshmi Rao',
+        'Priority': 'Medium',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '12,13',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'HR',
+        'SourceListNames': 'HRMS,Payroll DB',
       },
       {
-        'templateId': 16,
-        'templateName': 'Payroll Summary',
-        'department': 'HR',
-        'frequency': 'Monthly',
-        'sourceCount': 2,
-        'numberOfOutputs': 2,
-        'normalVolume': 200,
-        'peakVolume': 400,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 2000,
-        'outputFormats': ['CSV', 'Excel']
+        'TemplateId': 16,
+        'TemplateName': 'Payroll Summary',
+        'Department': '5',
+        'Frequency': 'Monthly',
+        'NormalVolume': 200,
+        'PeakVolume': 400,
+        'SourceCount': 2,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 2000,
+        'BenefitInTat': '1 day',
+        'GoLiveDate': '2025-02-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Pooja Bhatt',
+        'SpocManager': 'Girish Nanda',
+        'UnitHead': 'Lakshmi Rao',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 2,
+        'SourceList': '12,13',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'BCU Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'HR',
+        'SourceListNames': 'HRMS,Payroll DB',
       },
       {
-        'templateId': 17,
-        'templateName': 'Attrition Report',
-        'department': 'HR',
-        'frequency': 'Quarterly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 50,
-        'peakVolume': 100,
-        'priority': 'Medium',
-        'benefitType': 'Reporting',
-        'benefitAmount': 1000,
-        'outputFormats': ['Excel']
+        'TemplateId': 17,
+        'TemplateName': 'Attrition Report',
+        'Department': '5',
+        'Frequency': 'Quarterly',
+        'NormalVolume': 50,
+        'PeakVolume': 100,
+        'SourceCount': 2,
+        'BenefitType': 'Reporting',
+        'BenefitAmount': 1000,
+        'BenefitInTat': '3 days',
+        'GoLiveDate': '2025-03-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Anjali Singh',
+        'SpocManager': 'Girish Nanda',
+        'UnitHead': 'Lakshmi Rao',
+        'Priority': 'Medium',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '12,13',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'HR',
+        'SourceListNames': 'HRMS,Payroll DB',
       },
     ],
     6: [
       // Risk
       {
-        'templateId': 18,
-        'templateName': 'NPA Report',
-        'department': 'Risk',
-        'frequency': 'Monthly',
-        'sourceCount': 3,
-        'numberOfOutputs': 2,
-        'normalVolume': 500,
-        'peakVolume': 1000,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 10000,
-        'outputFormats': ['CSV', 'Excel']
+        'TemplateId': 18,
+        'TemplateName': 'NPA Report',
+        'Department': '6',
+        'Frequency': 'Monthly',
+        'NormalVolume': 500,
+        'PeakVolume': 1000,
+        'SourceCount': 3,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 10000,
+        'BenefitInTat': '2 days',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Sameer Khan',
+        'SpocManager': 'Rajesh Dubey',
+        'UnitHead': 'Vandana Saxena',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 2,
+        'SourceList': '14,15,16',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'CCU Head Approval',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Risk',
+        'SourceListNames': 'Loan DB,Risk DB,Collateral DB',
       },
       {
-        'templateId': 19,
-        'templateName': 'Exposure Report',
-        'department': 'Risk',
-        'frequency': 'Weekly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 300,
-        'peakVolume': 600,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 7000,
-        'outputFormats': ['Excel']
+        'TemplateId': 19,
+        'TemplateName': 'Exposure Report',
+        'Department': '6',
+        'Frequency': 'Weekly',
+        'NormalVolume': 300,
+        'PeakVolume': 600,
+        'SourceCount': 2,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 7000,
+        'BenefitInTat': '1 day',
+        'GoLiveDate': '2025-02-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Sameer Khan',
+        'SpocManager': 'Rajesh Dubey',
+        'UnitHead': 'Vandana Saxena',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '14,15',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Risk',
+        'SourceListNames': 'Loan DB,Risk DB',
       },
     ],
     7: [
       // Compliance
       {
-        'templateId': 20,
-        'templateName': 'AML Report',
-        'department': 'Compliance',
-        'frequency': 'Daily',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 1000,
-        'peakVolume': 2000,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 15000,
-        'outputFormats': ['CSV']
+        'TemplateId': 20,
+        'TemplateName': 'AML Report',
+        'Department': '7',
+        'Frequency': 'Daily',
+        'NormalVolume': 1000,
+        'PeakVolume': 2000,
+        'SourceCount': 2,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 15000,
+        'BenefitInTat': '2 hours',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Farhaan Sheikh',
+        'SpocManager': 'Nandini Kapoor',
+        'UnitHead': 'Arun Menon',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '17,18',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Functional Head Approval',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Compliance',
+        'SourceListNames': 'Transaction DB,AML Engine',
       },
       {
-        'templateId': 21,
-        'templateName': 'KYC Tracker',
-        'department': 'Compliance',
-        'frequency': 'Weekly',
-        'sourceCount': 2,
-        'numberOfOutputs': 1,
-        'normalVolume': 500,
-        'peakVolume': 1000,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 8000,
-        'outputFormats': ['CSV', 'Excel']
+        'TemplateId': 21,
+        'TemplateName': 'KYC Tracker',
+        'Department': '7',
+        'Frequency': 'Weekly',
+        'NormalVolume': 500,
+        'PeakVolume': 1000,
+        'SourceCount': 2,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 8000,
+        'BenefitInTat': '1 day',
+        'GoLiveDate': '2025-01-15',
+        'DeactivateDate': null,
+        'SpocPerson': 'Farhaan Sheikh',
+        'SpocManager': 'Nandini Kapoor',
+        'UnitHead': 'Arun Menon',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '17,19',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'SMS Whitelisting',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Compliance',
+        'SourceListNames': 'Transaction DB,KYC DB',
       },
       {
-        'templateId': 22,
-        'templateName': 'Audit Trail',
-        'department': 'Compliance',
-        'frequency': 'Daily',
-        'sourceCount': 1,
-        'numberOfOutputs': 1,
-        'normalVolume': 2000,
-        'peakVolume': 4000,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 5000,
-        'outputFormats': ['CSV']
+        'TemplateId': 22,
+        'TemplateName': 'Audit Trail',
+        'Department': '7',
+        'Frequency': 'Daily',
+        'NormalVolume': 2000,
+        'PeakVolume': 4000,
+        'SourceCount': 1,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 5000,
+        'BenefitInTat': '1 hour',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Preethi Nair',
+        'SpocManager': 'Nandini Kapoor',
+        'UnitHead': 'Arun Menon',
+        'Priority': 'High',
+        'TemplateType': '1 - Static',
+        'NumberOfOutputs': null,
+        'SourceList': '17',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Compliance',
+        'SourceListNames': 'Transaction DB',
       },
     ],
     8: [
       // Treasury
       {
-        'templateId': 23,
-        'templateName': 'Liquidity Report',
-        'department': 'Treasury',
-        'frequency': 'Daily',
-        'sourceCount': 2,
-        'numberOfOutputs': 2,
-        'normalVolume': 300,
-        'peakVolume': 600,
-        'priority': 'High',
-        'benefitType': 'Compliance',
-        'benefitAmount': 6000,
-        'outputFormats': ['CSV', 'Excel']
+        'TemplateId': 23,
+        'TemplateName': 'Liquidity Report',
+        'Department': '8',
+        'Frequency': 'Daily',
+        'NormalVolume': 300,
+        'PeakVolume': 600,
+        'SourceCount': 2,
+        'BenefitType': 'Compliance',
+        'BenefitAmount': 6000,
+        'BenefitInTat': '2 hours',
+        'GoLiveDate': '2025-01-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Vivek Oberoi',
+        'SpocManager': 'Shilpa Doshi',
+        'UnitHead': 'Manish Agarwal',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 2,
+        'SourceList': '20,21',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'CSV'},
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'BCU Head',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Treasury',
+        'SourceListNames': 'Treasury DB,Liquidity Pool',
       },
       {
-        'templateId': 24,
-        'templateName': 'FX Exposure',
-        'department': 'Treasury',
-        'frequency': 'Weekly',
-        'sourceCount': 3,
-        'numberOfOutputs': 1,
-        'normalVolume': 200,
-        'peakVolume': 400,
-        'priority': 'High',
-        'benefitType': 'Revenue',
-        'benefitAmount': 9000,
-        'outputFormats': ['Excel']
+        'TemplateId': 24,
+        'TemplateName': 'FX Exposure',
+        'Department': '8',
+        'Frequency': 'Weekly',
+        'NormalVolume': 200,
+        'PeakVolume': 400,
+        'SourceCount': 3,
+        'BenefitType': 'Revenue',
+        'BenefitAmount': 9000,
+        'BenefitInTat': '1 day',
+        'GoLiveDate': '2025-02-01',
+        'DeactivateDate': null,
+        'SpocPerson': 'Vivek Oberoi',
+        'SpocManager': 'Shilpa Doshi',
+        'UnitHead': 'Manish Agarwal',
+        'Priority': 'High',
+        'TemplateType': '2 - Dynamic',
+        'NumberOfOutputs': 1,
+        'SourceList': '20,21,22',
+        'OutputFormats': [
+          {'TemplateTempId': null, 'FormatName': 'Excel'},
+        ],
+        'Approvals': [
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Unit Head',
+            'ApprovalFile': ''
+          },
+          {
+            'TemplateTempId': null,
+            'Approval_Type': 'Functional Head Approval',
+            'ApprovalFile': ''
+          },
+        ],
+        'CreatedBy': 'admin',
+        'jsonData': '',
+        'DepartmentName': 'Treasury',
+        'SourceListNames': 'Treasury DB,Liquidity Pool,FX DB',
       },
     ],
   };
@@ -701,7 +1438,6 @@ class Database {
     '2_1': {
       'TemplateId': 2,
       'createdBy': 'ADM001',
-     
       'Sources': [
         {
           'TemplateId': 2,
@@ -713,8 +1449,7 @@ class Database {
           'Separator': ',',
           'ColumnFile': 'dummy_data.csv',
           'QueryFile': '',
-          'Columns':
-              'id,template_name,department,source_type,operation,'
+          'Columns': 'id,template_name,department,source_type,operation,'
               'approval_status,config_file,pipeline_format,token,'
               'created_at,updated_at',
           'SelectedColumns': 'approval_status',
@@ -730,8 +1465,7 @@ class Database {
           'Separator': ',',
           'ColumnFile': 'dummy_data.csv',
           'QueryFile': 'valid_query_with.txt',
-          'Columns':
-              'id,template_name,department,source_type,operation,'
+          'Columns': 'id,template_name,department,source_type,operation,'
               'approval_status,config_file,pipeline_format,token,'
               'created_at,updated_at',
           'SelectedColumns': 'created_at',
@@ -773,8 +1507,18 @@ class Database {
         {'template_id': 2, 'department': '1', 'From': 'n3', 'To': 'n4'},
       ],
       'connectedSources': [
-        {'TemplateId': 2, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n1'},
-        {'TemplateId': 2, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n3'},
+        {
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n1'
+        },
+        {
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n3'
+        },
       ],
       'outputColumns': [
         {
@@ -850,8 +1594,18 @@ class Database {
         {'template_id': 3, 'department': '1', 'From': 'n3', 'To': 'n4'},
       ],
       'connectedSources': [
-        {'TemplateId': 3, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n1'},
-        {'TemplateId': 3, 'Department': '1', 'JoinNodeId': 'n4', 'SourceId': 'n3'},
+        {
+          'TemplateId': 3,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n1'
+        },
+        {
+          'TemplateId': 3,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n3'
+        },
       ],
       'outputColumns': [
         {

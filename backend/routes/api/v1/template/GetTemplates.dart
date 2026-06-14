@@ -15,6 +15,7 @@ Future<Response> onRequest(RequestContext context) async {
   }
 
   final deptIdStr = context.request.uri.queryParameters['deptId'] ?? '';
+  final flagStr = context.request.uri.queryParameters['flag'];
   final deptId = int.tryParse(deptIdStr);
 
   if (deptId == null) {
@@ -40,8 +41,12 @@ Future<Response> onRequest(RequestContext context) async {
         context.request.headers['authorization'] ??
         '';
 
-    final uri = Uri.parse('$kBaseUrl${ExternalApi.getTemplates}')
-        .replace(queryParameters: {'DeptID': '$deptId'});
+    final uri = Uri.parse('$kBaseUrl${ExternalApi.getTemplates}').replace(
+      queryParameters: {
+        'DeptID': '$deptId',
+        if (flagStr != null) 'flag': flagStr,
+      },
+    );
 
     final externalResponse = await client
         .get(
