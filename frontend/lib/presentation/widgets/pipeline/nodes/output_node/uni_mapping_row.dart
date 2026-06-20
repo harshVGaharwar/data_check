@@ -13,8 +13,12 @@ class UniMappingRow extends StatelessWidget {
   final bool isMapped;
   final ValueChanged<String?> onChanged;
   final VoidCallback? onDelete;
+  // When non-null, the label badge becomes an editable text field.
+  final ValueChanged<String>? onLabelChanged;
+  // Placeholder shown in the editable badge when the label is blank.
+  final String? labelHint;
 
-  const UniMappingRow({super.key, 
+  const UniMappingRow({super.key,
     required this.label,
     required this.labelColor,
     required this.currentKey,
@@ -25,6 +29,8 @@ class UniMappingRow extends StatelessWidget {
     required this.isMapped,
     required this.onChanged,
     this.onDelete,
+    this.onLabelChanged,
+    this.labelHint,
   });
 
   @override
@@ -34,6 +40,19 @@ class UniMappingRow extends StatelessWidget {
         : isMapped
         ? labelColor.withValues(alpha: 0.28)
         : AppColors.border2;
+
+    final badgeBgColor = isMapped
+        ? labelColor.withValues(alpha: 0.12)
+        : AppColors.surface2;
+    final badgeBorderColor = isMapped
+        ? labelColor.withValues(alpha: 0.28)
+        : AppColors.border2;
+    final badgeTextColor = isMapped ? labelColor : AppColors.textMuted;
+    final badgeTextStyle = TextStyle(
+      color: badgeTextColor,
+      fontSize: 9,
+      fontWeight: FontWeight.w700,
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -53,28 +72,30 @@ class UniMappingRow extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            constraints: const BoxConstraints(minWidth: 60),
+            // Editable badge needs a bounded width — a TextField cannot lay out
+            // under the unbounded width a Row gives non-flex children.
+            constraints: onLabelChanged == null
+                ? const BoxConstraints(minWidth: 60)
+                : const BoxConstraints(minWidth: 60, maxWidth: 110),
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(5),
-              color: isMapped
-                  ? labelColor.withValues(alpha: 0.12)
-                  : AppColors.surface2,
-              border: Border.all(
-                color: isMapped
-                    ? labelColor.withValues(alpha: 0.28)
-                    : AppColors.border2,
-              ),
+              color: badgeBgColor,
+              border: Border.all(color: badgeBorderColor),
             ),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isMapped ? labelColor : AppColors.textMuted,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: onLabelChanged == null
+                ? Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: badgeTextStyle,
+                  )
+                : _EditableLabel(
+                    label: label,
+                    hint: labelHint,
+                    textStyle: badgeTextStyle,
+                    hintColor: badgeTextColor.withValues(alpha: 0.5),
+                    onChanged: onLabelChanged!,
+                  ),
           ),
           const SizedBox(width: 6),
           const Icon(
@@ -131,6 +152,79 @@ class UniMappingRow extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact, borderless text field styled to match the static label badge so the
+/// row's look & feel is unchanged while allowing the label to be renamed.
+class _EditableLabel extends StatefulWidget {
+  final String label;
+  final String? hint;
+  final TextStyle textStyle;
+  final Color hintColor;
+  final ValueChanged<String> onChanged;
+
+  const _EditableLabel({
+    required this.label,
+    required this.hint,
+    required this.textStyle,
+    required this.hintColor,
+    required this.onChanged,
+  });
+
+  @override
+  State<_EditableLabel> createState() => _EditableLabelState();
+}
+
+class _EditableLabelState extends State<_EditableLabel> {
+  late final TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.label);
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditableLabel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Keep the field in sync when the external label changes (e.g. reset),
+    // but don't fight the user while they're typing.
+    if (widget.label != _controller.text && !_focusNode.hasFocus) {
+      _controller.text = widget.label;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      textAlign: TextAlign.center,
+      style: widget.textStyle,
+      cursorColor: widget.textStyle.color,
+      cursorWidth: 1,
+      cursorHeight: 11,
+      onChanged: widget.onChanged,
+      decoration: InputDecoration(
+        isDense: true,
+        isCollapsed: true,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        contentPadding: EdgeInsets.zero,
+        hintText: widget.hint,
+        hintStyle: widget.textStyle.copyWith(color: widget.hintColor),
       ),
     );
   }

@@ -394,11 +394,16 @@ class ConfigPreviewSheet extends StatelessWidget {
           final i = e.key;
           final entry = e.value;
           final val = entry.value;
+          final outName =
+              (ctrl.uniMailingCustomLabels[entry.key]?.trim().isNotEmpty ??
+                  false)
+              ? ctrl.uniMailingCustomLabels[entry.key]!.trim()
+              : _slotLabel(entry.key);
           return _tableRow(
             [
               resolveSourceName(val),
               resolveCol(val),
-              _slotLabel(entry.key),
+              outName,
               '✓ mapped',
             ],
             flex,

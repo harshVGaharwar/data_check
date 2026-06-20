@@ -187,6 +187,27 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
               ),
           ],
         ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            const Icon(
+              Icons.edit_outlined,
+              size: 9,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                'Tip: tap a Column name to rename it — mandatory fields can\'t be renamed.',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 9,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
 
         if (_customCount == 0)
@@ -218,7 +239,7 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
                 final isMapped = avail.keys.contains(current);
                 final isLast = slot == _customCount;
                 return UniMappingRow(
-                  label: 'Column $slot',
+                  label: ctrl.uniMailingCustomLabels[key] ?? 'Column $slot',
                   labelColor: AppColors.violet,
                   currentKey: isMapped ? current : null,
                   availableKeys: avail.keys,
@@ -227,9 +248,13 @@ List<String> keys, Map<String, String> labels}) _buildAvailable() {
                   isRequired: true,
                   isMapped: isMapped,
                   onChanged: (v) => ctrl.setUniMailingCustom(key, v ?? ''),
+                  onLabelChanged: (name) =>
+                      ctrl.setUniMailingCustomLabel(key, name),
+                  labelHint: 'Column $slot',
                   onDelete: isLast
                       ? () {
                           ctrl.setUniMailingCustom(key, '');
+                          ctrl.setUniMailingCustomLabel(key, '');
                           setState(() => _customCount--);
                           ctrl.setUniMailingCustomCount(_customCount);
                         }

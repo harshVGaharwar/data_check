@@ -830,7 +830,10 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
           'sourceid': node?.typeId ?? '',
           'sourceName': node?.name ?? '',
           'SourceColName': srcCol,
-          'ColumnName': _slotLabel(e.key),
+          'ColumnName':
+              (ctrl.uniMailingCustomLabels[e.key]?.trim().isNotEmpty ?? false)
+              ? ctrl.uniMailingCustomLabels[e.key]!.trim()
+              : _slotLabel(e.key),
           'Priority': 0,
         });
       }

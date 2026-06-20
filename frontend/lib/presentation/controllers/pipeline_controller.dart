@@ -66,6 +66,8 @@ class PipelineController extends ChangeNotifier {
   final Map<String, String> uniMailingMandatory = {};
   // key: slot name ('C1', 'C2', …)  value: 'nodeId::colName'
   final Map<String, String> uniMailingCustom = {};
+  // key: slot name ('C1', 'C2', …)  value: user-renamed display name
+  final Map<String, String> uniMailingCustomLabels = {};
   // number of custom columns the user has added (includes unfilled ones)
   int uniMailingCustomCount = 0;
 
@@ -292,6 +294,7 @@ String deptId = ''}) {
     outputColumnOrder = [];
     uniMailingMandatory.clear();
     uniMailingCustom.clear();
+    uniMailingCustomLabels.clear();
     uniMailingCustomCount = 0;
     savedOutputKeyConfigs.clear();
     _clearedOutputKeyForms.clear();
@@ -364,6 +367,7 @@ String deptId = ''}) {
       outputColumnOrder = [];
       uniMailingMandatory.clear();
       uniMailingCustom.clear();
+    uniMailingCustomLabels.clear();
       canvasVersion++;
     }
     notifyListeners();
@@ -387,6 +391,7 @@ String deptId = ''}) {
     outputColumnOrder = [];
     uniMailingMandatory.clear();
     uniMailingCustom.clear();
+    uniMailingCustomLabels.clear();
 
     final snapshotSrcs =
         (config['_snapshotSources'] as List?)
@@ -712,6 +717,7 @@ String deptId = ''}) {
     outputColumnOrder = [];
     uniMailingMandatory.clear();
     uniMailingCustom.clear();
+    uniMailingCustomLabels.clear();
     uniMailingCustomCount = 0;
     savedOutputKeyConfigs.clear();
     _clearedOutputKeyForms.clear();
@@ -736,6 +742,7 @@ String deptId = ''}) {
     outputColumnOrder = [];
     uniMailingMandatory.clear();
     uniMailingCustom.clear();
+    uniMailingCustomLabels.clear();
     uniMailingCustomCount = 0;
     // Auto-advance sidebar selection to the next unconfigured key so the user
     // doesn't have to manually pick one from the dropdown after the canvas clears.
@@ -770,6 +777,7 @@ String deptId = ''}) {
     outputColumnOrder = [];
     uniMailingMandatory.clear();
     uniMailingCustom.clear();
+    uniMailingCustomLabels.clear();
     uniMailingCustomCount = 0;
     if (currentKey.isNotEmpty) {
       savedOutputKeyConfigs.remove(currentKey);
@@ -1391,6 +1399,16 @@ List<int>? bytes}) {
       uniMailingCustom.remove(key);
     } else {
       uniMailingCustom[key] = colKey;
+    }
+    notifyListeners();
+  }
+
+  void setUniMailingCustomLabel(String slot, String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      uniMailingCustomLabels.remove(slot);
+    } else {
+      uniMailingCustomLabels[slot] = trimmed;
     }
     notifyListeners();
   }
