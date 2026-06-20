@@ -86,6 +86,11 @@ class SourceMasterFilterItem {
   final int id;
   final String name;
   final int? sourceType;
+
+  /// Dynamic source-type id from the API ("TypeId" in sourceMasterList).
+  /// Arrives as a string; sent as SourceType in the submit payload instead
+  /// of a hardcoded map.
+  final String typeId;
   final String? appName;
   final int itgrc;
   final String? dbVault;
@@ -97,6 +102,7 @@ class SourceMasterFilterItem {
     required this.id,
     required this.name,
     this.sourceType,
+    this.typeId = '',
     this.appName,
     required this.itgrc,
     this.dbVault,
@@ -109,7 +115,10 @@ class SourceMasterFilterItem {
     return SourceMasterFilterItem(
       id: json['id'] as int? ?? 0,
       name: (json['name'] ?? '').toString(),
-      sourceType: int.tryParse(json['sourceType']?.toString() ?? ''),
+      sourceType: int.tryParse(
+        (json['sourceType'] ?? json['TypeId'])?.toString() ?? '',
+      ),
+      typeId: (json['TypeId'] ?? json['sourceType'] ?? '').toString(),
       appName: json['appName'] as String?,
       itgrc: json['itgrc'] as int? ?? 0,
       dbVault: json['dbVault'] as String?,
@@ -190,6 +199,10 @@ class SourceMasterItem {
   final int id;
   final String name;
   final int? sourceType;
+
+  /// Dynamic source-type id from the API ("TypeId" in sourceMasterList).
+  /// Arrives as a string.
+  final String typeId;
   final String appName;
   final int itgrc;
   final String dbVault;
@@ -200,6 +213,7 @@ class SourceMasterItem {
     required this.id,
     required this.name,
     this.sourceType,
+    this.typeId = '',
     required this.appName,
     required this.itgrc,
     required this.dbVault,
@@ -211,7 +225,10 @@ class SourceMasterItem {
     return SourceMasterItem(
       id: json['id'] as int? ?? 0,
       name: (json['name'] as String? ?? '').trim(),
-      sourceType: int.tryParse(json['sourceType']?.toString() ?? ''),
+      sourceType: int.tryParse(
+        (json['sourceType'] ?? json['TypeId'])?.toString() ?? '',
+      ),
+      typeId: (json['TypeId'] ?? json['sourceType'] ?? '').toString(),
       appName: json['appName'] as String? ?? '',
       itgrc: json['itgrc'] as int? ?? 0,
       dbVault: json['dbVault'] as String? ?? '',
@@ -241,6 +258,7 @@ class SourceMasterItem {
     'id': id,
     'name': name,
     'sourceType': sourceType,
+    'TypeId': typeId,
     'appName': appName,
     'itgrc': itgrc,
     'dbVault': dbVault,

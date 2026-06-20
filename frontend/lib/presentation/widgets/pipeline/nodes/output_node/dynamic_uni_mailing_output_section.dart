@@ -350,6 +350,7 @@ class _DynamicUniMailingOutputSectionState
         'name': s.name,
         'sourceTypeValue': s.sourceTypeValue,
         'sourceTypeId': s.sourceTypeId,
+        'typeId': s.typeId,
         'separator': s.separator,
         'fileName': s.fileName,
         'queryFileName': s.queryFileName,

@@ -434,6 +434,7 @@ String deptId = ''}) {
                 : src['queryFileName']?.toString(),
         sourceTypeValue: src['sourceTypeValue']?.toString() ?? '',
         sourceTypeId: srcTypeId,
+        typeId: src['typeId']?.toString() ?? '',
         sourceTypeName: src['sourceTypeValue']?.toString() ?? '',
         confirmState: NodeConfirmState.confirmed,
         columnFileBytes: (src['columnFileBytes'] as List?)?.cast<int>(),
@@ -647,6 +648,7 @@ String deptId = ''}) {
     String? name,
     String sourceTypeValue = '',
     int sourceTypeId = 0,
+    String typeId = '',
     String sourceTypeName = '',
   }) {
     // If name is explicitly provided (even empty string), use it; otherwise fall back to type.label
@@ -661,6 +663,7 @@ String deptId = ''}) {
     );
     if (sourceTypeValue.isNotEmpty) node.sourceTypeValue = sourceTypeValue;
     if (sourceTypeId > 0) node.sourceTypeId = sourceTypeId;
+    if (typeId.isNotEmpty) node.typeId = typeId;
     if (sourceTypeName.isNotEmpty) node.sourceTypeName = sourceTypeName;
     node.position = _clamp(node.position, node);
     nodes.add(node);
@@ -835,6 +838,7 @@ String deptId = ''}) {
           queryFileName: qFile.isEmpty ? null : qFile,
           sourceTypeValue: _sourceLabelFromTypeId(srcTypeId),
           sourceTypeId: srcTypeId,
+          typeId: srcTypeStr,
           sourceTypeName: _sourceLabelFromTypeId(srcTypeId),
           confirmState: NodeConfirmState.confirmed,
           sourceId: int.tryParse(src['SourceId']?.toString() ?? ''),

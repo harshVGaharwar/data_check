@@ -661,10 +661,9 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     final userName = context.read<AuthProvider>().user?.user.employeeCode ?? '';
 
     // ── 1. Sources ──
-    const sourceTypeValueToId = {'Manual': 1, 'QRS': 2, 'FC': 3};
     final sources = sourceNodes.asMap().entries.map((entry) {
       final s = entry.value;
-      final sourceId = sourceTypeValueToId[s.sourceTypeValue] ?? 0;
+      final sourceId = s.typeId;
       final uniqueCols = s.columnUniqueFields.entries
           .where((e) => e.value)
           .map((e) => e.key)
@@ -673,7 +672,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         'TemplateId': templateId,
         'SourceId': s.sourceTypeId > 0 ? s.sourceTypeId.toString() : '',
         'SourceName': s.name,
-        'SourceType': sourceId.toString(),
+        'SourceType': sourceId,
         'Department': deptId,
         'Template': templateName,
         'Separator': s.separator,
@@ -771,7 +770,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
           outputColumns.add({
             'template_id': templateId,
             'department': deptIdInt.toString(),
-            'sourceid': sourceTypeValueToId[s.sourceTypeValue].toString(),
+            'sourceid': s.typeId,
             'sourceName': s.name,
             'SourceColName': col,
             'ColumnName': outputName,
@@ -805,8 +804,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         outputColumns.add({
           'template_id': templateId,
           'department': deptIdInt.toString(),
-          'sourceid': (sourceTypeValueToId[node?.sourceTypeValue] ?? 0)
-              .toString(),
+          'sourceid': node?.typeId ?? '',
           'sourceName': node?.name ?? '',
           'SourceColName': srcCol,
           'ColumnName': field,
@@ -829,8 +827,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         outputColumns.add({
           'template_id': templateId,
           'department': deptIdInt.toString(),
-          'sourceid': (sourceTypeValueToId[node?.sourceTypeValue] ?? 0)
-              .toString(),
+          'sourceid': node?.typeId ?? '',
           'sourceName': node?.name ?? '',
           'SourceColName': srcCol,
           'ColumnName': _slotLabel(e.key),
@@ -909,8 +906,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
             // Build per-key Sources
             final keySources = snapSrcs.asMap().entries.map((se) {
               final s = se.value;
-              final tv = s['sourceTypeValue']?.toString() ?? '';
-              final srcId = sourceTypeValueToId[tv] ?? 0;
+              final srcId = s['typeId']?.toString() ?? '';
               final ucols = (s['columnUniqueFields'] as Map? ?? {});
               final uniqueCols = ucols.entries
                   .where((e) => e.value == true)
@@ -924,7 +920,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                 'TemplateId': templateId,
                 'SourceId': stIdInt > 0 ? stIdInt.toString() : '',
                 'SourceName': s['name']?.toString() ?? '',
-                'SourceType': srcId.toString(),
+                'SourceType': srcId,
                 'Department': deptId,
                 'Template': templateName,
                 'Separator': s['separator']?.toString() ?? '',
@@ -984,13 +980,12 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                 )
                 .toList();
 
-            // Build per-key outputColumns using snapshot source for sourceTypeValue lookup
+            // Build per-key outputColumns using snapshot source for TypeId lookup
             String snapLookupSrcId(String sourceName) {
               final snap = snapSrcs
                   .where((s) => s['name']?.toString() == sourceName)
                   .firstOrNull;
-              final tv = snap?['sourceTypeValue']?.toString() ?? '';
-              return (sourceTypeValueToId[tv] ?? 0).toString();
+              return snap?['typeId']?.toString() ?? '';
             }
 
             final keyOutputCols = <Map<String, dynamic>>[];

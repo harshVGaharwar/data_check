@@ -22,11 +22,13 @@ class DragNodeData {
   final String sourceValue; // empty for non-source nodes (join etc.)
   final String sourceName; // display name from API (e.g. "Database")
   final int sourceTypeId; // id from API source type list
+  final String typeId; // dynamic source-type id ("TypeId") sent as SourceType
   const DragNodeData(
     this.type, {
     this.sourceValue = '',
     this.sourceName = '',
     this.sourceTypeId = 0,
+    this.typeId = '',
   });
 }
 
@@ -202,6 +204,10 @@ class PipelineNode {
   /// Source type id from API
   int sourceTypeId;
 
+  /// Dynamic source-type id ("TypeId" from sourceMasterList), as a string.
+  /// Sent as SourceType / sourceid in the submit payload (replaces hardcoded map).
+  String typeId;
+
   /// Display name of the dragged source type (e.g. 'Finacle Core', 'Database')
   String sourceTypeName;
 
@@ -237,6 +243,7 @@ class PipelineNode {
     Map<String, String>? columnAliases,
     this.sourceTypeValue = '',
     this.sourceTypeId = 0,
+    this.typeId = '',
     this.sourceTypeName = '',
     this.fileName,
     this.queryFileName,

@@ -123,6 +123,7 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                   canvasPos,
                   sourceTypeValue: details.data.sourceValue,
                   sourceTypeId: details.data.sourceTypeId,
+                  typeId: details.data.typeId,
                   sourceTypeName: details.data.sourceName,
                   name: '',
                 );

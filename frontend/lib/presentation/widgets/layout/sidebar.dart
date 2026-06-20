@@ -1418,6 +1418,7 @@ class DynamicPaletteItem extends StatelessWidget {
         sourceValue: sourceItem.sourceTypeLabel,
         sourceName: sourceItem.name,
         sourceTypeId: sourceItem.id,
+        typeId: sourceItem.typeId,
       ),
       feedback: Material(
         color: Colors.transparent,
