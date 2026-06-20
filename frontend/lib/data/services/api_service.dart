@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vizualizer/core/config/api_config.dart';
@@ -36,7 +35,13 @@ class ApiService {
 
   // Token management
   String? _authToken;
-  void setToken(String? token) => _authToken = token;
+  void setToken(String? token) {
+    _authToken = token;
+    // A fresh, valid token means the session is alive again — re-arm the
+    // force-login guard so a future 401 can navigate to login once more.
+    if (token != null && token.isNotEmpty) _loggingOut = false;
+  }
+
   String? get token => _authToken;
   bool get isAuthenticated => _authToken != null && _authToken!.isNotEmpty;
 
@@ -47,6 +52,10 @@ class ApiService {
   // Refresh synchronisation — prevents multiple simultaneous refresh calls
   bool _isRefreshing = false;
   final List<Completer<void>> _refreshWaiters = [];
+  // Result of the most recent refresh, read by requests that waited on it.
+  bool _lastRefreshOk = false;
+  // Guards against multiple concurrent 401s each navigating to login.
+  bool _loggingOut = false;
 
   ApiService() {
     _dio = Dio(
@@ -77,7 +86,7 @@ class ApiService {
           return handler.next(options);
         },
 
-        // 401 → refresh → retry once
+        // 401 → refresh → retry once → if it still fails, go to login
         onError: (DioException error, handler) async {
           final status = error.response?.statusCode;
           final path = error.requestOptions.path;
@@ -93,73 +102,73 @@ class ApiService {
               path.contains('refresh') ||
               path.contains('logout');
 
-          if (status == 401 && !isAuthEndpoint) {
-            final alreadyRetried = error.requestOptions.extra['__ret'] == true;
+          if (status != 401 || isAuthEndpoint) {
+            return handler.next(error);
+          }
 
+          // This request was already retried after a refresh and STILL got 401
+          // → the session is genuinely invalid, force the user to log in.
+          final alreadyRetried = error.requestOptions.extra['__ret'] == true;
+          if (alreadyRetried) {
+            await _forceLogin();
+            return handler.resolve(
+              Response(requestOptions: error.requestOptions, statusCode: 401),
+            );
+          }
+
+          // Ensure exactly one refresh runs; concurrent 401s wait for its result.
+          bool refreshOk = false;
+          if (!_isRefreshing) {
+            _isRefreshing = true;
             try {
-              if (!_isRefreshing) {
-                // Only one refresh aadt a time
-                _isRefreshing = true;
-                final ok = await _performTokenRefresh();
-                _isRefreshing = false;
-
-                // Wake up any requests that were waiting for refresh
-                for (final c in _refreshWaiters) {
-                  if (!c.isCompleted) c.complete();
-                }
-                _refreshWaiters.clear();
-
-                if (!ok) {
-                  // Show message to user
-                  _showMessage?.call('Session expired. Please login again.');
-
-                  // Call injected logout function if available
-                  if (_logoutFn != null) {
-                    try {
-                      await _logoutFn!();
-                    } catch (e) {
-                      // Optional: Log or handle logout error
-                    }
-                  }
-
-                  // Navigate to login screen without routes and prevent back navigation
-                  navigatorKey.currentState?.pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => LoginPage()),
-                    (route) => false,
-                  );
-
-                  return handler.resolve(
-                    Response(
-                      requestOptions: error.requestOptions,
-                      statusCode: 401,
-                    ),
-                  );
-                }
-              } else {
-                // Another request is already refreshing — wait for it
-                final waiter = Completer<void>();
-                _refreshWaiters.add(waiter);
-                await waiter.future;
-              }
-
-              // Retry the original request once with the new token
-              if (!alreadyRetried) {
-                error.requestOptions.extra['__ret'] = true;
-                final retried = await _retry(error.requestOptions);
-                return handler.resolve(retried);
-              }
-
-              // Already retried → propagate the error
-              return handler.next(error);
+              refreshOk = await _performTokenRefresh();
             } catch (e) {
-              debugPrint('[ApiService] Refresh/retry error: $e');
+              debugPrint('[ApiService] Token refresh threw: $e');
+              refreshOk = false;
+            } finally {
+              _lastRefreshOk = refreshOk;
+              _isRefreshing = false;
+              for (final c in _refreshWaiters) {
+                if (!c.isCompleted) c.complete();
+              }
+              _refreshWaiters.clear();
+            }
+          } else {
+            final waiter = Completer<void>();
+            _refreshWaiters.add(waiter);
+            await waiter.future;
+            refreshOk = _lastRefreshOk;
+          }
+
+          // Refresh failed → session is dead, go to login.
+          if (!refreshOk) {
+            await _forceLogin();
+            return handler.resolve(
+              Response(requestOptions: error.requestOptions, statusCode: 401),
+            );
+          }
+
+          // Refresh succeeded → retry the original request exactly once.
+          try {
+            error.requestOptions.extra['__ret'] = true;
+            final retried = await _retry(error.requestOptions);
+
+            // A retry that resolves with 401 (the nested interceptor already
+            // handled login navigation) is forwarded as-is to the caller.
+            return handler.resolve(retried);
+          } on DioException catch (e) {
+            // Retry itself failed. If it's another 401, the session is invalid.
+            if (e.response?.statusCode == 401) {
+              await _forceLogin();
               return handler.resolve(
                 Response(requestOptions: error.requestOptions, statusCode: 401),
               );
             }
+            return handler.next(e);
+          } catch (e) {
+            debugPrint('[ApiService] Retry error: $e');
+            return handler.next(error);
           }
-
-          return handler.next(error);
         },
 
         onResponse: (response, handler) {
@@ -222,10 +231,24 @@ class ApiService {
     }
   }
 
-  /// Clears token and calls the injected logout callback.
-  Future<void> _logoutAndClear() async {
+  /// Force the session to end: clear the in-memory token, run the injected
+  /// logout callback (clears persisted storage), and navigate to the login
+  /// screen. Guarded by [_loggingOut] so concurrent 401s trigger only one
+  /// navigation; re-armed when a valid token is next set via [setToken].
+  Future<void> _forceLogin() async {
+    if (_loggingOut) return;
+    _loggingOut = true;
     _authToken = null;
-    await _logoutFn?.call();
+    _showMessage?.call('Session expired. Please login again.');
+    try {
+      await _logoutFn?.call();
+    } catch (e) {
+      debugPrint('[ApiService] logout callback error: $e');
+    }
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => LoginPage()),
+      (route) => false,
+    );
   }
 
   // ── Public request API (same interface as before) ──────────────────────────
