@@ -693,6 +693,121 @@ String deptId = ''}) {
     notifyListeners();
   }
 
+  /// Clears per-output-key UniMailing state (mandatory/custom field bindings,
+  /// custom labels, output column order, saved snapshot for the active key).
+  /// Used as a common helper by the focused delete methods below.
+  void _clearActiveKeyOutputState() {
+    outputColumnOrder = [];
+    uniMailingMandatory.clear();
+    uniMailingCustom.clear();
+    uniMailingCustomLabels.clear();
+    uniMailingCustomCount = 0;
+    final currentKey = selectedOutputKey;
+    if (currentKey.isNotEmpty) {
+      savedOutputKeyConfigs.remove(currentKey);
+      _clearedOutputKeyForms.add(currentKey);
+    }
+    isViewingConfiguredKey = false;
+  }
+
+  /// Delete a single source node. Removes it + its edges + cleans join mapping
+  /// refs that pointed at it. Also tears down the output preview and the active
+  /// output-key state, because both are invalidated when a source disappears.
+  /// Other source nodes and the join node skeleton stay on the canvas so the
+  /// user can keep iterating without rebuilding the whole pipeline.
+  void deleteSourceNode(String nodeId) {
+    nodes.removeWhere((n) => n.id == nodeId);
+    edges.removeWhere((e) => e.fromNodeId == nodeId || e.toNodeId == nodeId);
+    for (final n in nodes.where((n) => n.type == NodeType.join)) {
+      if (n.leftSrcId == nodeId) n.leftSrcId = null;
+      if (n.rightSrcId == nodeId) n.rightSrcId = null;
+      n.mappings.removeWhere(
+        (m) => m.leftSourceId == nodeId || m.rightSourceId == nodeId,
+      );
+    }
+    // The output preview is downstream of the join and its column selection
+    // referenced the deleted source — remove it.
+    nodes.removeWhere((n) => n.type == NodeType.output);
+    edges.removeWhere(
+      (e) => e.fromNodeId == 'output' || e.toNodeId == 'output',
+    );
+    if (selectedNodeId == nodeId) selectedNodeId = null;
+    if (portDragFromNodeId == nodeId) portDragFromNodeId = null;
+    _clearActiveKeyOutputState();
+    canvasVersion++;
+    notifyListeners();
+  }
+
+  /// Delete the join node and its downstream output preview. Sources stay
+  /// intact so the user can drop a new join and reconnect.
+  void deleteJoinAndOutput(String joinNodeId) {
+    nodes.removeWhere(
+      (n) => n.id == joinNodeId || n.type == NodeType.output,
+    );
+    edges.removeWhere(
+      (e) =>
+          e.fromNodeId == joinNodeId ||
+          e.toNodeId == joinNodeId ||
+          e.fromNodeId == 'output' ||
+          e.toNodeId == 'output',
+    );
+    if (selectedNodeId == joinNodeId) selectedNodeId = null;
+    if (portDragFromNodeId == joinNodeId) portDragFromNodeId = null;
+    _clearActiveKeyOutputState();
+    canvasVersion++;
+    notifyListeners();
+  }
+
+  /// Delete only the output preview node. Sources and join stay.
+  void deleteOutputOnly(String outputNodeId) {
+    nodes.removeWhere((n) => n.id == outputNodeId);
+    edges.removeWhere(
+      (e) => e.fromNodeId == outputNodeId || e.toNodeId == outputNodeId,
+    );
+    if (selectedNodeId == outputNodeId) selectedNodeId = null;
+    if (portDragFromNodeId == outputNodeId) portDragFromNodeId = null;
+    _clearActiveKeyOutputState();
+    canvasVersion++;
+    notifyListeners();
+  }
+
+  /// True if changing [sourceId]'s file/columns would invalidate downstream
+  /// configuration — used to decide whether a file-change consent dialog is
+  /// needed.
+  bool hasDownstreamConfigForSource(String sourceId) {
+    final referencedByJoin = nodes.any(
+      (n) =>
+          n.type == NodeType.join &&
+          n.mappings.any(
+            (m) => m.leftSourceId == sourceId || m.rightSourceId == sourceId,
+          ),
+    );
+    final hasOutput = nodes.any((n) => n.type == NodeType.output);
+    final hasSavedKey =
+        selectedOutputKey.isNotEmpty &&
+        savedOutputKeyConfigs.containsKey(selectedOutputKey);
+    return referencedByJoin || hasOutput || hasSavedKey;
+  }
+
+  /// Cascade-reset downstream config when a source's file is replaced.
+  /// Removes any join mappings that referenced this source, deletes the
+  /// output preview node, and clears the active output-key state. Other
+  /// source nodes are preserved (Option B).
+  void cascadeResetForSourceChange(String sourceId) {
+    for (final n in nodes.where((n) => n.type == NodeType.join)) {
+      n.mappings.removeWhere(
+        (m) => m.leftSourceId == sourceId || m.rightSourceId == sourceId,
+      );
+    }
+    nodes.removeWhere((n) => n.type == NodeType.output);
+    edges.removeWhere(
+      (e) => e.fromNodeId == 'output' || e.toNodeId == 'output',
+    );
+    _clearActiveKeyOutputState();
+    canvasVersion++;
+    notifyListeners();
+  }
+
   /// Same as HTML clearCanvas()
   void clearCanvas() {
     isViewingConfiguredKey = false;
