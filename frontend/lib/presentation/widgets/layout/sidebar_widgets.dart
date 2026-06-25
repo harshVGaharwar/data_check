@@ -40,6 +40,16 @@ class JoinPaletteItemState extends State<JoinPaletteItem>
       _pulseCtrl.stop();
       _pulseCtrl.value = 0;
     }
+    // First time the Join item unlocks in this session, pull it into view —
+    // it lives below the source-type list and is otherwise easy to miss.
+    if (shouldAnimate && !_lastUnlocked && mounted) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        alignment: 0.5,
+      );
+    }
     _lastUnlocked = shouldAnimate;
   }
 

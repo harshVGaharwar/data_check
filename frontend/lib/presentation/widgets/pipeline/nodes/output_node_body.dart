@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vizualizer/presentation/controllers/pipeline_controller.dart';
@@ -44,6 +45,9 @@ class OutputNodeBody extends StatefulWidget {
 class _OutputNodeBodyState extends State<OutputNodeBody> {
   bool _submitting = false;
   final _scrollCtrl = ScrollController();
+  // Cached controller ref so dispose() can clear the hover lock even if the
+  // node is removed while hovered (see dispose()).
+  PipelineController? _ctrlRef;
 
   static String _slotLabel(String slot) {
     if (slot.length > 1 && slot[0] == 'C') {
@@ -55,6 +59,15 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
 
   @override
   void dispose() {
+    // Clear the hover lock if this node is disposed while still hovered, so the
+    // canvas doesn't get stuck with pan/zoom disabled. Deferred to a post-frame
+    // callback to avoid notifyListeners() during the dispose/build phase.
+    final c = _ctrlRef;
+    if (c != null && c.pointerOverOutputNode) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => c.setPointerOverOutputNode(false),
+      );
+    }
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -62,6 +75,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<PipelineController>();
+    _ctrlRef = ctrl;
     final master = context.watch<PipelineMasterProvider>();
 
     // All source nodes connected to any join node
@@ -144,397 +158,444 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         .where((f) => (ctrl.uniMailingMandatory[f] ?? '').isNotEmpty)
         .length;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Header — also the drag handle for moving the node ──
-        MouseRegion(
-          cursor: SystemMouseCursors.grab,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onPanUpdate: (d) => ctrl.moveNode(widget.node.id, d.delta),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.green.withValues(alpha: 0.12),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(10),
+    return MouseRegion(
+      // Vertical up/down cursor hints the area scrolls; also locks the canvas
+      // while hovering so two-finger / wheel scroll drives the node's list
+      // instead of panning/zooming the canvas.
+      cursor: SystemMouseCursors.resizeUpDown,
+      onEnter: (_) => ctrl.setPointerOverOutputNode(true),
+      onExit: (_) => ctrl.setPointerOverOutputNode(false),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header — also the drag handle for moving the node ──
+          MouseRegion(
+            cursor: SystemMouseCursors.grab,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanUpdate: (d) => ctrl.moveNode(widget.node.id, d.delta),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
                 ),
-                border: Border(
-                  bottom: BorderSide(
-                    color: AppColors.green.withValues(alpha: 0.2),
+                decoration: BoxDecoration(
+                  color: AppColors.green.withValues(alpha: 0.12),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(10),
                   ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.drag_indicator_rounded,
-                    color: AppColors.green.withValues(alpha: 0.5),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
+                  border: Border(
+                    bottom: BorderSide(
                       color: AppColors.green.withValues(alpha: 0.2),
                     ),
-                    child: const Icon(
-                      Icons.table_chart_rounded,
-                      color: AppColors.green,
-                      size: 14,
-                    ),
                   ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Output Selection ',
-                      style: TextStyle(
-                        color: AppColors.green,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () => confirmDeleteNode(
-                      context,
-                      ctrl,
-                      widget.node.id,
-                      widget.node.name,
-                      widget.node.type,
-                    ),
-                    child: Icon(
-                      Icons.delete_outline,
-                      color: AppColors.red.withValues(alpha: 0.6),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.drag_indicator_rounded,
+                      color: AppColors.green.withValues(alpha: 0.5),
                       size: 16,
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // ── Scrollable body ──
-        // GestureDetector sits deeper than InteractiveViewer in the tree and
-        // wins the gesture arena, manually driving _scrollCtrl so that
-        // InteractiveViewer's PanGestureRecognizer never steals the drag.
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onVerticalDragUpdate: (d) {
-            final pos = _scrollCtrl.position;
-            final next = (_scrollCtrl.offset - (d.primaryDelta ?? 0)).clamp(
-              pos.minScrollExtent,
-              pos.maxScrollExtent,
-            );
-            _scrollCtrl.jumpTo(next);
-          },
-          onVerticalDragEnd: (d) {
-            final velocity = -(d.primaryVelocity ?? 0);
-            if (velocity.abs() < 50) return;
-            final pos = _scrollCtrl.position;
-            final target = (_scrollCtrl.offset + velocity * 0.3).clamp(
-              pos.minScrollExtent,
-              pos.maxScrollExtent,
-            );
-            _scrollCtrl.animateTo(
-              target,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.decelerate,
-            );
-          },
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 600),
-            child: RawScrollbar(
-              controller: _scrollCtrl,
-              thumbVisibility: false,
-              interactive: true,
-              thickness: 5,
-              radius: const Radius.circular(3),
-              child: SingleChildScrollView(
-                controller: _scrollCtrl,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Template / dept info ──
-                    if (ctrl.sidebarTemplate.isNotEmpty &&
-                        !isDynamicUniMailing) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: AppColors.green.withValues(alpha: 0.06),
-                          border: Border.all(
-                            color: AppColors.green.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.assignment_rounded,
-                              size: 13,
-                              color: AppColors.green,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Template',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textMuted,
-                                      letterSpacing: 0.4,
-                                    ),
-                                  ),
-                                  Text(
-                                    ctrl.sidebarTemplate,
-                                    style: const TextStyle(
-                                      color: AppColors.text,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text(
-                                  'Dept',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textMuted,
-                                    letterSpacing: 0.4,
-                                  ),
-                                ),
-                                Text(
-                                  ctrl.sidebarDept,
-                                  style: const TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color: AppColors.green.withValues(alpha: 0.2),
+                      ),
+                      child: const Icon(
+                        Icons.table_chart_rounded,
+                        color: AppColors.green,
+                        size: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Output Selection ',
+                        style: TextStyle(
+                          color: AppColors.green,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    // ── Column Selection (hidden for 3rd case – per-key selection used instead) ──
-                    if (!isDynamicUniMailing && sourcesWithCols.isNotEmpty) ...[
-                      _sectionHeader(
-                        'COLUMN SELECTION',
-                        Icons.checklist_rounded,
-                        allPrioritiesProvided ? AppColors.blue : AppColors.red,
-                        '${sourcesWithCols.length} sources',
+                    ),
+                    InkWell(
+                      onTap: () => confirmDeleteNode(
+                        context,
+                        ctrl,
+                        widget.node.id,
+                        widget.node.name,
+                        widget.node.type,
                       ),
-                      const SizedBox(height: 8),
-                      for (final src in sourcesWithCols) ...[
-                        _OutputFormatCard(
-                          node: src,
-                          ctrl: ctrl,
-                          hidePriority: !isStaticUserDefined,
-                          hideAlias: isStaticUniMailing,
-                        ),
-                        if (src != sourcesWithCols.last)
-                          const SizedBox(height: 8),
-                      ],
-                      const SizedBox(height: 12),
-                    ],
-
-                    // ── Static UniMailing section ──
-                    if (isStaticUniMailing) ...[
-                      _sectionHeader(
-                        'UNIMAILING FORMAT',
-                        Icons.email_rounded,
-                        uniMailingComplete ? AppColors.blue : AppColors.amber,
-                        '$mandatoryFilled / 7 mapped',
+                      child: Icon(
+                        Icons.delete_outline,
+                        color: AppColors.red.withValues(alpha: 0.6),
+                        size: 16,
                       ),
-                      const SizedBox(height: 8),
-                      UniMailingSection(
-                        ctrl: ctrl,
-                        sourceNodes: allSourceNodes,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    // ── Dynamic UniMailing section (3rd case) ──
-                    if (isDynamicUniMailing) ...[
-                      DynamicUniMailingOutputSection(
-                        ctrl: ctrl,
-                        sourceNodes: allSourceNodes,
-                        onShowPreview: (lastKey) => _showConfigPreview(
-                          context,
-                          ctrl,
-                          master,
-                          allSourceNodes,
-                          isDynamicUniMailing: true,
-                          caseTitle: 'Dynamic & Unimailing',
-                          lastKey: lastKey,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    // ── Submit button (hidden for Dynamic UniMailing — preview shown inline) ──
-                    if (!isDynamicUniMailing)
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 200),
-                        opacity: canSubmit ? 1.0 : 0.55,
-                        child: InkWell(
-                          onTap: () {
-                            if (!canSubmit) {
-                              if (validationMessage.isNotEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.warning_amber_rounded,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            validationMessage,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    backgroundColor: AppColors.red,
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    margin: const EdgeInsets.all(16),
-                                    duration: const Duration(seconds: 3),
-                                  ),
-                                );
-                              }
-                              return;
-                            }
-                            if (isStaticUserDefined) {
-                              _showConfigPreview(
-                                context,
-                                ctrl,
-                                master,
-                                allSourceNodes,
-                                caseTitle: 'Static & User Defined',
-                              );
-                            } else if (isStaticUniMailing) {
-                              _showConfigPreview(
-                                context,
-                                ctrl,
-                                master,
-                                allSourceNodes,
-                                isUniMailing: true,
-                                caseTitle: 'static & Unimaling ',
-                              );
-                            } else if (isDynamicUniMailing) {
-                              _showConfigPreview(
-                                context,
-                                ctrl,
-                                master,
-                                allSourceNodes,
-                                isDynamicUniMailing: true,
-                                caseTitle: 'Dynamic & Unimailing',
-                              );
-                            } else {
-                              _submit(context, ctrl, master);
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              gradient: LinearGradient(
-                                colors: canSubmit
-                                    ? [
-                                        AppColors.green,
-                                        AppColors.green.withValues(alpha: 0.8),
-                                      ]
-                                    : [AppColors.border2, AppColors.border2],
-                              ),
-                              boxShadow: canSubmit
-                                  ? [
-                                      BoxShadow(
-                                        color: AppColors.green.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: _submitting
-                                ? const Center(
-                                    child: SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 15,
-                                        color: canSubmit
-                                            ? Colors.white
-                                            : AppColors.textMuted,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Confirm',
-                                        style: TextStyle(
-                                          color: canSubmit
-                                              ? Colors.white
-                                              : AppColors.textMuted,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
-        ),
-      ],
+
+          // ── Scrollable body ──
+          // GestureDetector sits deeper than InteractiveViewer in the tree and
+          // wins the gesture arena, manually driving _scrollCtrl so that
+          // InteractiveViewer's PanGestureRecognizer never steals the drag.
+          // Listener intercepts mouse-wheel / two-finger trackpad scroll
+          // (PointerScrollEvent) and claims the signal via the global
+          // PointerSignalResolver, so the canvas InteractiveViewer never zooms
+          // on it. Being deeper in the tree, this registers first and wins.
+          Listener(
+            onPointerSignal: (event) {
+              if (event is PointerScrollEvent) {
+                GestureBinding.instance.pointerSignalResolver.register(event, (
+                  PointerSignalEvent e,
+                ) {
+                  final scroll = e as PointerScrollEvent;
+                  if (!_scrollCtrl.hasClients) return;
+                  final pos = _scrollCtrl.position;
+                  final next = (_scrollCtrl.offset + scroll.scrollDelta.dy)
+                      .clamp(pos.minScrollExtent, pos.maxScrollExtent);
+                  _scrollCtrl.jumpTo(next);
+                });
+              }
+            },
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: (d) {
+                final pos = _scrollCtrl.position;
+                final next = (_scrollCtrl.offset - (d.primaryDelta ?? 0)).clamp(
+                  pos.minScrollExtent,
+                  pos.maxScrollExtent,
+                );
+                _scrollCtrl.jumpTo(next);
+              },
+              onVerticalDragEnd: (d) {
+                final velocity = -(d.primaryVelocity ?? 0);
+                if (velocity.abs() < 50) return;
+                final pos = _scrollCtrl.position;
+                final target = (_scrollCtrl.offset + velocity * 0.3).clamp(
+                  pos.minScrollExtent,
+                  pos.maxScrollExtent,
+                );
+                _scrollCtrl.animateTo(
+                  target,
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.decelerate,
+                );
+              },
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 600),
+                child: RawScrollbar(
+                  controller: _scrollCtrl,
+                  thumbVisibility: true,
+                  interactive: true,
+                  thickness: 5,
+                  radius: const Radius.circular(3),
+                  child: SingleChildScrollView(
+                    controller: _scrollCtrl,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Template / dept info ──
+                        if (ctrl.sidebarTemplate.isNotEmpty &&
+                            !isDynamicUniMailing) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.green.withValues(alpha: 0.06),
+                              border: Border.all(
+                                color: AppColors.green.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.assignment_rounded,
+                                  size: 13,
+                                  color: AppColors.green,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Template',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textMuted,
+                                          letterSpacing: 0.4,
+                                        ),
+                                      ),
+                                      Text(
+                                        ctrl.sidebarTemplate,
+                                        style: const TextStyle(
+                                          color: AppColors.text,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'Dept',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textMuted,
+                                        letterSpacing: 0.4,
+                                      ),
+                                    ),
+                                    Text(
+                                      ctrl.sidebarDept,
+                                      style: const TextStyle(
+                                        color: AppColors.textMuted,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+
+                        // ── Column Selection (hidden for 3rd case – per-key selection used instead) ──
+                        if (!isDynamicUniMailing &&
+                            sourcesWithCols.isNotEmpty) ...[
+                          _sectionHeader(
+                            'COLUMN SELECTION',
+                            Icons.checklist_rounded,
+                            allPrioritiesProvided
+                                ? AppColors.blue
+                                : AppColors.red,
+                            '${sourcesWithCols.length} sources',
+                          ),
+                          const SizedBox(height: 8),
+                          for (final src in sourcesWithCols) ...[
+                            _OutputFormatCard(
+                              node: src,
+                              ctrl: ctrl,
+                              hidePriority: !isStaticUserDefined,
+                              hideAlias: isStaticUniMailing,
+                            ),
+                            if (src != sourcesWithCols.last)
+                              const SizedBox(height: 8),
+                          ],
+                          const SizedBox(height: 12),
+                        ],
+
+                        // ── Static UniMailing section ──
+                        if (isStaticUniMailing) ...[
+                          _sectionHeader(
+                            'UNIMAILING FORMAT',
+                            Icons.email_rounded,
+                            uniMailingComplete
+                                ? AppColors.blue
+                                : AppColors.amber,
+                            '$mandatoryFilled / 7 mapped',
+                          ),
+                          const SizedBox(height: 8),
+                          UniMailingSection(
+                            ctrl: ctrl,
+                            sourceNodes: allSourceNodes,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+
+                        // ── Dynamic UniMailing section (3rd case) ──
+                        if (isDynamicUniMailing) ...[
+                          DynamicUniMailingOutputSection(
+                            ctrl: ctrl,
+                            sourceNodes: allSourceNodes,
+                            onShowPreview: (lastKey) => _showConfigPreview(
+                              context,
+                              ctrl,
+                              master,
+                              allSourceNodes,
+                              isDynamicUniMailing: true,
+                              caseTitle: 'Dynamic & Unimailing',
+                              lastKey: lastKey,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+
+                        // ── Submit button (hidden for Dynamic UniMailing — preview shown inline) ──
+                        if (!isDynamicUniMailing)
+                          AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: canSubmit ? 1.0 : 0.55,
+                            child: InkWell(
+                              onTap: () {
+                                if (!canSubmit) {
+                                  if (validationMessage.isNotEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.warning_amber_rounded,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                validationMessage,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: AppColors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        margin: const EdgeInsets.all(16),
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  }
+                                  return;
+                                }
+                                if (isStaticUserDefined) {
+                                  _showConfigPreview(
+                                    context,
+                                    ctrl,
+                                    master,
+                                    allSourceNodes,
+                                    caseTitle: 'Static & User Defined',
+                                  );
+                                } else if (isStaticUniMailing) {
+                                  _showConfigPreview(
+                                    context,
+                                    ctrl,
+                                    master,
+                                    allSourceNodes,
+                                    isUniMailing: true,
+                                    caseTitle: 'static & Unimaling ',
+                                  );
+                                } else if (isDynamicUniMailing) {
+                                  _showConfigPreview(
+                                    context,
+                                    ctrl,
+                                    master,
+                                    allSourceNodes,
+                                    isDynamicUniMailing: true,
+                                    caseTitle: 'Dynamic & Unimailing',
+                                  );
+                                } else {
+                                  _submit(context, ctrl, master);
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 11,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  gradient: LinearGradient(
+                                    colors: canSubmit
+                                        ? [
+                                            AppColors.green,
+                                            AppColors.green.withValues(
+                                              alpha: 0.8,
+                                            ),
+                                          ]
+                                        : [
+                                            AppColors.border2,
+                                            AppColors.border2,
+                                          ],
+                                  ),
+                                  boxShadow: canSubmit
+                                      ? [
+                                          BoxShadow(
+                                            color: AppColors.green.withValues(
+                                              alpha: 0.3,
+                                            ),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: _submitting
+                                    ? const Center(
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 15,
+                                            color: canSubmit
+                                                ? Colors.white
+                                                : AppColors.textMuted,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Confirm',
+                                            style: TextStyle(
+                                              color: canSubmit
+                                                  ? Colors.white
+                                                  : AppColors.textMuted,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

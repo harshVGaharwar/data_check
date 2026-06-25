@@ -99,6 +99,9 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
       builder: (context, ctrl, _) {
         final edgePainter = EdgePainter(ctrl);
         final isConnecting = ctrl.portDragFromNodeId != null;
+        // Lock canvas pan/zoom while connecting ports OR while the pointer is
+        // over the Output node (so its inner list scrolls without moving the canvas).
+        final lockCanvas = isConnecting || ctrl.pointerOverOutputNode;
 
         return Stack(
           children: [
@@ -174,8 +177,8 @@ class _PipelineCanvasPageState extends State<PipelineCanvasPage>
                       maxScale: 2.0,
                       constrained: false,
                       boundaryMargin: const EdgeInsets.all(2000),
-                      panEnabled: !isConnecting,
-                      scaleEnabled: !isConnecting,
+                      panEnabled: !lockCanvas,
+                      scaleEnabled: !lockCanvas,
                       child: SizedBox(
                         width: 3000,
                         height: 2000,

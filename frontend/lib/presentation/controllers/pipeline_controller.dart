@@ -75,6 +75,15 @@ class PipelineController extends ChangeNotifier {
   String? portDragFromNodeId;
   Offset? portDragCurrentPos;
 
+  // ── Pointer hovering over Output node — locks canvas pan/zoom so its
+  //    internal list can scroll without moving the whole canvas. ──
+  bool pointerOverOutputNode = false;
+  void setPointerOverOutputNode(bool value) {
+    if (pointerOverOutputNode == value) return;
+    pointerOverOutputNode = value;
+    notifyListeners();
+  }
+
   // ── Pending canvas scroll-to request ──
   String? pendingFocusNodeId;
   void requestFocus(String nodeId) {
