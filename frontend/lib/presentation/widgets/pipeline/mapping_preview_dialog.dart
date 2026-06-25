@@ -97,11 +97,12 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
     final sourcesWithCols = sourceNodes
         .where((n) => n.cols.isNotEmpty)
         .toList();
-    // Section turns blue + submit enabled when every source with cols has ≥1 col selected
+    // Section turns blue + submit enabled when at least one column is selected
+    // across all sources combined (not required per source).
     // (selected cols always carry priorities via auto-defaults, alias is optional)
     final allPrioritiesProvided =
         sourcesWithCols.isNotEmpty &&
-        sourcesWithCols.every((n) => n.selectedCols.isNotEmpty);
+        sourcesWithCols.any((n) => n.selectedCols.isNotEmpty);
 
     // UniMailing section — shown only for Static + UniMailing templates
     final isStaticUniMailing =
@@ -116,7 +117,7 @@ class _MappingPreviewDialogState extends State<_MappingPreviewDialog> {
     // Context-aware validation message for SnackBar
     final String validationMessage;
     if (!allPrioritiesProvided) {
-      validationMessage = 'Select at least one output column for every source';
+      validationMessage = 'Select at least one output column';
     } else if (!uniMailingComplete) {
       validationMessage =
           'Map all 7 mandatory UniMailing fields before submitting';

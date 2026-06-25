@@ -119,9 +119,10 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     final sourcesWithCols = allSourceNodes
         .where((n) => n.cols.isNotEmpty)
         .toList();
+    // At least one column selected across all sources combined (not per source).
     final allPrioritiesProvided =
         sourcesWithCols.isNotEmpty &&
-        sourcesWithCols.every((n) => n.selectedCols.isNotEmpty);
+        sourcesWithCols.any((n) => n.selectedCols.isNotEmpty);
 
     // UniMailing unimailing fields are optional; all added custom columns must be filled
     final customCount = ctrl.uniMailingCustomCount;
@@ -144,8 +145,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     } else {
       canSubmit = allPrioritiesProvided && uniMailingComplete && !_submitting;
       if (!allPrioritiesProvided) {
-        validationMessage =
-            'Select at least one output column for every source';
+        validationMessage = 'Select at least one output column';
       } else if (!uniMailingComplete) {
         validationMessage =
             'All added custom columns must be mapped ($customFilled / $customCount filled)';
