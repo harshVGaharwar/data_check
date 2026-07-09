@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
+import 'package:vizualizer/core/utils/functions.dart';
+import 'package:vizualizer/data/models/login_response.dart';
 import 'package:vizualizer/data/models/template_request.dart';
+import 'package:vizualizer/data/services/storage_service.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
 import 'package:vizualizer/presentation/providers/template_provider.dart';
 import 'package:vizualizer/data/models/master_models.dart';
@@ -40,15 +44,15 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   List<DepartmentItem> _departments = [];
   bool _deptLoading = true;
   bool _deptError = false;
-  List<FrequencyItem> _frequencies = [];
-  bool _freqLoading = true;
-  bool _freqError = false;
   List<ApprovalItem> _approvalOptions = [];
   bool _approvalLoading = true;
   bool _approvalError = false;
   List<SourceMasterItem> _sourceMasterList = [];
+  List<FrequencyListItem> _frequencyList = [];
   bool _sourceMasterLoading = true;
   bool _sourceMasterError = false;
+  bool _frequencyListLoading = true;
+  bool _frequencyListError = false;
 
   // Source-type multi-select overlay
   final _sourceLayerLink = LayerLink();
@@ -60,7 +64,15 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   final _benefitLayerLink = LayerLink();
   final _benefitTriggerKey = GlobalKey();
   OverlayEntry? _benefitOverlayEntry;
-
+  // static const _frequencies = [
+  //   'Daily',
+  //   'Weekly',
+  //   'Bi-Weekly',
+  //   'Monthly',
+  //   'Quarterly',
+  //   'Yearly',
+  //   'On-Demand',
+  // ];
   static const _benefitTypes = [
     'Cost Saving',
     'Revenue Generation',
@@ -98,7 +110,13 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     '9',
     '10',
   ];
-  static const _templateTypeOptions = ['1 - Static', '2 - Dynamic'];
+  // static const _templateTypeOptions = [
+  //   '1 - Static'
+  //   // , '2 - Dynamic'
+  // ];
+  List<String> _templateTypeOptions = [];
+  TemplateType? _selectedTemplateType;
+  List<TemplateType> _templateTypeList = [];
 
   // Per-approval file uploads: { "Unit Head": "approval_uh.pdf", ... }
   final Map<String, String> _approvalFiles = {};
@@ -108,6 +126,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   @override
   void initState() {
     super.initState();
+    print("PAGE INIT: ${DateTime.now()}");
     _shakeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -117,18 +136,20 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       end: 12,
     ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeCtrl);
     _loadDepartments();
-    _loadFrequencies();
     _loadApprovals();
     _loadSourceMasterList();
+    _loadFrequencyList();
+    _loadTemplateTypes();
   }
 
   Future<void> _waitForAuth() async {
     final auth = context.read<AuthProvider>();
-    if (!auth.initialized) {
-      await Future.doWhile(() async {
-        await Future.delayed(const Duration(milliseconds: 50));
-        return mounted && !context.read<AuthProvider>().initialized;
-      });
+    int attempts = 0;
+
+    while (!auth.initialized && attempts < 40) {
+      // max 2 seconds
+      await Future.delayed(Duration(milliseconds: 50));
+      attempts++;
     }
   }
 
@@ -137,7 +158,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       _deptLoading = true;
       _deptError = false;
     });
-    await _waitForAuth();
+    // await _waitForAuth();
     if (!mounted) return;
     final service = context.read<MasterDataService>();
     final depts = await service.getDepartments();
@@ -146,24 +167,6 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
         _departments = depts;
         _deptLoading = false;
         _deptError = depts.isEmpty;
-      });
-    }
-  }
-
-  Future<void> _loadFrequencies() async {
-    setState(() {
-      _freqLoading = true;
-      _freqError = false;
-    });
-    await _waitForAuth();
-    if (!mounted) return;
-    final service = context.read<MasterDataService>();
-    final list = await service.getFrequencyList();
-    if (mounted) {
-      setState(() {
-        _frequencies = list;
-        _freqLoading = false;
-        _freqError = list.isEmpty;
       });
     }
   }
@@ -180,8 +183,8 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     if (mounted) {
       setState(() {
         _approvalOptions = approvals;
-        _model.approvals = approvals.map((a) => a.name).toList();
         _approvalLoading = false;
+        _model.approvals = approvals.map((a) => a.name).toList();
         _approvalError = approvals.isEmpty;
       });
     }
@@ -205,10 +208,40 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     }
   }
 
+  Future<void> _loadFrequencyList() async {
+    setState(() {
+      _frequencyListLoading = true;
+      _frequencyListError = false;
+    });
+    await _waitForAuth();
+    if (!mounted) return;
+    final service = context.read<MasterDataService>();
+    final frequency = await service.getFrequencyList();
+    if (mounted) {
+      setState(() {
+        _frequencyList = frequency;
+        _frequencyListLoading = false;
+        _frequencyListError = frequency.isEmpty;
+      });
+    }
+  }
+
+  void _loadTemplateTypes() async {
+    final session = await StorageService().loadSession();
+    final types = session?.user.templateType ?? [];
+
+    setState(() {
+      _templateTypeList = types; // ✅ store objects
+      _templateTypeOptions = types
+          .map((t) => t.name)
+          .toList(); // ✅ dropdown sees names only
+    });
+  }
+
   @override
   void dispose() {
-    _closeSourceDropdown(rebuild: false);
-    _closeBenefitDropdown(rebuild: false);
+    _closeSourceDropdown();
+    _closeBenefitDropdown();
     _scrollCtrl.dispose();
     _nameCtrl.dispose();
     _normalVolCtrl.dispose();
@@ -261,10 +294,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     setState(() {}); // refresh arrow rotation
   }
 
-  void _closeSourceDropdown({bool rebuild = true}) {
+  void _closeSourceDropdown() {
     _sourceOverlayEntry?.remove();
     _sourceOverlayEntry = null;
-    if (rebuild && mounted) setState(() {});
+    if (mounted) setState(() {});
   }
 
   void _openBenefitDropdown() {
@@ -294,10 +327,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     setState(() {});
   }
 
-  void _closeBenefitDropdown({bool rebuild = true}) {
+  void _closeBenefitDropdown() {
     _benefitOverlayEntry?.remove();
     _benefitOverlayEntry = null;
-    if (rebuild && mounted) setState(() {});
+    if (mounted) setState(() {});
   }
 
   void _syncModel() {
@@ -324,27 +357,29 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     _syncModel();
     setState(() => _submitted = true);
 
-    final List<String> _missingSections = [
+    final List<String> missingSections = [
       if (!_model.isGeneralInfoValid) 'General Info',
       if (!_model.isOutputFormatValid) 'Output Format',
       if (!_model.isDynamicOutputsValid) 'Dynamic Outputs',
-      if (!_model.isOnDemandSourceValid)
-        _model.isDynamic
-            ? 'Source Type (On-Demand: Manual required in at least one field)'
-            : 'Source Type (On-Demand: Manual source required)',
       if (!_model.isApprovalValid) 'Approvals (select type)',
       if (_model.isApprovalValid && !_allApprovalFilesUploaded)
-        'Approvals (${_model.approvals.length} files required)',
+        'Approvals (upload files)',
+
+      // ✅ Final correct rule
+      if (_model.frequencyIs3 && !_model.hasMandatorySourceId1)
+        'Please select one source type as manual as you have selected frequency on-demand',
     ];
-    if (_missingSections.isNotEmpty) {
+
+    if (missingSections.isNotEmpty) {
       _shakeCtrl.forward(from: 0);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Incomplete: ${_missingSections.join(' · ')}'),
+          content: Text('Incomplete: ${missingSections.join(' · ')}'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
+          duration: Duration(seconds: 5),
         ),
       );
+
       _scrollCtrl.animateTo(
         0,
         duration: const Duration(milliseconds: 400),
@@ -353,9 +388,9 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
       return;
     }
 
+    // ✅ Continue saving
     setState(() => _saving = true);
 
-    // Use TemplateProvider to save
     final provider = context.read<TemplateProvider>();
     final success = await provider.saveTemplate(
       _model,
@@ -389,7 +424,19 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
   }
 
   void _resetForm() {
-    _model.reset();
+    // ✅ Keep selected approvals ONLY
+    final oldApprovals = List<String>.from(_model.approvals);
+
+    _model.reset(); // this clears everything
+
+    // ✅ Restore approvals selection
+    _model.approvals = oldApprovals;
+
+    // ✅ Clear uploaded file names + file bytes
+    _approvalFiles.clear();
+    _approvalFileBytes.clear();
+
+    // ✅ Clear all text fields
     for (final c in [
       _nameCtrl,
       _normalVolCtrl,
@@ -402,14 +449,13 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     ]) {
       c.clear();
     }
-    _approvalFiles.clear();
-    _approvalFileBytes.clear();
+
     selectedFormat = null;
+
     setState(() {
       _selectedBenefitTypes = [];
       _submitted = false;
       _saving = false;
-      _model.approvals = _approvalOptions.map((a) => a.name).toList();
     });
   }
 
@@ -519,26 +565,34 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                   });
                                 },
                               ),
-                        _freqLoading
+                        _frequencyListLoading
                             ? _loadingField('Frequency *')
-                            : _freqError
-                            ? _errorField('Frequency *', _loadFrequencies)
+                            : _frequencyListError
+                            ? _errorField('Frequency *', _loadFrequencyList)
                             : SearchableStringDropdown(
                                 label: 'Frequency *',
-                                items: _frequencies.map((f) => f.name).toList(),
-                                value: _model.frequency,
-                                onChanged: (v) => setState(() {
-                                  _model.frequency = v;
-                                  _model.frequencyId = _frequencies
-                                      .firstWhere(
-                                        (f) => f.name == v,
-                                        orElse: () => const FrequencyItem(
-                                          id: 0,
-                                          name: '',
-                                        ),
-                                      )
-                                      .id;
-                                }),
+                                items: _frequencyList
+                                    .map((f) => f.name)
+                                    .toList(),
+                                value:
+                                    _frequencyList
+                                        .where(
+                                          (f) =>
+                                              f.id.toString() ==
+                                              _model.frequency,
+                                        )
+                                        .firstOrNull
+                                        ?.name ??
+                                    '',
+                                onChanged: (v) {
+                                  final frequency = _frequencyList.firstWhere(
+                                    (f) => f.name == v,
+                                  );
+                                  setState(() {
+                                    _model.frequency = frequency.id.toString();
+                                    _model.frequencyName = frequency.name;
+                                  });
+                                },
                               ),
                       ]),
                       const SizedBox(height: 10),
@@ -552,77 +606,47 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                         _tf('Normal Volume', _normalVolCtrl, '0', num: true),
                         _tf('Peak Volume', _peakVolCtrl, '0', num: true),
                       ]),
-                      if (!_model.isDynamic) ...[
-                        const SizedBox(height: 10),
-                        _row([
-                          _benefitTypeMultiSelect(),
-                          _tf(
-                            'Benefit Amount (₹)',
-                            _benefitAmtCtrl,
-                            '0.00',
-                            num: true,
-                          ),
-                          _tf('Benefit in TAT', _tatCtrl, 'e.g. 2 hours'),
-                        ]),
-                        const SizedBox(height: 10),
-                        _row([
-                          _dp(
-                            'Go Live Date',
-                            _model.goLiveDate,
-                            (v) => setState(() => _model.goLiveDate = v),
-                          ),
-                          _dp(
-                            'Deactivate Date',
-                            _model.deactivateDate,
-                            (v) => setState(() => _model.deactivateDate = v),
-                            firstDate: _model.goLiveDate.isNotEmpty
-                                ? DateTime.tryParse(_model.goLiveDate)
-                                : null,
-                          ),
-                          _tf('SPOC Person *', _spocCtrl, 'Enter name'),
-                        ]),
-                        const SizedBox(height: 10),
-                        _row([
-                          _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
-                          _tf('Unit Head', _unitHeadCtrl, 'Enter name'),
-                          const SizedBox(),
-                        ]),
-                      ] else ...[
-                        const SizedBox(height: 10),
-                        _row([
-                          _benefitTypeMultiSelect(),
-                          _tf(
-                            'Benefit Amount (₹)',
-                            _benefitAmtCtrl,
-                            '0.00',
-                            num: true,
-                          ),
-                          _tf('Benefit in TAT', _tatCtrl, 'e.g. 2 hours'),
-                        ]),
-                        const SizedBox(height: 10),
-                        _row([
-                          _dp(
-                            'Go Live Date',
-                            _model.goLiveDate,
-                            (v) => setState(() => _model.goLiveDate = v),
-                          ),
-                          _dp(
-                            'Deactivate Date',
-                            _model.deactivateDate,
-                            (v) => setState(() => _model.deactivateDate = v),
-                            firstDate: _model.goLiveDate.isNotEmpty
-                                ? DateTime.tryParse(_model.goLiveDate)
-                                : null,
-                          ),
-                          _tf('SPOC Person *', _spocCtrl, 'Enter name'),
-                        ]),
-                        const SizedBox(height: 10),
-                        _row([
-                          _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
-                          _tf('Unit Head', _unitHeadCtrl, 'Enter name'),
-                          const SizedBox(),
-                        ]),
-                      ],
+                      const SizedBox(height: 10),
+                      _row([
+                        _benefitTypeMultiSelect(),
+                        _tf(
+                          'Benefit Amount (₹)',
+                          _benefitAmtCtrl,
+                          '0',
+                          num: true,
+                        ),
+                        _tf(
+                          'Benefit in TAT',
+                          _tatCtrl,
+                          'e.g. 2 hours',
+                          num: true,
+                        ),
+                      ]),
+                      const SizedBox(height: 10),
+                      _row([
+                        _dp(
+                          'Go Live Date',
+                          _model.goLiveDate,
+                          (v) => setState(() => _model.goLiveDate = v),
+                          firstDate: DateTime.now(),
+                        ),
+                        _dp(
+                          'Deactivate Date',
+                          _model.deactivateDate,
+                          (v) => setState(() => _model.deactivateDate = v),
+                          firstDate: _model.goLiveDate.isNotEmpty
+                              ? DateTime.parse(_model.goLiveDate)
+                              : null,
+                          enabled: _model.goLiveDate.isNotEmpty,
+                        ),
+                        _tf('SPOC Person *', _spocCtrl, 'Enter name'),
+                      ]),
+                      const SizedBox(height: 10),
+                      _row([
+                        _tf('SPOC Manager', _spocMgrCtrl, 'Enter name'),
+                        _tf('Unit Head', _unitHeadCtrl, 'Enter name'),
+                        const SizedBox(),
+                      ]),
                     ],
                   ),
                 ),
@@ -630,7 +654,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
                 // B) Output Format
                 _sectionCard(
-                  title: 'Output Format',
+                  title: 'Output Format *',
                   icon: Icons.output_rounded,
                   hasError: _submitted && !_model.isOutputFormatValid,
                   child: Column(
@@ -641,7 +665,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                         SearchableStringDropdown(
                           label: 'Template Type *',
                           items: _templateTypeOptions,
-                          value: _model.templateType,
+                          value: _model.templateTypeName,
                           // onChanged: (v) => setState(() {
                           //   _model.templateType = v;
                           //   if (v == '2 - Dynamic') {
@@ -653,25 +677,52 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           //     _model.numberOfOutputs = 0;
                           //   }
                           // }),
-                          onChanged: (v) => setState(() {
-                            _model.templateType = v;
+                          // onChanged: (v) => setState(() {
+                          //   _model.templateType = v;
 
-                            if (v == '2 - Dynamic') {
+                          //   if (v == '2 - Dynamic') {
+                          //     selectedFormat = 'Unimailing';
+                          //     _model.outputFormats = ['Unimailing'];
+                          //     // Clear General Info source fields
+                          //     _model.sourceCount = 0;
+                          //     _model.sourceList = [];
+                          //     _model.sourceListName = '';
+                          //   } else {
+                          //     selectedFormat = null;
+                          //     _model.outputFormats = [];
+                          //     _model.numberOfOutputs = 0;
+                          //     _model.dynamicOutputs = [];
+                          //   }
+                          // }),
+                          onChanged: (v) {
+                            final selected = _templateTypeList.firstWhere(
+                              (t) => t.name == v,
+                            );
+
+                            setState(() {
+                              _selectedTemplateType = selected;
+                              _model.selectedTemplateType = selected;
+                              _model.templateType = selected.id.toString();
+                              _model.templateTypeName = selected.name;
+                            });
+
+                            if (selected.id == 3) {
+                              // ✅ Dynamic
                               selectedFormat = 'Unimailing';
                               _model.outputFormats = ['Unimailing'];
-                              // Clear General Info source fields
                               _model.sourceCount = 0;
                               _model.sourceList = [];
                               _model.sourceListName = '';
-                            } else {
+                            } else if (selected.id == 2) {
+                              // ✅ Static
                               selectedFormat = null;
                               _model.outputFormats = [];
                               _model.numberOfOutputs = 0;
                               _model.dynamicOutputs = [];
                             }
-                          }),
+                          },
                         ),
-                        if (_model.templateType == '2 - Dynamic')
+                        if (_selectedTemplateType?.id == 3)
                           SearchableStringDropdown(
                             label: 'Dynamic Count *',
                             items: _numOutputOptions,
@@ -693,7 +744,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                       ]),
                       if (_submitted &&
                           (_model.templateType.isEmpty ||
-                              (_model.templateType == '2 - Dynamic' &&
+                              (_selectedTemplateType?.id == 3 &&
                                   _model.numberOfOutputs == 0)))
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
@@ -702,7 +753,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                             children: [
                               if (_model.templateType.isEmpty)
                                 _err('Please select a template type'),
-                              if (_model.templateType == '2 - Dynamic' &&
+                              if (_selectedTemplateType?.id == 3 &&
                                   _model.numberOfOutputs == 0)
                                 _err('Please select number of outputs'),
                             ],
@@ -711,7 +762,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                       const SizedBox(height: 16),
                       const Divider(height: 1, color: AppColors.border),
 
-                      if (_model.templateType == '1 - Static') ...[
+                      if (_selectedTemplateType?.id == 2) ...[
                         const SizedBox(height: 16),
                         _row([
                           Column(
@@ -734,17 +785,10 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           _sourceMasterMultiSelect(),
                           const SizedBox(),
                         ]),
-                        if (_submitted &&
-                            !_model.isOnDemandSourceValid &&
-                            !_model.isDynamic)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: _err('Please select Manual as Source Type'),
-                          ),
                         const SizedBox(height: 16),
                         const Divider(height: 1, color: AppColors.border),
                       ],
-                      if (_model.templateType == '2 - Dynamic' &&
+                      if (_selectedTemplateType?.id == 3 &&
                           _model.dynamicOutputs.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         // Static 1 — always first
@@ -847,15 +891,6 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                             },
                           ),
                         ),
-                        if (_submitted &&
-                            !_model.isOnDemandSourceValid &&
-                            _model.isDynamic)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4, bottom: 8),
-                            child: _err(
-                              'Please select Manual as Source Type in at least one source field',
-                            ),
-                          ),
                       ],
                       const SizedBox(height: 16),
 
@@ -877,7 +912,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (_model.templateType == '2 - Dynamic')
+                        if (_selectedTemplateType?.id == 3)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
@@ -994,20 +1029,20 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
 
                 // C) Approval List
                 _sectionCard(
-                  title: 'Approval List',
+                  title: 'Approval List *',
                   icon: Icons.approval_outlined,
                   hasError: _submitted && !_model.isApprovalValid,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Required approvals (read-only)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textDim,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                      // const Text(
+                      //   'Upload required approvals',
+                      //   style: TextStyle(
+                      //     fontSize: 12,
+                      //     color: AppColors.textDim,
+                      //   ),
+                      // ),
+                      // const SizedBox(height: 12),
                       if (_approvalLoading)
                         const Row(
                           children: [
@@ -1062,43 +1097,69 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           spacing: 8,
                           runSpacing: 8,
                           children: _approvalOptions.map((a) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: AppColors.green.withValues(alpha: 0.08),
-                                border: Border.all(
-                                  color: AppColors.green,
-                                  width: 1.5,
+                            final sel = _model.approvals.contains(a.name);
+                            return InkWell(
+                              // onTap: () => setState(() {
+                              //   if (sel) {
+                              //     _model.approvals.remove(a.name);
+                              //     _approvalFiles.remove(a.name);
+                              //     _approvalFileBytes.remove(a.name);
+                              //   } else {
+                              //     _model.approvals.add(a.name);
+                              //   }
+                              // }),
+                              borderRadius: BorderRadius.circular(8),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.check_box,
-                                    size: 16,
-                                    color: AppColors.green,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: sel
+                                      ? AppColors.green.withValues(alpha: 0.08)
+                                      : AppColors.surface2,
+                                  border: Border.all(
+                                    color: sel
+                                        ? AppColors.green
+                                        : AppColors.border,
+                                    width: sel ? 1.5 : 1,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    a.name,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.green,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      sel
+                                          ? Icons.check_box
+                                          : Icons.check_box_outline_blank,
+                                      size: 16,
+                                      color: sel
+                                          ? AppColors.green
+                                          : AppColors.textDim,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      a.name,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: sel
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                        color: sel
+                                            ? AppColors.green
+                                            : AppColors.text,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           }).toList(),
                         ),
                       if (_submitted && !_model.isApprovalValid)
-                        _err('Approvals failed to load'),
+                        _err('Please select at least one approval'),
                     ],
                   ),
                 ),
@@ -1107,15 +1168,15 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                 // E) Approval File Upload (per approval)
                 if (_model.approvals.isNotEmpty)
                   _sectionCard(
-                    title: 'Approval File Upload',
+                    title: 'Approval File Upload *',
                     icon: Icons.attach_file_rounded,
                     hasError: _submitted && !_allApprovalFilesUploaded,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Upload one document for each of the ${_model.approvals.length} required approvals',
-                          style: const TextStyle(
+                        const Text(
+                          'Upload approval document for each selected approval',
+                          style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textDim,
                           ),
@@ -1345,7 +1406,11 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.save_rounded, size: 20),
+                              : const Icon(
+                                  Icons.save_rounded,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
                           label: Text(
                             _saving ? 'Saving...' : 'Save Template',
                             style: const TextStyle(
@@ -1550,6 +1615,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     );
   }
 
+  //TODO
   Widget _tf(
     String label,
     TextEditingController ctrl,
@@ -1566,10 +1632,18 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
           child: TextField(
             controller: ctrl,
             keyboardType: num ? TextInputType.number : TextInputType.text,
+            inputFormatters: num
+                ? [
+                    FilteringTextInputFormatter.digitsOnly, // ✅ numbers only
+                  ]
+                : [
+                    NoSpecialCharsFormatter(), // ✅ blocks all special characters
+                  ],
             style: const TextStyle(fontSize: 13, color: AppColors.text),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(
+                
                 color: AppColors.textMuted,
                 fontSize: 12,
               ),
@@ -1601,62 +1675,79 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     );
   }
 
+  //TODO
   Widget _dp(
     String label,
     String value,
     ValueChanged<String> onChanged, {
     DateTime? firstDate,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: AppTextStyles.fieldLabel),
         const SizedBox(height: 4),
-        InkWell(
-          onTap: () async {
-            final now = DateTime.now();
-            final effective = firstDate != null && firstDate.isAfter(now)
-                ? firstDate
-                : now;
-            final d = await showDatePicker(
-              context: context,
-              initialDate: effective,
-              firstDate: firstDate ?? DateTime(2020),
-              lastDate: DateTime(2030),
-            );
-            if (d != null) {
-              onChanged(
-                '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
-              );
-            }
-          },
-          child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-              color: AppColors.surface2,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    value.isEmpty ? 'Select date' : value,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: value.isEmpty
-                          ? AppColors.textMuted
-                          : AppColors.text,
+        IgnorePointer(
+          ignoring: !enabled,
+          child: Opacity(
+            opacity: enabled ? 1 : 0.5,
+            child: InkWell(
+              onTap: enabled
+                  ? () async {
+                      final today = DateTime.now();
+
+                      // ✅ initialDate must ALWAYS be >= firstDate
+                      DateTime initialDate;
+
+                      if (firstDate != null) {
+                        // if go-live is in past, use today as initial
+                        initialDate = firstDate.isBefore(today)
+                            ? today
+                            : firstDate;
+                      } else {
+                        initialDate = today;
+                      }
+
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: initialDate,
+                        firstDate: firstDate ?? DateTime(2020),
+                        lastDate: DateTime(2035),
+                      );
+
+                      if (picked != null) {
+                        onChanged(
+                          "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}",
+                        );
+                      }
+                    }
+                  : null,
+              child: Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                  color: AppColors.surface2,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        value.isEmpty ? 'Select date' : value,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: value.isEmpty
+                              ? AppColors.textMuted
+                              : AppColors.text,
+                        ),
+                      ),
                     ),
-                  ),
+                    const Icon(Icons.calendar_today, size: 14),
+                  ],
                 ),
-                const Icon(
-                  Icons.calendar_today,
-                  size: 14,
-                  color: AppColors.textDim,
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1822,7 +1913,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Benefit Type', style: AppTextStyles.fieldLabel),
+        Text('Benefit Type *', style: AppTextStyles.fieldLabel),
         const SizedBox(height: 4),
         CompositedTransformTarget(
           link: _benefitLayerLink,
@@ -2223,6 +2314,267 @@ class _SourceMultiSelectOverlayState extends State<_SourceMultiSelectOverlay> {
   }
 }
 
+class DynamicSourceTypeWidget extends StatefulWidget {
+  final List<SourceMasterItem> sourceMasterList;
+
+  final List<Map<String, dynamic>> selectedList;
+
+  final Function(List<Map<String, dynamic>>) onChanged;
+
+  final bool loading;
+  final bool error;
+  final bool submitted;
+  final VoidCallback? onRetry;
+
+  const DynamicSourceTypeWidget({
+    super.key,
+    required this.sourceMasterList,
+    required this.selectedList,
+    required this.onChanged,
+    this.loading = false,
+    this.error = false,
+    this.submitted = false,
+    this.onRetry,
+  });
+
+  @override
+  State<DynamicSourceTypeWidget> createState() =>
+      _DynamicSourceTypeWidgetState();
+}
+
+class _DynamicSourceTypeWidgetState extends State<DynamicSourceTypeWidget> {
+  final LayerLink _layerLink = LayerLink();
+
+  final GlobalKey _triggerKey = GlobalKey();
+
+  OverlayEntry? _overlayEntry;
+
+  bool get _isOpen => _overlayEntry != null;
+
+  void _openDropdown() {
+    _closeDropdown();
+
+    final renderBox =
+        _triggerKey.currentContext?.findRenderObject() as RenderBox?;
+
+    final width = renderBox?.size.width ?? 280.0;
+
+    final initialSelected = Set<int>.from(
+      widget.selectedList.map((m) => m['id'] as int),
+    );
+
+    _overlayEntry = OverlayEntry(
+      builder: (_) => _SourceMultiSelectOverlay(
+        layerLink: _layerLink,
+        items: widget.sourceMasterList,
+        initialSelected: initialSelected,
+        dropdownWidth: width,
+        onDismiss: _closeDropdown,
+        onDone: (selected) {
+          final filtered = widget.sourceMasterList
+              .where((s) => selected.contains(s.id))
+              .toList();
+
+          widget.onChanged(filtered.map((e) => e.toJson()).toList());
+
+          _closeDropdown();
+        },
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+
+    setState(() {});
+  }
+
+  void _closeDropdown() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _closeDropdown();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasError = widget.submitted && widget.selectedList.isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Source Type *', style: AppTextStyles.fieldLabel),
+        const SizedBox(height: 4),
+        CompositedTransformTarget(
+          link: _layerLink,
+          child: InkWell(
+            key: _triggerKey,
+            onTap: widget.loading
+                ? null
+                : widget.error
+                ? widget.onRetry
+                : () => _isOpen ? _closeDropdown() : _openDropdown(),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: widget.error
+                      ? AppColors.red.withValues(alpha: 0.4)
+                      : _isOpen
+                      ? const Color(0xFF004C8F)
+                      : hasError
+                      ? AppColors.red
+                      : AppColors.border,
+                  width: _isOpen || hasError ? 1.5 : 1,
+                ),
+                color: widget.error
+                    ? AppColors.red.withValues(alpha: 0.04)
+                    : AppColors.surface2,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: widget.loading
+                        ? const Row(
+                            children: [
+                              SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.textDim,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Loading...',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          )
+                        : widget.error
+                        ? Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 12,
+                                color: AppColors.red,
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Failed to load. Tap to retry',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.red,
+                                ),
+                              ),
+                            ],
+                          )
+                        : widget.selectedList.isEmpty
+                        ? const Text(
+                            'Select',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: widget.selectedList.map((m) {
+                              final name = (m['name'] as String? ?? '').trim();
+
+                              final type = m['sourceType']?.toString() ?? '';
+
+                              final label = name.isNotEmpty ? name : type;
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  color: const Color(
+                                    0xFF004C8F,
+                                  ).withValues(alpha: 0.1),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF004C8F,
+                                    ).withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF004C8F),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                  const SizedBox(width: 4),
+                  widget.error
+                      ? Icon(
+                          Icons.refresh_rounded,
+                          size: 14,
+                          color: AppColors.red,
+                        )
+                      : AnimatedRotation(
+                          turns: _isOpen ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.textDim,
+                          ),
+                        ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (hasError) _err('Source Type is required'),
+      ],
+    );
+  }
+
+  Widget _err(String msg) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, size: 14, color: AppColors.red),
+          const SizedBox(width: 6),
+          Text(
+            msg,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.red,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Benefit Type multi-select overlay (string-based) ─────────────────────────
 
 class _BenefitMultiSelectOverlay extends StatefulWidget {
@@ -2450,15 +2802,15 @@ class SearchableStringDropdownState extends State<SearchableStringDropdown> {
     setState(() {});
   }
 
-  void _close({bool rebuild = true}) {
+  void _close() {
     _overlayEntry?.remove();
     _overlayEntry = null;
-    if (rebuild && mounted) setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _close(rebuild: false);
+    _close();
     super.dispose();
   }
 
@@ -2862,267 +3214,6 @@ class SuccessDialogState extends State<SuccessDialog>
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class DynamicSourceTypeWidget extends StatefulWidget {
-  final List<SourceMasterItem> sourceMasterList;
-
-  final List<Map<String, dynamic>> selectedList;
-
-  final Function(List<Map<String, dynamic>>) onChanged;
-
-  final bool loading;
-  final bool error;
-  final bool submitted;
-  final VoidCallback? onRetry;
-
-  const DynamicSourceTypeWidget({
-    super.key,
-    required this.sourceMasterList,
-    required this.selectedList,
-    required this.onChanged,
-    this.loading = false,
-    this.error = false,
-    this.submitted = false,
-    this.onRetry,
-  });
-
-  @override
-  State<DynamicSourceTypeWidget> createState() =>
-      _DynamicSourceTypeWidgetState();
-}
-
-class _DynamicSourceTypeWidgetState extends State<DynamicSourceTypeWidget> {
-  final LayerLink _layerLink = LayerLink();
-
-  final GlobalKey _triggerKey = GlobalKey();
-
-  OverlayEntry? _overlayEntry;
-
-  bool get _isOpen => _overlayEntry != null;
-
-  void _openDropdown() {
-    _closeDropdown();
-
-    final renderBox =
-        _triggerKey.currentContext?.findRenderObject() as RenderBox?;
-
-    final width = renderBox?.size.width ?? 280.0;
-
-    final initialSelected = Set<int>.from(
-      widget.selectedList.map((m) => m['id'] as int),
-    );
-
-    _overlayEntry = OverlayEntry(
-      builder: (_) => _SourceMultiSelectOverlay(
-        layerLink: _layerLink,
-        items: widget.sourceMasterList,
-        initialSelected: initialSelected,
-        dropdownWidth: width,
-        onDismiss: _closeDropdown,
-        onDone: (selected) {
-          final filtered = widget.sourceMasterList
-              .where((s) => selected.contains(s.id))
-              .toList();
-
-          widget.onChanged(filtered.map((e) => e.toJson()).toList());
-
-          _closeDropdown();
-        },
-      ),
-    );
-
-    Overlay.of(context).insert(_overlayEntry!);
-
-    setState(() {});
-  }
-
-  void _closeDropdown({bool rebuild = true}) {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-
-    if (rebuild && mounted) {
-      setState(() {});
-    }
-  }
-
-  @override
-  void dispose() {
-    _closeDropdown(rebuild: false);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasError = widget.submitted && widget.selectedList.isEmpty;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Source Type *', style: AppTextStyles.fieldLabel),
-        const SizedBox(height: 4),
-        CompositedTransformTarget(
-          link: _layerLink,
-          child: InkWell(
-            key: _triggerKey,
-            onTap: widget.loading
-                ? null
-                : widget.error
-                ? widget.onRetry
-                : () => _isOpen ? _closeDropdown() : _openDropdown(),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 36),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: widget.error
-                      ? AppColors.red.withValues(alpha: 0.4)
-                      : _isOpen
-                      ? const Color(0xFF004C8F)
-                      : hasError
-                      ? AppColors.red
-                      : AppColors.border,
-                  width: _isOpen || hasError ? 1.5 : 1,
-                ),
-                color: widget.error
-                    ? AppColors.red.withValues(alpha: 0.04)
-                    : AppColors.surface2,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: widget.loading
-                        ? const Row(
-                            children: [
-                              SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.textDim,
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Loading...',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          )
-                        : widget.error
-                        ? Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline_rounded,
-                                size: 12,
-                                color: AppColors.red,
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'Failed to load. Tap to retry',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.red,
-                                ),
-                              ),
-                            ],
-                          )
-                        : widget.selectedList.isEmpty
-                        ? const Text(
-                            'Select',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                          )
-                        : Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: widget.selectedList.map((m) {
-                              final name = (m['name'] as String? ?? '').trim();
-
-                              final type = m['sourceType']?.toString() ?? '';
-
-                              final label = name.isNotEmpty ? name : type;
-
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(4),
-                                  color: const Color(
-                                    0xFF004C8F,
-                                  ).withValues(alpha: 0.1),
-                                  border: Border.all(
-                                    color: const Color(
-                                      0xFF004C8F,
-                                    ).withValues(alpha: 0.25),
-                                  ),
-                                ),
-                                child: Text(
-                                  label,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF004C8F),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                  ),
-                  const SizedBox(width: 4),
-                  widget.error
-                      ? Icon(
-                          Icons.refresh_rounded,
-                          size: 14,
-                          color: AppColors.red,
-                        )
-                      : AnimatedRotation(
-                          turns: _isOpen ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          child: const Icon(
-                            Icons.keyboard_arrow_down,
-                            size: 18,
-                            color: AppColors.textDim,
-                          ),
-                        ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (hasError) _err('Source Type is required'),
-      ],
-    );
-  }
-
-  Widget _err(String msg) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, size: 14, color: AppColors.red),
-          const SizedBox(width: 6),
-          Text(
-            msg,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.red,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
 import 'package:vizualizer/core/utils/file_download_stub.dart'
     if (dart.library.js_interop) 'package:vizualizer/core/utils/file_download_web.dart';
+
 /// Downloads a checker file and shows progress/error snackbars.
 /// Captures [ScaffoldMessenger] and [MasterDataService] before the async gap
 /// so it is safe to call from a widget whose state may unmount during the await.
@@ -44,3 +45,58 @@ Future<void> downloadCheckerFile({
     );
   }
 }
+
+/// Downloads a checker file and shows progress/error snackbars.
+/// Captures [ScaffoldMessenger] and [MasterDataService] before the async gap
+/// so it is safe to call from a widget whose state may unmount during the await.
+Future<void> downloadReportFile({
+  required BuildContext context,
+  required String filename,
+  required String templateId,
+  required String requestId,
+  required String departmentId,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final service = context.read<MasterDataService>();
+
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text('Downloading $filename…'),
+      backgroundColor: AppColors.green,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      margin: const EdgeInsets.all(16),
+    ),
+  );
+//TODO
+
+  final result = await service.downloadReportFile(
+    departmentId: departmentId,
+    templateId: templateId,
+    requestId: requestId,
+  );
+
+  if (result.success) {
+    final finalName = result.filename ?? filename;
+
+    await triggerFileDownload(finalName, result.bytes);
+  } else {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: AppColors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+
+

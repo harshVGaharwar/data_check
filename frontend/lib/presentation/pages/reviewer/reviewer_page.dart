@@ -1,0 +1,1704 @@
+// REVIEWER PAGE
+
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:vizualizer/data/models/reviewer_item.dart';
+
+import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/config_preview_sheet.dart';
+import 'package:vizualizer/core/utils/functions.dart';
+import 'package:vizualizer/core/utils/download_helper.dart';
+import 'package:vizualizer/data/models/template_configuration_response_model.dart';
+import 'package:vizualizer/core/theme/app_theme.dart';
+import 'package:vizualizer/presentation/providers/auth_provider.dart';
+import 'package:vizualizer/data/services/master_data_service.dart';
+import 'package:vizualizer/presentation/widgets/common/select_dropdown_overlay.dart';
+import 'package:vizualizer/presentation/pages/source/source_configuration_view_page.dart';
+import 'package:vizualizer/presentation/pages/pipeline/template_creation_view_page.dart';
+
+class ReviewerPage extends StatefulWidget {
+  const ReviewerPage({super.key});
+
+  @override
+  State<ReviewerPage> createState() => _ReviewerPageState();
+}
+
+class _ReviewerPageState extends State<ReviewerPage> {
+  // ── filter state ──────────────────────────────────────────────────────────
+  Map<String, int> _deptMap = {};
+  bool _deptLoading = true;
+  bool _deptError = false;
+
+  String? _selectedDept;
+  String? _selectedModuleId;
+  static const List<({String id, String label})> _moduleOptions = [
+    (id: '11', label: 'Template Creation'),
+    (id: '13', label: 'Template Configuration'),
+    // (id: '17', label: 'Manual Upload'),
+    (id: '12', label: 'Source Configuration'),
+  ];
+
+  // ── results state ─────────────────────────────────────────────────────────
+  List<ReviewerItem> _results = [];
+  bool _fetching = false;
+  bool _fetched = false;
+
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
+  // ── searchable overlay links ───────────────────────────────────────────────
+  final _deptLayerLink = LayerLink();
+  final _moduleLayerLink = LayerLink();
+  OverlayEntry? _deptOverlay;
+  OverlayEntry? _moduleOverlay;
+
+  // ── pagination state ──────────────────────────────────────────────────────
+  int _rowsPerPage = 10;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDepartments();
+  }
+
+  @override
+  void dispose() {
+    _deptOverlay?.remove();
+    _moduleOverlay?.remove();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── overlay helpers ────────────────────────────────────────────────────────
+
+  void _closeDeptOverlay() {
+    _deptOverlay?.remove();
+    _deptOverlay = null;
+    if (mounted) setState(() {});
+  }
+
+  void _openDeptOverlay(double width) {
+    _closeDeptOverlay();
+    final items = _deptMap.keys
+        .map((k) => (id: _deptMap[k]!, label: k))
+        .toList();
+    _deptOverlay = OverlayEntry(
+      builder: (_) => SelectDropdownOverlay(
+        layerLink: _deptLayerLink,
+        items: items,
+        selectedId: _selectedDept != null ? _deptMap[_selectedDept] : null,
+        dropdownWidth: width,
+        searchHint: 'Search department...',
+        onDismiss: _closeDeptOverlay,
+        onSelect: (id, label) {
+          _closeDeptOverlay();
+          _onDeptSelected(label);
+        },
+      ),
+    );
+    Overlay.of(context).insert(_deptOverlay!);
+    setState(() {});
+  }
+
+  void _closeModuleOverlay() {
+    _moduleOverlay?.remove();
+    _moduleOverlay = null;
+    if (mounted) setState(() {});
+  }
+
+  void _openModuleOverlay(double width) {
+    _closeModuleOverlay();
+    final items = _moduleOptions
+        .asMap()
+        .entries
+        .map((e) => (id: e.key, label: e.value.label))
+        .toList();
+    _moduleOverlay = OverlayEntry(
+      builder: (_) => SelectDropdownOverlay(
+        layerLink: _moduleLayerLink,
+        items: items,
+        selectedId: _selectedModuleId != null
+            ? _moduleOptions.indexWhere((m) => m.id == _selectedModuleId)
+            : null,
+        dropdownWidth: width,
+        searchHint: 'Search module...',
+        onDismiss: _closeModuleOverlay,
+        onSelect: (id, label) {
+          _closeModuleOverlay();
+          setState(() {
+            _selectedModuleId = _moduleOptions[id].id;
+            _results = [];
+            _fetched = false;
+          });
+        },
+      ),
+    );
+    Overlay.of(context).insert(_moduleOverlay!);
+    setState(() {});
+  }
+
+  // ── data loading ──────────────────────────────────────────────────────────
+
+  Future<void> _loadDepartments() async {
+    setState(() {
+      _deptLoading = true;
+      _deptError = false;
+    });
+    final auth = context.read<AuthProvider>();
+    if (!auth.initialized) {
+      await Future.doWhile(() async {
+        await Future.delayed(const Duration(milliseconds: 50));
+        return mounted && !context.read<AuthProvider>().initialized;
+      });
+    }
+    if (!mounted) return;
+    final map = await context.read<MasterDataService>().getDepartmentMap();
+    if (!mounted) return;
+    setState(() {
+      _deptMap = map;
+      _deptLoading = false;
+      _deptError = map.isEmpty;
+    });
+  }
+
+  void _onDeptSelected(String dept) {
+    setState(() {
+      _selectedDept = dept;
+      _results = [];
+      _fetched = false;
+    });
+  }
+
+  Future<void> _fetch() async {
+    if (_selectedModuleId == null) {
+      _snack('Please select a module.', isError: true);
+      return;
+    }
+    if (_selectedDept == null) {
+      _snack('Please select a department.', isError: true);
+      return;
+    }
+
+    final deptId = _deptMap[_selectedDept!]!.toString();
+    final moduleId = _selectedModuleId!;
+    final service = context.read<MasterDataService>();
+
+    setState(() {
+      _fetching = true;
+      _results = [];
+      _fetched = false;
+    });
+
+    try {
+      final List<ReviewerItem> results;
+
+      switch (moduleId) {
+        case '12':
+          results = await service.getReviewerTray(
+            deptId: deptId,
+            templateId: '',
+            flag: '2',
+          );
+        case '17':
+          results = await service.getReviewerTayList(
+            templateId: '',
+            departmentId: deptId,
+            requestId: '',
+            flag: '2',
+          );
+        case '11':
+        case '13':
+          results = await service.getTemplateReviewerTray(
+            deptId: deptId,
+            flag: moduleId == '11' ? 14 : 15,
+          );
+        default:
+          results = [];
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _fetching = false;
+        _fetched = true;
+        _searchQuery = '';
+        _searchCtrl.clear();
+        _currentPage = 0;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _fetching = false);
+      _snack('Failed to fetch data. Please try again.', isError: true);
+    }
+  }
+
+  void _snack(String msg, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? AppColors.red : AppColors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  // ── build ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 20),
+          _buildFilterCard(),
+          if (_fetching) ...[
+            const SizedBox(height: 40),
+            const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.blue,
+              ),
+            ),
+          ] else if (_fetched) ...[
+            const SizedBox(height: 20),
+            _buildResultsSection(),
+          ],
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  // ── header ────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.amber.withValues(alpha: 0.18),
+                AppColors.amber.withValues(alpha: 0.08),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: AppColors.amber.withValues(alpha: 0.2)),
+          ),
+          child: const Icon(
+            Icons.fact_check_outlined,
+            color: AppColors.amber,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Reviewer Module',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Review and approve manual data by module',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.blue,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+  // ── download ──────────────────────────────────────────────────────────────
+
+  // ── filter card ───────────────────────────────────────────────────────────
+
+  Widget _buildFilterCard() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // _sectionLabel('FILTER', Icons.tune_rounded),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Module', style: AppTextStyles.fieldLabel),
+                        const SizedBox(height: 6),
+                        CompositedTransformTarget(
+                          link: _moduleLayerLink,
+                          child: GestureDetector(
+                            onTap: () =>
+                                _openModuleOverlay(constraints.maxWidth),
+                            child: _dropdownTrigger(
+                              value: _selectedModuleId == null
+                                  ? null
+                                  : _moduleOptions
+                                        .firstWhere(
+                                          (m) => m.id == _selectedModuleId,
+                                        )
+                                        .label,
+                              hint: '— Select Module —',
+                              isOpen: _moduleOverlay != null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    final enabled = _selectedModuleId != null && !_deptLoading;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Department', style: AppTextStyles.fieldLabel),
+                        const SizedBox(height: 6),
+                        _deptLoading
+                            ? _loadingField()
+                            : _deptError
+                            ? _errorField(_loadDepartments)
+                            : CompositedTransformTarget(
+                                link: _deptLayerLink,
+                                child: GestureDetector(
+                                  onTap: enabled
+                                      ? () => _openDeptOverlay(
+                                          constraints.maxWidth,
+                                        )
+                                      : null,
+                                  child: _dropdownTrigger(
+                                    value: _selectedDept,
+                                    hint: _selectedModuleId == null
+                                        ? '— Select Module first —'
+                                        : '— Select Department —',
+                                    isOpen: _deptOverlay != null,
+                                    enabled: enabled,
+                                  ),
+                                ),
+                              ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Padding(
+                padding: const EdgeInsets.only(top: 22),
+                child: SizedBox(
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    onPressed: _fetching ? null : _fetch,
+                    icon: const Icon(
+                      Icons.search_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'Search',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.blue.withValues(
+                        alpha: 0.4,
+                      ),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── results section ───────────────────────────────────────────────────────
+
+  List<String> get _activeColumns => _selectedModuleId == '12'
+      ? [
+          '#',
+          'Source ID',
+          'Source Name',
+          'Created By',
+          'Created Date',
+          'View',
+          'Approval',
+        ]
+      : [
+          '#',
+          'ID',
+          'Template',
+          'Created By',
+          'Created Date',
+          'View',
+          'Approval',
+        ];
+
+  Widget _buildResultsSection() {
+    if (_results.isEmpty) {
+      return _card(
+        child: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 48),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 44,
+                  color: AppColors.textMuted,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'No records pending for reviewer.',
+                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final filtered = _searchQuery.isEmpty
+        ? _results
+        : _results.where((item) {
+            final q = _searchQuery.toLowerCase();
+            return (item.requestId?.toLowerCase().contains(q) ?? false) ||
+                (item.templateId?.toString().contains(q) ?? false) ||
+                (item.sourceId?.toString().contains(q) ?? false) ||
+                (item.templateName?.toLowerCase().contains(q) ?? false) ||
+                (item.sourceName?.toLowerCase().contains(q) ?? false) ||
+                (item.sourceTypeName?.toLowerCase().contains(q) ?? false) ||
+                (item.appName?.toLowerCase().contains(q) ?? false) ||
+                (item.itgrc?.toLowerCase().contains(q) ?? false) ||
+                (item.dbVault?.toLowerCase().contains(q) ?? false) ||
+                item.makerBy.toLowerCase().contains(q) ||
+                (item.jsonData?.toString().toLowerCase().contains(q) ??
+                    false) ||
+                _formatDate(item.makerDate).toLowerCase().contains(q);
+          }).toList();
+
+    final totalPages = max(1, (filtered.length / _rowsPerPage).ceil());
+    final safePage = _currentPage.clamp(0, totalPages - 1);
+    final start = safePage * _rowsPerPage;
+    final end = min(start + _rowsPerPage, filtered.length);
+    final pageRows = filtered.sublist(start, end);
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── header row ──
+          Row(
+            children: [
+              _sectionLabel('RESULTS', Icons.table_rows_rounded),
+              const SizedBox(width: 10),
+              _countBadge(_results.length, label: 'total'),
+              if (_searchQuery.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                _countBadge(
+                  filtered.length,
+                  label: 'filtered',
+                  color: AppColors.amber,
+                ),
+              ],
+              const Spacer(),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // ── search bar ──
+          SizedBox(
+            height: 40,
+            child: TextField(
+              controller: _searchCtrl,
+              style: const TextStyle(fontSize: 13, color: AppColors.text),
+              onChanged: (v) => setState(() {
+                _searchQuery = v.trim();
+                _currentPage = 0;
+              }),
+              decoration: _inputDecoration(
+                'Search across all columns…',
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  size: 16,
+                  color: AppColors.textDim,
+                ),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: AppColors.textDim,
+                        ),
+                        onPressed: () => setState(() {
+                          _searchQuery = '';
+                          _searchCtrl.clear();
+                          _currentPage = 0;
+                        }),
+                        splashRadius: 14,
+                      )
+                    : null,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── table ──
+          if (filtered.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Center(
+                child: Text(
+                  'No records match your search.',
+                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                ),
+              ),
+            )
+          else ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Table(
+                border: TableBorder.all(
+                  color: AppColors.border,
+                  width: 1,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                columnWidths: const {
+                  0: FixedColumnWidth(44),
+                  1: FlexColumnWidth(1.6),
+                  2: FlexColumnWidth(2.4),
+                  3: FlexColumnWidth(1.5),
+                  4: FlexColumnWidth(1.7),
+                  5: FixedColumnWidth(110),
+                  6: FlexColumnWidth(2.4),
+                },
+                children: [
+                  _buildHeaderRow(
+                    _matchedColumns(_searchQuery),
+                    _activeColumns,
+                  ),
+                  ...pageRows.asMap().entries.map(
+                    (e) => _buildTableRow(e.value, start + e.key),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildPaginationBar(
+              filtered.length,
+              totalPages,
+              safePage,
+              start,
+              end,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── matched columns for search highlight ─────────────────────────────────
+
+  Set<String> _matchedColumns(String query) {
+    if (query.isEmpty) return {};
+    final q = query.toLowerCase();
+    final matched = <String>{};
+    for (final item in _results) {
+      if (_isSourceConfigModule) {
+        if (item.sourceId?.toString().contains(q) ?? false) {
+          matched.add('Source ID');
+        }
+        if (item.sourceName?.toLowerCase().contains(q) ?? false) {
+          matched.add('Source Name');
+        }
+        if ((item.sourceTypeName?.toLowerCase().contains(q) ?? false) ||
+            (item.appName?.toLowerCase().contains(q) ?? false) ||
+            (item.itgrc?.contains(q) ?? false) ||
+            (item.dbVault?.toLowerCase().contains(q) ?? false)) {
+          matched.add('View');
+        }
+      } else {
+        if ((item.requestId?.toLowerCase().contains(q) ?? false) ||
+            (item.templateId?.toString().contains(q) ?? false)) {
+          matched.add('ID');
+        }
+        if (item.templateName?.toLowerCase().contains(q) ?? false) {
+          matched.add('Template');
+        }
+        if (item.jsonData?.toString().toLowerCase().contains(q) ?? false) {
+          matched.add('View');
+        }
+      }
+      if (item.makerBy.toLowerCase().contains(q)) matched.add('Created By');
+      if (_formatDate(item.makerDate).toLowerCase().contains(q)) {
+        matched.add('Created Date');
+      }
+    }
+    return matched;
+  }
+
+  // ── table header row ──────────────────────────────────────────────────────
+
+  TableRow _buildHeaderRow(Set<String> highlighted, List<String> columns) {
+    return TableRow(
+      decoration: const BoxDecoration(color: Color(0xFFF1F4F9)),
+      children: columns.map((col) {
+        final isHit = highlighted.contains(col);
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: isHit
+                ? AppColors.blue.withValues(alpha: 0.1)
+                : Colors.transparent,
+            border: isHit
+                ? const Border(
+                    bottom: BorderSide(color: AppColors.blue, width: 2),
+                  )
+                : const Border(
+                    bottom: BorderSide(color: Colors.transparent, width: 2),
+                  ),
+          ),
+          child: Row(
+            children: [
+              if (isHit) ...[
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.blue,
+                  ),
+                ),
+                const SizedBox(width: 5),
+              ],
+              Flexible(
+                child: Text(
+                  col,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isHit ? AppColors.blue : AppColors.textDim,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── table data row ────────────────────────────────────────────────────────
+
+  TableRow _buildTableRow(ReviewerItem item, int index) {
+    final filename = item.filename ?? '—';
+    final ext = filename.contains('.')
+        ? filename.split('.').last.toLowerCase()
+        : '';
+    final extColor = _extColor(ext);
+    final makerBy = item.makerBy.isEmpty ? '—' : item.makerBy;
+    final makerDate = _formatDate(item.makerDate);
+    final rowId = _isSourceConfigModule
+        ? item.sourceId?.toString() ?? '—'
+        : item.requestId?.isNotEmpty == true
+        ? item.requestId!
+        : item.templateId?.toString() ?? '—';
+    final nameCol = _isSourceConfigModule
+        ? item.sourceName ?? '—'
+        : item.templateName ?? '—';
+    final bg = index.isEven ? Colors.white : const Color(0xFFF9FAFC);
+
+    return TableRow(
+      decoration: BoxDecoration(color: bg),
+      children: [
+        // # index
+        _tdCell(
+          child: Text(
+            '${index + 1}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+
+        // ID — inline chip
+        _tdCell(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.blue.withValues(alpha: 0.09),
+                ),
+                child: Text(
+                  rowId,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.blue,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Template / Source Name
+        _tdCell(
+          child: Text(
+            nameCol,
+            style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+
+        // Created By
+        _tdCell(
+          child: Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.blue.withValues(alpha: 0.1),
+                ),
+                child: Center(
+                  child: Text(
+                    makerBy.isNotEmpty ? makerBy[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  makerBy,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDim,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Created Date
+        _tdCell(
+          child: Text(
+            makerDate,
+            style: const TextStyle(fontSize: 11, color: AppColors.textDim),
+          ),
+        ),
+
+        (_selectedModuleId == '17')
+            ? _tdCell(
+                child: Tooltip(
+                  message: 'Download $filename',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => downloadCheckerFile(
+                      context: context,
+                      filename: item.filename ?? '—',
+                      templateId: item.templateId?.toString() ?? '',
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.blue.withValues(alpha: 0.08),
+                        border: Border.all(
+                          color: AppColors.blue.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 3,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(3),
+                              color: extColor.withValues(alpha: 0.15),
+                            ),
+                            child: Text(
+                              ext.isEmpty ? 'FILE' : ext.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 7,
+                                fontWeight: FontWeight.w900,
+                                color: extColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Icon(
+                            Icons.download_rounded,
+                            size: 13,
+                            color: AppColors.blue,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            :
+              // View
+              _tdCell(
+                child: Tooltip(
+                  message: _viewTooltip(item),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => _viewSourceConfig(item),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: _canViewItem(item)
+                            ? AppColors.blue.withValues(alpha: 0.08)
+                            : AppColors.textMuted.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: _canViewItem(item)
+                              ? AppColors.blue.withValues(alpha: 0.18)
+                              : AppColors.border2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.visibility_rounded,
+                            size: 13,
+                            color: _canViewItem(item)
+                                ? AppColors.blue
+                                : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'View',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _canViewItem(item)
+                                  ? AppColors.blue
+                                  : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+        // Approval
+        _tdCell(
+          child: Row(
+            children: [
+              Expanded(
+                child: _approvalButton(
+                  label: 'Approve',
+                  color: const Color(0xFF059669),
+                  icon: Icons.check_rounded,
+                  onTap: () => _showRemarkDialog(item: item, isApproved: true),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _approvalButton(
+                  label: 'Reject',
+                  color: const Color(0xFFDC2626),
+                  icon: Icons.close_rounded,
+                  onTap: () => _showRemarkDialog(item: item, isApproved: false),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── pagination bar ────────────────────────────────────────────────────────
+
+  Widget _buildPaginationBar(
+    int total,
+    int totalPages,
+    int safePage,
+    int start,
+    int end,
+  ) {
+    return Row(
+      children: [
+        const Text(
+          'Rows per page:',
+          style: TextStyle(fontSize: 12, color: AppColors.textDim),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.border2),
+            color: AppColors.surface,
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: _rowsPerPage,
+              isDense: true,
+              style: const TextStyle(fontSize: 12, color: AppColors.text),
+              dropdownColor: AppColors.surface,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: AppColors.textDim,
+              ),
+              items: [10, 25, 50, 100]
+                  .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
+                  .toList(),
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() {
+                  _rowsPerPage = v;
+                  _currentPage = 0;
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Text(
+          '${start + 1}–$end of $total',
+          style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+        ),
+        const Spacer(),
+        _pageButton(
+          icon: Icons.first_page_rounded,
+          enabled: safePage > 0,
+          onTap: () => setState(() => _currentPage = 0),
+          tooltip: 'First page',
+        ),
+        const SizedBox(width: 4),
+        _pageButton(
+          icon: Icons.chevron_left_rounded,
+          enabled: safePage > 0,
+          onTap: () => setState(() => _currentPage = safePage - 1),
+          tooltip: 'Previous page',
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'Page ${safePage + 1} of $totalPages',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text,
+          ),
+        ),
+        const SizedBox(width: 8),
+        _pageButton(
+          icon: Icons.chevron_right_rounded,
+          enabled: safePage < totalPages - 1,
+          onTap: () => setState(() => _currentPage = safePage + 1),
+          tooltip: 'Next page',
+        ),
+        const SizedBox(width: 4),
+        _pageButton(
+          icon: Icons.last_page_rounded,
+          enabled: safePage < totalPages - 1,
+          onTap: () => setState(() => _currentPage = totalPages - 1),
+          tooltip: 'Last page',
+        ),
+      ],
+    );
+  }
+
+  Color _extColor(String ext) {
+    switch (ext) {
+      case 'csv':
+        return AppColors.green;
+      case 'xlsx':
+      case 'xls':
+        return AppColors.blue;
+      case 'json':
+        return AppColors.amber;
+      case 'txt':
+        return AppColors.slate;
+      default:
+        return AppColors.slate;
+    }
+  }
+
+  Widget _pageButton({
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onTap,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: enabled ? onTap : null,
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: enabled ? AppColors.border2 : AppColors.border,
+            ),
+            color: AppColors.surface,
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: enabled ? AppColors.textDim : AppColors.textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool get _isSourceConfigModule => _selectedModuleId == '12';
+  bool get _isTemplateCreationModule => _selectedModuleId == '11';
+  bool get _isTemplateConfigModule => _selectedModuleId == '13';
+
+  bool _canViewItem(ReviewerItem item) {
+    if (_isSourceConfigModule) return true;
+    if (_isTemplateCreationModule) {
+      return extractPayload(item.toMap()) != null;
+    }
+    if (_isTemplateConfigModule) {
+      final jd = item.jsonData;
+      return (jd is Map && jd.isNotEmpty) ||
+          (jd is List && jd.isNotEmpty) ||
+          (jd is String && jd.trim().isNotEmpty);
+    }
+    return false;
+  }
+
+  String _viewTooltip(ReviewerItem item) {
+    if (!(_isSourceConfigModule ||
+        _isTemplateCreationModule ||
+        _isTemplateConfigModule)) {
+      return 'View supported only for Source Configuration, Template Creation and Template Configuration';
+    }
+    if (!_canViewItem(item)) return 'Details unavailable';
+    return 'View submitted details';
+  }
+
+  Future<void> _viewSourceConfig(ReviewerItem item) async {
+    switch (_selectedModuleId) {
+      case '12': // Source Configuration
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => SourceConfigurationViewPage(data: item.toMap()),
+          ),
+        );
+
+      case '11':
+
+        // Template Creation
+        if (item.jsonData == null) {
+          _snack('Details unavailable for this request.', isError: true);
+          return;
+        }
+
+      // final create = extractPayload(item.toMap());
+      // final model = TemplateResponse.fromMap(item.toMap());
+      //TODO
+      // if (!mounted) return;
+      // await Navigator.of(context).push(
+      //   MaterialPageRoute(
+      //     builder: (_) => TemplateCreationViewPage(
+      //       // model: _normalizeTemplatePayload(create!),
+      //       model: model,
+      //     ),
+      //   ),
+      // );
+
+      case '13': // Template Configuration
+        final model = TemplateConfigurationResponseModel.fromJsonData(
+          item.jsonData,
+        );
+        if (!model.hasData) {
+          _snack(
+            'Pipeline details unavailable for this request.',
+            isError: true,
+          );
+          return;
+        }
+        if (!mounted) return;
+
+        ConfigPreviewSheet.showFromRawDynamic(
+          context,
+          model.configs,
+          templateName: item.templateName ?? '',
+        );
+      default:
+        _snack('View not available for this module.', isError: true);
+    }
+  }
+
+  // ── remark dialog ─────────────────────────────────────────────────────────
+
+  Future<void> _showRemarkDialog({
+    required ReviewerItem item,
+    required bool isApproved,
+  }) async {
+    final remarkCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final color = isApproved
+        ? const Color(0xFF059669)
+        : const Color(0xFFDC2626);
+    final label = isApproved ? 'Approve' : 'Reject';
+    final icon = isApproved
+        ? Icons.check_circle_outline
+        : Icons.cancel_outlined;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        title: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              '$label Request',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 420,
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color: AppColors.bg,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: _isSourceConfigModule
+                      ? Row(
+                          children: [
+                            const Text(
+                              'Source ID:',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textDim,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              item.sourceId?.toString() ?? '—',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.blue,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Template:',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textDim,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    item.templateName ?? '—',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.text,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Text(
+                                  'Template ID:',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textDim,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  item.templateId?.toString() ?? '—',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.blue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Remark *',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: remarkCtrl,
+                  maxLines: 3,
+                  autofocus: true,
+                  style: const TextStyle(fontSize: 13, color: AppColors.text),
+                  decoration: InputDecoration(
+                    hintText: 'Enter your remark…',
+                    hintStyle: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.border2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: color, width: 1.5),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.red),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(
+                        color: AppColors.red,
+                        width: 1.5,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.bg,
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Remark is required'
+                      : null,
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textDim),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) Navigator.pop(ctx, true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final remark = remarkCtrl.text.trim();
+    final auth = context.read<AuthProvider>();
+    final checkerBy = auth.user?.user.employeeCode ?? '';
+    final templateId = item.templateId?.toString() ?? '';
+    final deptId = (_deptMap[_selectedDept] ?? 0).toString();
+    final requestId = _isSourceConfigModule
+        ? item.sourceId?.toString() ?? ''
+        : item.requestId?.isNotEmpty == true
+        ? item.requestId!
+        : item.templateId?.toString() ?? '';
+    final moduleId = item.module?.trim().isNotEmpty == true
+        ? item.module!.trim()
+        : (_selectedModuleId ?? '');
+
+    if (moduleId.isEmpty) {
+      _snack('ModuleId is missing for this row.', isError: true);
+      return;
+    }
+
+    setState(() => _fetching = true);
+    final result = await context
+        .read<MasterDataService>()
+        .submitReviewerApprovalWithModule(
+          templateId: _selectedModuleId == '17' ? templateId : requestId,
+          departmentId: deptId,
+          requestId: requestId,
+          checkerBy: checkerBy,
+          remark: remark,
+          isApproved: isApproved,
+          moduleId: moduleId,
+        );
+    if (!mounted) return;
+    setState(() => _fetching = false);
+    if (result.success) {
+      _snack('$label successful (Req #${result.reqId})');
+      await _fetch();
+    } else {
+      _snack('Failed: ${result.message}', isError: true);
+    }
+  }
+
+  // ── small widgets ─────────────────────────────────────────────────────────
+
+  Widget _approvalButton({
+    required String label,
+    required Color color,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 11, color: Colors.white),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tdCell({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: child,
+    );
+  }
+
+  Widget _countBadge(int n, {String label = '', Color color = AppColors.blue}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: color.withValues(alpha: 0.1),
+      ),
+      child: Text(
+        label.isEmpty ? '$n' : '$n $label',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String title, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: AppColors.blue),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: AppColors.blue,
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _inputDecoration(
+    String hint, {
+    Widget? prefixIcon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.border2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.blue, width: 1.5),
+      ),
+      filled: true,
+      fillColor: AppColors.surface,
+    );
+  }
+
+  String _formatDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    try {
+      final dt = DateTime.parse(raw);
+      final dd = dt.day.toString().padLeft(2, '0');
+      final mm = dt.month.toString().padLeft(2, '0');
+      return '$dd/$mm/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  Widget _card({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _dropdownTrigger({
+    required String? value,
+    required String hint,
+    required bool isOpen,
+    bool enabled = true,
+  }) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isOpen
+              ? AppColors.violet
+              : enabled
+              ? AppColors.border2
+              : AppColors.border,
+        ),
+        color: enabled ? AppColors.surface : AppColors.bg,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              value ?? hint,
+              style: TextStyle(
+                fontSize: 13,
+                color: value != null ? AppColors.text : AppColors.textMuted,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(
+            isOpen
+                ? Icons.keyboard_arrow_up_rounded
+                : Icons.keyboard_arrow_down_rounded,
+            size: 18,
+            color: enabled ? AppColors.textDim : AppColors.textMuted,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorField(VoidCallback onRetry) {
+    return GestureDetector(
+      onTap: onRetry,
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.red.withValues(alpha: 0.4)),
+          color: AppColors.red.withValues(alpha: 0.04),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline_rounded, size: 14, color: AppColors.red),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Failed to load. Tap to retry',
+                style: TextStyle(fontSize: 12, color: AppColors.red),
+              ),
+            ),
+            Icon(Icons.refresh_rounded, size: 14, color: AppColors.red),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _loadingField() {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+        color: AppColors.bg,
+      ),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.textDim,
+            ),
+          ),
+          SizedBox(width: 8),
+          Text(
+            'Loading...',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}

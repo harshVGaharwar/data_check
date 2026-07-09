@@ -183,7 +183,7 @@ class _JobExecutionPageState extends State<JobExecutionPage> {
     }
     final templates = await context
         .read<MasterDataService>()
-        .getManualTemplatesByDept(deptId);
+        .getManualTemplatesByDept(deptId,20);
     if (!mounted) return;
     setState(() {
       _templates = templates;

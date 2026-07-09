@@ -6,6 +6,7 @@ import 'package:vizualizer/data/models/master_models.dart';
 import 'package:vizualizer/data/models/template_info.dart';
 import 'package:vizualizer/presentation/providers/auth_provider.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
+
 class ManualUploadPage extends StatefulWidget {
   const ManualUploadPage({super.key});
 
@@ -86,7 +87,7 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
     }
 
     final service = context.read<MasterDataService>();
-    final templates = await service.getManualTemplatesByDept(deptId);
+    final templates = await service.getManualTemplatesByDept(deptId, 8);
     if (!mounted) return;
     setState(() {
       _templates = templates;
@@ -170,8 +171,6 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
     }).toList();
 
     setState(() => _saving = true);
-
-
 
     final result = await context.read<MasterDataService>().uploadManualData(
       entries: entries,
@@ -400,7 +399,11 @@ class _ManualUploadPageState extends State<ManualUploadPage> {
             SizedBox(height: 2),
             Text(
               'Select department & template, then upload files per source',
-              style: TextStyle(fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.blue,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

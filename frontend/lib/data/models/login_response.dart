@@ -1,4 +1,3 @@
-/// User object returned inside the login response
 class LoginUser {
   final int id;
   final String name;
@@ -13,14 +12,17 @@ class LoginUser {
   final String ipAddress;
   final String profileDescription;
   final String profileId;
+
   final List<MenuPermission> menuList;
+  final List<TemplateType> templateType;
+  final ReportDate reportDate;
+  final List<ModuleItem> moduleList;
 
   LoginUser({
     this.id = 0,
     this.name = '',
     this.employeeCode = '',
     this.email = '',
-    this.menuList = const [],
     this.location = '',
     this.locationCode = '',
     this.city = '',
@@ -30,43 +32,65 @@ class LoginUser {
     this.ipAddress = '',
     this.profileDescription = '',
     this.profileId = '',
-  });
+    this.menuList = const [],
+    this.templateType = const [],
+    this.moduleList = const [],
+    ReportDate? reportDate,
+  }) : reportDate = reportDate ?? ReportDate();
+
   factory LoginUser.fromJson(Map<String, dynamic> json) {
-    final List<dynamic> list = json['menuList'] ?? [];
+    final list = json['menuList'] ?? [];
+    final templateTypeList = json['templateType'] ?? [];
+    final moduleListJson = json['moduleList'] ?? [];
+
     return LoginUser(
-      id: _toInt(json['id']),
-      name: _str(json['name'] ?? json['Name']),
-      employeeCode: _str(
-        json['employeeCode'] ??
-            json['EmployeeCode'] ??
-            json['employee_code'] ??
-            json['empCode'] ??
-            json['EmpCode'],
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      employeeCode: json['employeeCode'] ?? '',
+      email: json['email'] ?? '',
+      location: json['location'] ?? '',
+      locationCode: json['locationCode'] ?? '',
+      city: json['city'] ?? '',
+      department: json['department'] ?? '',
+      contactNumber: json['contactNumber'] ?? '',
+      role: json['role'] ?? '',
+      ipAddress: json['ipAddress'] ?? '',
+      profileDescription: json['profileDescription'] ?? '',
+      profileId: json['profileId'] ?? '',
+      menuList: List<MenuPermission>.from(
+        list.map((m) => MenuPermission.fromJson(m)),
       ),
-      email: _str(json['email'] ?? json['Email']),
-      location: _str(json['location'] ?? json['Location']),
-      locationCode: _str(
-        json['locationcode'] ?? json['locationCode'] ?? json['LocationCode'],
+      templateType: List<TemplateType>.from(
+        templateTypeList.map((t) => TemplateType.fromJson(t)),
       ),
-      city: _str(json['city'] ?? json['City']),
-      department: _str(json['department'] ?? json['Department']),
-      contactNumber: _str(json['contactNumber'] ?? json['ContactNumber']),
-      role: _str(json['role'] ?? json['Role']),
-      ipAddress: _str(
-        json['ipAddress'] ?? json['IpAddress'] ?? json['IPAddress'],
+      moduleList: List<ModuleItem>.from(
+        moduleListJson.map((m) => ModuleItem.fromJson(m)),
       ),
-      profileDescription: _str(
-        json['profileDescription'] ?? json['ProfileDescription'],
-      ),
-      profileId: _str(
-        json['profileId'] ?? json['ProfileId'] ?? json['profileID'],
-      ),
-      menuList: list.map((m) => MenuPermission.fromJson(m)).toList(),
-    ); // LoginUser
+      reportDate: ReportDate.fromJson(json['reportDate'] ?? {}),
+    );
   }
 
-  static String _str(dynamic v) => v?.toString() ?? '';
-  static int _toInt(dynamic v) => v is int ? v : int.tryParse('$v') ?? 0;
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'employeeCode': employeeCode,
+      'email': email,
+      'location': location,
+      'locationCode': locationCode,
+      'city': city,
+      'department': department,
+      'contactNumber': contactNumber,
+      'role': role,
+      'ipAddress': ipAddress,
+      'profileDescription': profileDescription,
+      'profileId': profileId,
+      'menuList': menuList.map((m) => m.toJson()).toList(),
+      'templateType': templateType.map((t) => t.toJson()).toList(),
+      'moduleList': moduleList.map((m) => m.toJson()).toList(),
+      'reportDate': reportDate.toJson(),
+    };
+  }
 }
 
 class MenuPermission {
@@ -91,23 +115,99 @@ class MenuPermission {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'menuName': menuName,
+      'profileId': profileId,
+      'isActive': isActive,
+    };
+  }
+
   bool get isEnabled => isActive.toUpperCase() == "Y";
 }
 
-/// Full response model for HDFC DataLake Login API
+class ModuleItem {
+  final int id;
+  final String name;
+  final String profileID;
+  final String spflag;
+
+  ModuleItem({
+    required this.id,
+    required this.name,
+    required this.profileID,
+    required this.spflag,
+  });
+
+  factory ModuleItem.fromJson(Map<String, dynamic> json) {
+    return ModuleItem(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      profileID: json['profileID'] ?? '',
+      spflag: json['spflag'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'id': id, 'name': name, 'profileID': profileID, 'spflag': spflag};
+  }
+}
+
+class TemplateType {
+  final String name;
+  final int id;
+
+  TemplateType({required this.name, required this.id});
+
+  factory TemplateType.fromJson(Map<String, dynamic> json) {
+    return TemplateType(name: json['name'] ?? '', id: json['id'] ?? 0);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'id': id};
+  }
+}
+
+class ReportDate {
+  final int daycount;
+
+  ReportDate({this.daycount = 0});
+
+  factory ReportDate.fromJson(Map<String, dynamic> json) {
+    return ReportDate(daycount: json['daycount'] ?? 0);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'daycount': daycount};
+  }
+}
+
 class LoginResponse {
   final String token;
   final String refreshToken;
   final LoginUser user;
 
-  LoginResponse({this.token = '', this.refreshToken = '', required this.user});
+  LoginResponse({
+    required this.token,
+    required this.refreshToken,
+    required this.user,
+  });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
-    final userJson = json['user'] as Map<String, dynamic>? ?? {};
     return LoginResponse(
-      token: json['token'] as String? ?? '',
-      refreshToken: json['refreshToken'] as String? ?? '',
-      user: LoginUser.fromJson(userJson),
-    ); // LoginResponse
+      token: json['token'] ?? '',
+      refreshToken: json['refreshToken'] ?? '',
+      user: LoginUser.fromJson(json['user'] ?? {}),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'token': token,
+      'refreshToken': refreshToken,
+      'user': user.toJson(),
+    };
   }
 }
+//TODO

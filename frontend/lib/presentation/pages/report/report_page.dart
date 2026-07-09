@@ -8,6 +8,7 @@ import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/core/utils/download_helper.dart';
 import 'package:vizualizer/presentation/widgets/common/data_result_table.dart';
 import 'package:vizualizer/presentation/widgets/common/select_dropdown_overlay.dart';
+
 class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
 
@@ -186,7 +187,7 @@ class _ReportPageState extends State<ReportPage> {
     }
     final templates = await context
         .read<MasterDataService>()
-        .getManualTemplatesByDept(deptId);
+        .getManualTemplatesByDept(deptId, 20);
     if (!mounted) return;
     setState(() {
       _templates = templates;
@@ -457,7 +458,8 @@ class _ReportPageState extends State<ReportPage> {
     for (final item in items) {
       if (item.requestId.toLowerCase().contains(q)) matched.add('Request ID');
       if (item.templateId.toLowerCase().contains(q)) matched.add('Template ID');
-      if (item.templateName.toLowerCase().contains(q)) matched.add('Template Name');
+      if (item.templateName.toLowerCase().contains(q))
+        matched.add('Template Name');
       if (item.checkerBy.toLowerCase().contains(q)) matched.add('Checker By');
       if (formatTableDate(item.checkerDate).toLowerCase().contains(q)) {
         matched.add('Checker Date');
@@ -535,7 +537,11 @@ class _ReportPageState extends State<ReportPage> {
         DataResultTable.tdCell(
           child: Text(
             item.templateName.isEmpty ? '—' : item.templateName,
-            style: const TextStyle(fontSize: 12, color: AppColors.text, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.text,
+              fontWeight: FontWeight.w500,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -568,7 +574,10 @@ class _ReportPageState extends State<ReportPage> {
               Expanded(
                 child: Text(
                   checkerBy,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDim,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -612,7 +621,10 @@ class _ReportPageState extends State<ReportPage> {
               Expanded(
                 child: Text(
                   makerBy,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textDim),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDim,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -687,7 +699,6 @@ class _ReportPageState extends State<ReportPage> {
       ],
     );
   }
-
 
   Color _extColor(String ext) {
     switch (ext) {

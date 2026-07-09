@@ -6,10 +6,13 @@ import 'package:vizualizer/data/models/api_response.dart';
 import 'package:vizualizer/data/models/checker_tray_item.dart';
 import 'package:vizualizer/data/models/master_models.dart';
 import 'package:vizualizer/data/models/job_execution_log.dart';
+import 'package:vizualizer/data/models/new_report_item.dart';
 import 'package:vizualizer/data/models/report_item.dart';
+import 'package:vizualizer/data/models/reviewer_item.dart';
 import 'package:vizualizer/data/models/source_config_request.dart';
 import 'package:vizualizer/data/models/template_info.dart';
 import 'package:vizualizer/data/services/api_service.dart';
+import 'package:vizualizer/data/services/storage_service.dart';
 
 /// Service to fetch master/dropdown data from API
 class MasterDataService {
@@ -19,8 +22,12 @@ class MasterDataService {
 
   /// Fetch departments list from API
   Future<List<DepartmentItem>> getDepartments() async {
+    final session = await StorageService().loadSession();
+    final employeeCode = session?.user.employeeCode ?? '';
     try {
-      final data = await _api.getRawData(ApiConfig.departmentsEndpoint);
+      final data = await _api.getRawData(
+        "${ApiConfig.departmentsEndpoint}?empcode=$employeeCode",
+      );
       if (data is List) {
         return data
             .whereType<Map<String, dynamic>>()
@@ -40,6 +47,190 @@ class MasterDataService {
       for (final d in departments)
         if (d.name.isNotEmpty) d.name: d.id,
     };
+  }
+
+  // /// Fetch report list for a given template + department
+  Future<List<NewReportItem>> getNewReportList({
+    required String templateId,
+    required String departmentId,
+    required String fromDate,
+    required String toDate,
+    // required String requestId,
+    required String createdBy,
+  }) async {
+    try {
+      final body = {
+        'template_id': templateId,
+        'department_id': departmentId,
+        "requestid": '',
+        "createdBy": createdBy,
+        'startdate': fromDate,
+        'enddate': toDate,
+      };
+      final data = await _api.postRawData(ApiConfig.reportListEndpoint, body);
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(NewReportItem.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getReportList error: $e');
+    }
+    return [];
+  }
+
+  //Reviewer
+  /// Submit checker approval / rejection with module id
+  Future<({bool success, String message, int reqId})>
+  submitReviewerApprovalWithModule({
+    required String templateId,
+    required String departmentId,
+    required String requestId,
+    required String checkerBy,
+    required String remark,
+    required bool isApproved,
+    required String moduleId,
+  }) async {
+    try {
+      final body = {
+        'Template_id': templateId,
+        'department_id': departmentId,
+        'Request_id': requestId,
+        'AuthorizedBy': checkerBy,
+        'Remark': remark,
+        'isApproved': isApproved ? 'Y' : 'N',
+        'ModuleId': moduleId,
+      };
+      final data = await _api.postRawData(
+        ApiConfig.reviewerApprovalEndpoint,
+        body,
+      );
+      if (data is Map<String, dynamic>) {
+        final status = data['status']?.toString() ?? '';
+        final message = data['message']?.toString() ?? status;
+        final reqId = data['reqID'];
+        final id = reqId is int ? reqId : int.tryParse('$reqId') ?? 0;
+        return (
+          success: status.toLowerCase() == 'success',
+          message: message,
+          reqId: id,
+        );
+      }
+    } catch (e) {
+      debugPrint('[MasterData] submitReviewerApprovalWithModule error: $e');
+      return (success: false, message: e.toString(), reqId: 0);
+    }
+    return (
+      success: false,
+      message: 'Network error. Please try again.',
+      reqId: 0,
+    );
+  }
+
+  Future<List<ReviewerItem>> getReviewerTayList({
+    required String templateId,
+    required String departmentId,
+    required String requestId,
+    required String flag,
+  }) async {
+    try {
+      final body = {
+        'template_id': templateId,
+        'department_id': departmentId,
+        'Request_id': requestId,
+      };
+      final data = await _api.postRawData(
+        '${ApiConfig.reviewerListEndpoint}?flag=$flag',
+        body,
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(ReviewerItem.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getReviewerTayList error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch source master checker tray — Source Configuration module
+  Future<List<ReviewerItem>> getReviewerTray({
+    required String deptId,
+    required String templateId,
+    required String flag,
+  }) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.reviewerSourceMasterTrayEndpoint}?DeptId=$deptId&templateId=$templateId&flag=$flag',
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(ReviewerItem.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getReviewerTray error: $e');
+    }
+    return [];
+  }
+
+  /// Fetch template checker tray — Template Creation (flag=4) / Configuration (flag=5)
+  Future<List<ReviewerItem>> getTemplateReviewerTray({
+    required String deptId,
+    required int flag,
+  }) async {
+    try {
+      final data = await _api.getRawData(
+        '${ApiConfig.templateReviewerTrayEndpoint}?DeptId=$deptId&flag=$flag',
+      );
+      if (data is List) {
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map(ReviewerItem.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[MasterData] getTemplateReviewerTray error: $e');
+    }
+    return [];
+  }
+
+  Future<({bool success, String message, List<int> bytes, String? filename})>
+  downloadReportFile({
+    required String departmentId,
+    required String templateId,
+    required String requestId,
+  }) async {
+    try {
+      final bytes = await _api.getFileBytes(
+        ApiConfig.downloadReportEndpoint,
+        queryParameters: {
+          'deptid': departmentId,
+          'template_id': templateId,
+          'requestid': requestId,
+        },
+      );
+
+      if (bytes != null && bytes.isNotEmpty) {
+        // Assign a default ZIP filename
+        final filename = "Report_$requestId.zip";
+
+        return (success: true, message: '', bytes: bytes, filename: filename);
+      }
+    } catch (e) {
+      debugPrint('[MasterData] downloadReportFile error: $e');
+    }
+
+    return (
+      success: false,
+      message: 'Failed to download file.',
+      bytes: <int>[],
+      filename: null,
+    );
   }
 
   /// Fetch source list for a given department + template.
@@ -69,10 +260,16 @@ class MasterDataService {
   /// Fetch manual-upload templates for a given department ID.
   /// Uses GetManualTemplateDetails?DeptId=<id>.
   /// Filters out the backend placeholder entry (templateId == 0).
-  Future<List<ManualTemplateInfo>> getManualTemplatesByDept(int deptId) async {
+  /// Fetch manual-upload templates for a given department ID.
+  /// Uses GetManualTemplateDetails?DeptId=<id>&flag=<flag>
+  /// Filters out the backend placeholder entry (templateId == 0).
+  Future<List<ManualTemplateInfo>> getManualTemplatesByDept(
+    int deptId,
+    int flag,
+  ) async {
     try {
       final data = await _api.getRawData(
-        '${ApiConfig.manualTemplatesEndpoint}?DeptId=$deptId',
+        '${ApiConfig.manualTemplatesEndpoint}?DeptId=$deptId&flag=$flag',
       );
       if (data is List) {
         return data
@@ -110,7 +307,6 @@ class MasterDataService {
       final data = await _api.getRawData(
         '${ApiConfig.templatesDynamicEndpoint}?deptId=$deptId&flag=$flag',
       );
-      debugPrint('[DYN] raw response type=${data.runtimeType} data=$data');
       if (data is List) {
         final list = data
             .map((e) {
@@ -123,7 +319,7 @@ class MasterDataService {
             .toList();
         for (final t in list) {
           debugPrint(
-            '[DYN_TEMPLATE] id=${t.templateId} name="${t.templateName}" type="${t.templateType}" formats=${t.outputFormats} dynCount=${t.dynamicTemplates.length} isDynUni=${t.templateType == "3" || t.templateType.toLowerCase().contains("dynamic")}',
+            '[DYN_TEMPLATE] id=${t.templateId} name="${t.templateName}" jsonData=${t.jsonData == null ? "NULL" : "keys=${t.jsonData!.keys.toList()}"}',
           );
         }
         return list;
@@ -173,13 +369,13 @@ class MasterDataService {
   }
 
   /// Fetch frequency list from API
-  Future<List<FrequencyItem>> getFrequencyList() async {
+  Future<List<FrequencyListItem>> getFrequencyList() async {
     try {
       final data = await _api.getRawData(ApiConfig.frequencyListEndpoint);
       if (data is List) {
         return data
             .whereType<Map<String, dynamic>>()
-            .map(FrequencyItem.fromJson)
+            .map(FrequencyListItem.fromJson)
             .toList();
       }
     } catch (e) {
@@ -559,10 +755,10 @@ class MasterDataService {
     return [];
   }
 
-  Future<DashboardDetails?> getDashboardCount() async {
+  Future<DashboardDetails?> getDashboardCount(String employeeCode) async {
     try {
       final data = await _api.getRawData(
-        '${ApiConfig.getDashboardCount}?val1=1&val2=2&val3=3&val4=4',
+        '${ApiConfig.getDashboardCount}?val1=$employeeCode&val2=2&val3=3&val4=4',
       );
       if (data is Map<String, dynamic>) {
         return DashboardDetails.fromJson(data);

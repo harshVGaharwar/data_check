@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Lightweight template model returned by GetManualTemplateDetails.
 /// Response shape: { templateId, templateName, department, sourceCount, manualCount }
 class ManualTemplateInfo {
@@ -58,6 +60,11 @@ class TemplateInfo {
   /// Each entry: {srno, id, sourceList, sourceCount, sourceMasterList, sourceType}
   final List<Map<String, dynamic>> dynamicTemplates;
 
+  /// Canvas configuration embedded in the GetTemplatesDynamic (flag=4) response.
+  /// Contains Sources, JoinMappings, outputColumns — passed directly to
+  /// PipelineController.loadConfiguration in edit mode.
+  final Map<String, dynamic>? jsonData;
+
   TemplateInfo({
     required this.templateId,
     required this.templateName,
@@ -84,6 +91,7 @@ class TemplateInfo {
     this.sourceListNames = '',
     this.approvals = const [],
     this.dynamicTemplates = const [],
+    this.jsonData,
   });
 
   /// Parses the nested response shape returned by GetTemplates?deptId=&flag=:
@@ -114,6 +122,34 @@ class TemplateInfo {
     final approvalsArr = json['Approvals'] as List?;
     final parsedApprovals =
         approvalsArr?.whereType<Map<String, dynamic>>().toList() ?? [];
+
+    // Parse jsonData — the API returns it as a List; take element [0] as the config map.
+    Map<String, dynamic>? parsedJsonData;
+    final rawJsonData =
+        json['jsonData'] ??
+        json['JsonData'] ??
+        tpl['jsonData'] ??
+        tpl['JsonData'];
+    if (rawJsonData is List && rawJsonData.isNotEmpty) {
+      final first = rawJsonData.first;
+      if (first is Map<String, dynamic>) {
+        parsedJsonData = first;
+      } else if (first is Map) {
+        parsedJsonData = first.map((k, v) => MapEntry(k.toString(), v));
+      }
+    } else if (rawJsonData is Map<String, dynamic>) {
+      parsedJsonData = rawJsonData;
+    } else if (rawJsonData is Map) {
+      parsedJsonData = rawJsonData.map((k, v) => MapEntry(k.toString(), v));
+    } else if (rawJsonData is String && rawJsonData.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawJsonData);
+        if (decoded is Map<String, dynamic>) parsedJsonData = decoded;
+        if (decoded is Map) {
+          parsedJsonData = decoded.map((k, v) => MapEntry(k.toString(), v));
+        }
+      } catch (_) {}
+    }
 
     // Parse dynamicTemplate array (camelCase from GetTemplatesDynamic API)
     final dynamicTemplateArr =
@@ -187,6 +223,7 @@ class TemplateInfo {
           '',
       approvals: parsedApprovals,
       dynamicTemplates: parsedDynamicTemplates,
+      jsonData: parsedJsonData,
     );
   }
 

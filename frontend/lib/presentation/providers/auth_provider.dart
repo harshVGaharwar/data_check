@@ -3,6 +3,7 @@ import 'package:vizualizer/data/models/login_request.dart';
 import 'package:vizualizer/data/models/login_response.dart';
 import 'package:vizualizer/data/services/auth_service.dart';
 import 'package:vizualizer/data/services/storage_service.dart';
+
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
   final StorageService _storage;

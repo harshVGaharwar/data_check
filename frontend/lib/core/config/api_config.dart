@@ -1,8 +1,11 @@
+import 'package:vizualizer/core/config/app_config.dart';
+
 const String kAppName = 'DATA FUSION';
 
 /// API Configuration
 /// Change baseUrl to your actual backend server
 class ApiConfig {
+  // static String get baseUrl=>AppConfig.instance.baseUrl;
   //   static const String baseUrl =
   //       'https://hbenetppuatdb01.hdfcbankuat.com/DataORCAPI/api/';
   static const String baseUrl = 'http://localhost:8080/api/v1/';
@@ -45,6 +48,7 @@ class ApiConfig {
   static const String uploadManualDataEndpoint = 'template/UploadManualData';
 
   // checker page
+
   static const String checkerListEndpoint = 'template/GetCheckerTayList';
   static const String checkerListWithModuleEndpoint =
       'template/GetCheckerTayListWithModule';
@@ -54,7 +58,15 @@ class ApiConfig {
       'template/GetsourceMasterCheckerTray';
   static const String checkerApprovalEndpoint = 'template/ApproveCheckerTray';
   static const String downloadFileEndpoint = 'template/DownloadFile';
+  static String downloadReportEndpoint = 'template/DownloadReport';
 
+  // review page updated
+  static const String reviewerApprovalEndpoint = 'template/ApproveCheckerTray';
+  static const String reviewerListEndpoint = 'template/GetCheckerTrayList';
+  static const String reviewerSourceMasterTrayEndpoint =
+      'template/GetsourceMasterCheckerTray';
+  static const String templateReviewerTrayEndpoint =
+      'template/GetTemplatesCheckerTray';
   // report page
   static const String reportListEndpoint = 'template/GetReport';
 

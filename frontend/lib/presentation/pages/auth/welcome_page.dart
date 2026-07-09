@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vizualizer/core/utils/responsive_helper.dart';
 import 'package:vizualizer/data/models/master_models.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
+import 'package:vizualizer/presentation/providers/auth_provider.dart';
 
 class WelcomePage extends StatefulWidget {
   final void Function(int index) onNavigate;
@@ -30,12 +32,17 @@ class _WelcomePageState extends State<WelcomePage>
   }
 
   Future<void> _loadDashboard() async {
+    final auth = context.read<AuthProvider>();
+    final checkerBy = auth.user?.user.employeeCode ?? '';
     if (!mounted) return;
-    final service = context.read<MasterDataService>();
-    final dashboardData = await service.getDashboardCount();
+
+    final service = context
+        .read<MasterDataService>(); // Replace with your actual service type
+    final dashboardData = await service.getDashboardCount(checkerBy);
+
     if (mounted) {
       setState(() {
-        _dashboardDetails = dashboardData;
+        _dashboardDetails = dashboardData; // Store the fetched data
       });
     }
   }
@@ -50,33 +57,39 @@ class _WelcomePageState extends State<WelcomePage>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fade,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1 — KPI tiles
-            _KpiRow(dashboardData: _dashboardDetails?.dashboardCount ?? []),
-            SizedBox(height: 20),
-            // 2 — Horizontal data flow
-            _DataFlowCard(),
-            SizedBox(height: 16),
-            Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = Responsive.isMobile(constraints.maxWidth);
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? 12 : 24),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _UserInstructionCard()),
-                SizedBox(width: 16),
-                Expanded(child: _AdminInstructionCard()),
+                _KpiRow(dashboardData: _dashboardDetails?.dashboardCount ?? []),
+                SizedBox(height: 20),
+                _DataFlowCard(),
+                SizedBox(height: 16),
+                isMobile
+                    ? Column(
+                        children: const [
+                          _UserInstructionCard(),
+                          SizedBox(height: 16),
+                          _AdminInstructionCard(),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Expanded(child: _UserInstructionCard()),
+                          SizedBox(width: 16),
+                          Expanded(child: _AdminInstructionCard()),
+                        ],
+                      ),
               ],
             ),
-            // // 3 — Recent template configurations
-            // _RecentConfigCard(),
-            // SizedBox(height: 16),
-            // // 4 — Upload breakdown
-            // _UploadBreakdownCard(),
-            // SizedBox(height: 8),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -86,66 +99,30 @@ class _WelcomePageState extends State<WelcomePage>
 
 class _KpiRow extends StatelessWidget {
   final List<DashboardCount> dashboardData;
-  // static const _kpis = [
-  //   _KpiData(
-  //     'Total Templates',
-  //     '24',
-  //     Icons.layers_rounded,
-  //     AppColors.blue,
-  //     AppColors.blueDim,
-  //     '+3 this month',
-  //   ),
-  //   _KpiData(
-  //     'Manual Uploads',
-  //     '147',
-  //     Icons.upload_file_rounded,
-  //     AppColors.violet,
-  //     Color(0xFFEDE9FE),
-  //     '+12 this week',
-  //   ),
-  //   _KpiData(
-  //     'Pending Review',
-  //     '8',
-  //     Icons.pending_actions_rounded,
-  //     AppColors.amber,
-  //     AppColors.amberDim,
-  //     'Awaiting Approval',
-  //   ),
-  //   _KpiData(
-  //     'Auto Generated',
-  //     '89',
-  //     Icons.auto_fix_high_rounded,
-  //     AppColors.cyan,
-  //     Color(0xFFCFFAFE),
-  //     '+5 today',
-  //   ),
-  //   _KpiData(
-  //     'Success',
-  //     '201',
-  //     Icons.check_circle_outline_rounded,
-  //     AppColors.green,
-  //     AppColors.greenDim,
-  //     '92.0% rate',
-  //   ),
-  //   _KpiData(
-  //     'Failed',
-  //     '12',
-  //     Icons.cancel_outlined,
-  //     AppColors.red,
-  //     Color(0xFFFEE2E2),
-  //     '5.5% rate',
-  //   ),
-  // ];
-  const _KpiRow({Key? key, required this.dashboardData}) : super(key: key);
+
+  const _KpiRow({required this.dashboardData});
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 5 * 12) / 6;
+        int columns;
+
+        if (Responsive.isMobile(constraints.maxWidth)) {
+          columns = 2;
+        } else if (Responsive.isTablet(constraints.maxWidth)) {
+          columns = 3;
+        } else {
+          columns = 6;
+        }
+
+        final spacing = 12.0;
+        final totalSpacing = (columns - 1) * spacing;
+        final cardWidth = (constraints.maxWidth - totalSpacing) / columns;
+
         return Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: spacing,
+          runSpacing: spacing,
           children: [
             for (var i = 0; i < dashboardData.length; i++)
               SizedBox(
@@ -262,17 +239,17 @@ class _KpiCardState extends State<_KpiCard>
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _hovered ? Color(lightColor!) : AppColors.surface,
+              color: _hovered ? Color(lightColor) : AppColors.surface,
               borderRadius: BorderRadius.circular(13),
               border: Border.all(
                 color: _hovered
-                    ? Color(darkColor!).withValues(alpha: 0.4)
+                    ? Color(darkColor).withValues(alpha: 0.4)
                     : AppColors.border,
               ),
               boxShadow: _hovered
                   ? [
                       BoxShadow(
-                        color: Color(darkColor!).withValues(alpha: 0.14),
+                        color: Color(darkColor).withValues(alpha: 0.14),
                         blurRadius: 14,
                         offset: const Offset(0, 5),
                       ),
@@ -295,7 +272,7 @@ class _KpiCardState extends State<_KpiCard>
                     Container(
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: Color(darkColor!).withValues(alpha: 0.12),
+                        color: Color(darkColor).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -356,20 +333,21 @@ class _FlowStepData {
   final IconData icon;
   final String label;
   final String desc;
-  final String team;
+  // final String team;
   final Color color;
   final Color bg;
   const _FlowStepData({
     required this.icon,
     required this.label,
     required this.desc,
-    required this.team,
+    // required this.team,
     required this.color,
     required this.bg,
   });
 }
 
 class _DataFlowCard extends StatelessWidget {
+  const _DataFlowCard();
   static const _steps = [
     // _FlowStepData(
     //   icon: Icons.storage_rounded,
@@ -382,117 +360,107 @@ class _DataFlowCard extends StatelessWidget {
     _FlowStepData(
       icon: Icons.layers_rounded,
       label: 'Template\nCreation',
-      desc: 'Schema, SPOC,\napprovals & schedule',
-      team: 'Admin Team',
+      desc: 'Create Template',
+      // team: 'Admin Team',
       color: AppColors.violet,
       bg: Color(0xFFEDE9FE),
     ),
     _FlowStepData(
       icon: Icons.account_tree_rounded,
       label: 'Template\nConfiguration',
-      desc: 'Drag-and-drop nodes\n& join mappings',
-      team: 'Admin Team',
+      desc: 'Configure Template',
+      // team: 'Admin Team',
       color: AppColors.cyan,
       bg: Color(0xFFCFFAFE),
     ),
     _FlowStepData(
       icon: Icons.upload_file_rounded,
       label: 'Manual\nUpload',
-      desc: 'Upload per-slot\ndata files',
-      team: 'Authorized User Team',
+      desc: 'Upload Data',
+      // team: 'Authorized User Team',
       color: AppColors.amber,
       bg: AppColors.amberDim,
     ),
     _FlowStepData(
       icon: Icons.fact_check_rounded,
-      label: 'QA\nChecker',
-      desc: 'Review, approve\nor reject output',
-      team: 'Authorized Operation Team',
+      label: 'Checker',
+      desc:
+          'Review, approve\nor reject Template ,Configuration and Manual Upload',
+      // team: 'Authorized Operation Team',
       color: AppColors.green,
       bg: AppColors.greenDim,
     ),
     _FlowStepData(
       icon: Icons.bar_chart_rounded,
-      label: 'Reports &\nAnalytics',
-      desc: 'Status, success\nrates & metrics',
-      team: 'User and Admin Team',
+      label: 'DF Output',
+      desc: 'Download Output',
+      // team: 'User and Admin Team',
       color: Color(0xFF6366F1),
       bg: Color(0xFFEEF2FF),
     ),
   ];
 
-  const _DataFlowCard();
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = Responsive.isMobile(constraints.maxWidth);
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // header
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.blueDim,
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: const Icon(
-                  Icons.hub_rounded,
-                  color: AppColors.blue,
-                  size: 13,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text('DATA FLOW', style: AppTextStyles.sectionLabel),
-              const SizedBox(width: 8),
-              const Text(
-                '·',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'How DATA FUSION works',
-                style: TextStyle(
-                  fontSize: 11.5,
-                  color: AppColors.textDim,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              _header(),
+              const SizedBox(height: 24),
+              isMobile
+                  ? Column(
+                      children: [
+                        for (var i = 0; i < _steps.length; i++)
+                          _MobileFlowTile(
+                            step: i + 1,
+                            isLast: i == _steps.length - 1,
+                            data: _steps[i],
+                          ),
+                      ],
+                    )
+                  : _desktopFlow(),
             ],
           ),
-          const SizedBox(height: 24),
-          // horizontal flow
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < _steps.length; i++) ...[
-                  Expanded(
-                    child: _HorizontalFlowStep(step: i + 1, data: _steps[i]),
-                  ),
-                  if (i < _steps.length - 1) const _HorizontalConnector(),
-                ],
-              ],
+        );
+      },
+    );
+  }
+
+  Widget _desktopFlow() {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < _steps.length; i++) ...[
+            Expanded(
+              child: _HorizontalFlowStep(step: i + 1, data: _steps[i]),
             ),
-          ),
+            if (i < _steps.length - 1) const _HorizontalConnector(),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _header() {
+    return Row(
+      children: const [
+        Icon(Icons.hub_rounded, size: 16, color: AppColors.blue),
+        SizedBox(width: 8),
+        Text('DATA FLOW', style: AppTextStyles.sectionLabel),
+      ],
     );
   }
 }
@@ -557,29 +525,29 @@ class _HorizontalFlowStepState extends State<_HorizontalFlowStep> {
                   child: Icon(d.icon, color: d.color, size: 22),
                 ),
                 // step number badge
-                Positioned(
-                  top: -4,
-                  right: -4,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: d.color,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.surface, width: 1.5),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${widget.step}',
-                        style: const TextStyle(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                // Positioned(
+                //   top: -4,
+                //   right: -4,
+                //   child: Container(
+                //     width: 18,
+                //     height: 18,
+                //     decoration: BoxDecoration(
+                //       color: d.color,
+                //       shape: BoxShape.circle,
+                //       border: Border.all(color: AppColors.surface, width: 1.5),
+                //     ),
+                //     child: Center(
+                //       child: Text(
+                //         '${widget.step}',
+                //         style: const TextStyle(
+                //           fontSize: 8.5,
+                //           fontWeight: FontWeight.w800,
+                //           color: Colors.white,
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+                // ),
               ],
             ),
             const SizedBox(height: 12),
@@ -605,15 +573,15 @@ class _HorizontalFlowStepState extends State<_HorizontalFlowStep> {
                 height: 1.45,
               ),
             ),
-            Text(
-              d.team,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 9.5,
-                color: AppColors.text,
-                height: 1.45,
-              ),
-            ),
+            // Text(
+            //   d.team,
+            //   textAlign: TextAlign.center,
+            //   style: const TextStyle(
+            //     fontSize: 9.5,
+            //     color: AppColors.text,
+            //     height: 1.45,
+            //   ),
+            // ),
           ],
         ),
       ),
@@ -649,10 +617,9 @@ class _UserInstructionCard extends StatelessWidget {
   const _UserInstructionCard();
 
   static const _points = [
-    "Upload manual data files as per the template schedule.",
-    "Ensure file naming conventions strictly follow the configured rules.",
-    "Validate uploaded data using the QA Checker before submission.",
-    "Monitor submission status in Reports & Analytics.",
+    "Fill  in Template details including name, department , frequency , volumes ,other details ",
+    "Configure template type (Static /Dynamic) , source count , and output format ",
+    "Select approval and upload the required documents for each",
   ];
 
   @override
@@ -679,7 +646,10 @@ class _UserInstructionCard extends StatelessWidget {
             children: const [
               Icon(Icons.person_rounded, size: 18, color: AppColors.blue),
               SizedBox(width: 8),
-              Text("USER INSTRUCTIONS", style: AppTextStyles.sectionLabel),
+              Text(
+                "TEMPLATE CREATOR INSTRUCTIONS",
+                style: AppTextStyles.sectionLabel,
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -712,10 +682,9 @@ class _AdminInstructionCard extends StatelessWidget {
   const _AdminInstructionCard();
 
   static const _points = [
-    "Configure data sources and maintain template versioning.",
-    "Review and approve new template requests from users.",
-    "Monitor system health, failed uploads, and processing delays.",
-    "Oversee analytics dashboards and manage user access roles.",
+    "Filter pending submission by module and department ",
+    "View each  record's details before  taking action ",
+    "Approve or Reject submissions with a remark",
   ];
 
   @override
@@ -746,7 +715,7 @@ class _AdminInstructionCard extends StatelessWidget {
                 color: AppColors.violet,
               ),
               SizedBox(width: 8),
-              Text("ADMIN INSTRUCTIONS", style: AppTextStyles.sectionLabel),
+              Text("CHECKER INSTRUCTIONS", style: AppTextStyles.sectionLabel),
             ],
           ),
           const SizedBox(height: 18),
@@ -774,3 +743,235 @@ class _AdminInstructionCard extends StatelessWidget {
     );
   }
 }
+
+class _MobileFlowTile extends StatelessWidget {
+  final int step;
+  final bool isLast;
+  final _FlowStepData data;
+
+  const _MobileFlowTile({
+    required this.step,
+    required this.isLast,
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final d = data;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // LEFT SIDE (ICON + LINE)
+        Column(
+          children: [
+            // ICON + NUMBER
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: d.bg,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: d.color.withValues(alpha: 0.4)),
+                  ),
+                  child: Icon(d.icon, size: 20, color: d.color),
+                ),
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: d.color,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$step',
+                        style: const TextStyle(
+                          fontSize: 8,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // CONNECTOR LINE
+            if (!isLast)
+              Container(
+                width: 2,
+                height: 50,
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                color: AppColors.border,
+              ),
+          ],
+        ),
+
+        const SizedBox(width: 12),
+
+        // RIGHT SIDE (TEXT)
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  d.label.replaceAll('\n', ' '),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  d.desc.replaceAll('\n', ' '),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                    height: 1.4,
+                  ),
+                ),
+                // const SizedBox(height: 2),
+                // Text(
+                //   d.team,
+                //   style: const TextStyle(
+                //     fontSize: 10.5,
+                //     color: AppColors.text,
+                //     fontWeight: FontWeight.w500,
+                //   ),
+                // ),
+                const SizedBox(height: 14),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+//TODO
+
+// import 'package:flutter/material.dart';
+// import 'package:provider/provider.dart';
+// import 'package:vizualizer/core/utils/responsive_helper.dart';
+// import 'package:vizualizer/data/models/dashboard_response.dart';
+// import 'package:vizualizer/data/models/master_models.dart';
+// import 'package:vizualizer/data/services/master_data_service.dart';
+// import 'package:vizualizer/presentation/pages/auth/widgets/data_flow.dart';
+// import 'package:vizualizer/presentation/pages/auth/widgets/instruction_card.dart';
+// import 'package:vizualizer/presentation/pages/auth/widgets/kpi_data.dart';
+// import 'package:vizualizer/presentation/providers/auth_provider.dart';
+
+// class WelcomePage extends StatefulWidget {
+//   final void Function(int index) onNavigate;
+//   const WelcomePage({super.key, required this.onNavigate});
+
+//   @override
+//   State<WelcomePage> createState() => _WelcomePageState();
+// }
+
+// class _WelcomePageState extends State<WelcomePage>
+//     with SingleTickerProviderStateMixin {
+//   late AnimationController _ctrl;
+//   late Animation<double> _fade;
+//   DashboardDetails? _dashboardDetails;
+//   DashboardResponse? _dashboard;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _ctrl = AnimationController(
+//       vsync: this,
+//       duration: const Duration(milliseconds: 600),
+//     )..forward();
+//     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+//     _loadDashboard();
+//   }
+
+//   // Future<void> _loadDashboard() async {
+//   //   final auth = context.read<AuthProvider>();
+//   //   final checkerBy = auth.user?.user.employeeCode ?? '';
+//   //   if (!mounted) return;
+
+//   //   final service = context
+//   //       .read<MasterDataService>(); // Replace with your actual service type
+//   //   final dashboardData = await service.getDashboardCount(checkerBy);
+
+//   //   if (mounted) {
+//   //     setState(() {
+//   //       _dashboardDetails = dashboardData; // Store the fetched data
+//   //     });
+//   //   }
+//   // }
+//   Future<void> _loadDashboard() async {
+//     final auth = context.read<AuthProvider>();
+//     final employeeCode = auth.user?.user.employeeCode ?? '';
+//     final profileId =  2; // auth.user?.user.profileId;
+
+//     final service = context.read<MasterDataService>();
+//     final res =
+//         await service.getDashboardCount(employeeCode, profileId.toString());
+
+//     if (!mounted) return;
+//     setState(() => _dashboard = res);
+//   }
+
+//   @override
+//   void dispose() {
+//     _ctrl.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return FadeTransition(
+//       opacity: _fade,
+//       child: LayoutBuilder(
+//         builder: (context, constraints) {
+//           final isMobile = Responsive.isMobile(constraints.maxWidth);
+
+//           return SingleChildScrollView(
+//             padding: EdgeInsets.all(isMobile ? 12 : 24),
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 KpiRow(dashboard: _dashboard
+//                     // _dashboardDetails?.dashboardCount ?? [],
+//                     ),
+//                 SizedBox(height: 20),
+//                 DataFlowCard(),
+//                 SizedBox(height: 16),
+//                 isMobile
+//                     ? Column(
+//                         children: const [
+//                           UserInstructionCard(),
+//                           SizedBox(height: 16),
+//                           AdminInstructionCard(),
+//                         ],
+//                       )
+//                     : Row(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: const [
+//                           Expanded(child: UserInstructionCard()),
+//                           SizedBox(width: 16),
+//                           Expanded(child: AdminInstructionCard()),
+//                         ],
+//                       )
+//               ],
+//             ),
+//           );
+//         },
+//       ),
+//     );
+//   }
+// }

@@ -1,4 +1,9 @@
-import 'dart:convert';Map<String, dynamic>? extractPayload(Map<String, dynamic> item) {
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+Map<String, dynamic>? extractPayload(Map<String, dynamic> item) {
   final jsonData = item['jsonData'];
   if (jsonData is Map<String, dynamic> && jsonData.isNotEmpty) {
     return jsonData;
@@ -38,4 +43,24 @@ import 'dart:convert';Map<String, dynamic>? extractPayload(Map<String, dynamic> 
     }
   } catch (_) {}
   return null;
+}
+
+class NoSpecialCharsFormatter extends TextInputFormatter {
+  final _regExp = RegExp(r'[a-zA-Z0-9]');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final filtered = newValue.text
+        .split('')
+        .where((char) => _regExp.hasMatch(char))
+        .join('');
+
+    return newValue.copyWith(
+      text: filtered,
+      selection: TextSelection.collapsed(offset: filtered.length),
+    );
+  }
 }

@@ -21,12 +21,14 @@ class DragNodeData {
   final NodeType type;
   final String sourceValue; // empty for non-source nodes (join etc.)
   final String sourceName; // display name from API (e.g. "Database")
-  final int sourceTypeId; // id from API source type list
+  final int sourceTypeId;
+  final String typeId; // id from API source type list
   const DragNodeData(
     this.type, {
     this.sourceValue = '',
     this.sourceName = '',
     this.sourceTypeId = 0,
+    this.typeId = '0',
   });
 }
 
@@ -137,10 +139,10 @@ class ColumnMapping {
   ColumnMapping({
     this.leftSourceId = '',
     this.leftCol = '',
-    this.joinType = 'LEFT JOIN',
+    this.joinType = '--Select--',
     this.operationValue = '=',
     this.rightSourceId = '',
-    this.rightCol = '',
+    this.rightCol = '0',
   });
 
   bool get isValid =>
@@ -185,6 +187,7 @@ class PipelineNode {
   String? leftSrcId;
   String? rightSrcId;
   String joinType;
+  bool joinTypeLocked = false;
 
   /// Column aliases {originalName: aliasName} — used in join output column renaming
   Map<String, String> columnAliases;
@@ -213,6 +216,7 @@ class PipelineNode {
   /// Raw file bytes (for multipart upload at submit time)
   List<int>? columnFileBytes;
   List<int>? queryFileBytes;
+  String typeId;
 
   /// Confirmation state — drives visual state on canvas + config panel
   NodeConfirmState confirmState;
@@ -233,10 +237,11 @@ class PipelineNode {
     List<ColumnMapping>? mappings,
     this.leftSrcId,
     this.rightSrcId,
-    this.joinType = 'LEFT JOIN',
+    this.joinType = '--Select--',
     Map<String, String>? columnAliases,
     this.sourceTypeValue = '',
     this.sourceTypeId = 0,
+    this.typeId = '0',
     this.sourceTypeName = '',
     this.fileName,
     this.queryFileName,

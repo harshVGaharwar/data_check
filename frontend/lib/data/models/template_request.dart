@@ -1,3 +1,5 @@
+import 'package:vizualizer/data/models/login_response.dart';
+
 class DynamicOutputModel {
   int sourceCount;
   List<Map<String, dynamic>> sourceList;
@@ -10,17 +12,18 @@ class DynamicOutputModel {
   bool get isValid => sourceCount > 0 && sourceList.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
-    'SourceList': sourceList.map((m) => m['id']).join(','),
-    'SourceCount': sourceCount.toString(),
-    'SourceType': "3",
-  };
+        'SourceList': sourceList.map((m) => m['id']).join(','),
+        'SourceCount': sourceCount.toString(),
+        'SourceListNames': sourceList.map((m) => m['name']).join(','),
+        'SourceType': "3",
+      };
 }
 
 class TemplateRequest {
   String templateName;
   String department;
   String frequency;
-  int frequencyId;
+  String frequencyName;
   int normalVolume;
   int peakVolume;
   int sourceCount;
@@ -35,26 +38,23 @@ class TemplateRequest {
   String unitHead;
   String priority;
   String templateType;
+  String templateTypeName;
   String createdBy;
   List<String> outputFormats;
   List<String> approvals;
   String departmentName;
   String sourceListName;
 
-  /// Per-approval file uploads: {"Unit Head": "approval_uh.pdf", ...}
   Map<String, String> approvalFiles;
-
-  /// Selected source master items (static case)
   List<Map<String, dynamic>> sourceList;
 
-  /// Per-output source config (dynamic case)
   List<DynamicOutputModel> dynamicOutputs;
 
   TemplateRequest({
     this.templateName = '',
     this.department = '',
     this.frequency = '',
-    this.frequencyId = 0,
+    this.frequencyName = '',
     this.normalVolume = 0,
     this.peakVolume = 0,
     this.sourceCount = 0,
@@ -69,6 +69,7 @@ class TemplateRequest {
     this.unitHead = '',
     this.priority = 'Medium',
     this.templateType = '',
+    this.templateTypeName = '',
     this.createdBy = '',
     this.sourceListName = '',
     this.departmentName = '',
@@ -77,124 +78,141 @@ class TemplateRequest {
     Map<String, String>? approvalFiles,
     List<Map<String, dynamic>>? sourceList,
     List<DynamicOutputModel>? dynamicOutputs,
-  }) : outputFormats = outputFormats ?? [],
-       approvals = approvals ?? [],
-       approvalFiles = approvalFiles ?? {},
-       sourceList = sourceList ?? [],
-       dynamicOutputs = dynamicOutputs ?? [];
+  })  : outputFormats = outputFormats ?? [],
+        approvals = approvals ?? [],
+        approvalFiles = approvalFiles ?? {},
+        sourceList = sourceList ?? [],
+        dynamicOutputs = dynamicOutputs ?? [];
 
-  bool get isDynamic => templateType == '2 - Dynamic';
+  // ---------------------------------------------------------------------------
+  // ✅ NEW RULE SUPPORT
+  // ---------------------------------------------------------------------------
 
-  /// "1" = Static + User Defined
-  /// "2" = Static + UniMailing
-  /// "3" = Dynamic + UniMailing
-  ///       1.1-->static
-  ///       1.2-->dynamic
-  ///       1.n--->dynmic n
-  ///
-  ///
-  String get templateTypeCode {
-    if (isDynamic) return '3';
-    if (outputFormats.any((f) => f.toLowerCase().contains('unimailing'))) {
-      return '2';
-    }
-    return '1';
+  /// ✅ True if Frequency ID == 3
+  bool get frequencyIs3 => frequency == '3';
+
+  /// ✅ True if ANY static or dynamic sourceList contains ID = 1
+  bool get hasMandatorySourceId1 {
+    // Check Static list
+    final hasInStatic = sourceList.any((m) => m['id'] == 1);
+
+    // Check Dynamic list
+    final hasInDynamic = dynamicOutputs.any(
+      (d) => d.sourceList.any((m) => m['id'] == 1),
+    );
+
+    return hasInStatic || hasInDynamic;
   }
 
-  Map<String, dynamic> toJson() => {
-    'TemplateType': templateTypeCode,
-    'Template': [
-      {
-        'TemplateName': templateName,
-        'Department': department,
-        'Frequency': frequencyId.toString(),
-        'FrequencyName': frequency,
-        'NormalVolume': normalVolume,
-        'PeakVolume': peakVolume,
-        'SourceCount': sourceCount,
-        'BenefitType': benefitType,
-        'BenefitAmount': benefitAmount,
-        'BenefitInTat': benefitInTAT,
-        'GoLiveDate': goLiveDate.isEmpty ? null : goLiveDate,
-        'DeactivateDate': deactivateDate.isEmpty ? null : deactivateDate,
-        'SpocPerson': spocPerson,
-        'SpocManager': spocManager,
-        'UnitHead': unitHead,
-        'Priority': priority,
-        'NumberOfOutputs': isDynamic ? numberOfOutputs : null,
-        'SourceList': sourceList.map((m) => m['id']).join(','),
-      },
-    ],
-    'OutputFormats': (() {
-      // Dynamic → always Unimailing; Static → deduplicate, keep one
-      final formats = isDynamic
-          ? ['Unimailing']
-          : outputFormats.toSet().toList();
-      return formats
-          .map((f) => {'TemplateTempId': null, 'FormatName': f})
-          .toList();
-    })(),
-    'Approvals': approvals
-        .map(
-          (a) => {
-            'TemplateTempId': null,
-            'Approval_Type': a,
-            'ApprovalFile': approvalFiles[a] ?? '',
-          },
-        )
-        .toList(),
-    'CreatedBy': createdBy,
-    'jsonData': '',
-    'DepartmentName': departmentName,
-    'SourceListNames': sourceListName,
-    'DynamicTemplate': isDynamic
-        ? [
-            {
-              'SourceList': sourceList.map((m) => m['id']).join(','),
-              'SourceCount': sourceCount.toString(),
-              'SourceType': "1",
-            },
-            ...dynamicOutputs.asMap().entries.map(
-              (e) => {
-                'SourceList': e.value.sourceList.map((m) => m['id']).join(','),
-                'SourceCount': e.value.sourceCount.toString(),
-                'SourceType': "3",
-              },
-            ),
-          ]
-        : [],
-  };
+  // ---------------------------------------------------------------------------
+  // Standard properties
+  // ---------------------------------------------------------------------------
 
-  // ── Validation ──────────────────────────────────────────────────────────────
+  bool get isDynamic => selectedTemplateType?.id == 3;
+
+  // String get templateTypeCode {
+  //   if (isDynamic) return '3';
+  //   if (outputFormats.any((f) => f.toLowerCase().contains('unimailing'))) {
+  //     return '2';
+  //   }
+  //   return '1';
+  // }
+
+  Map<String, dynamic> toJson() => {
+        'TemplateType': selectedTemplateType?.id.toString(),
+        'TemplateTypeName': selectedTemplateType?.name,
+        'Template': [
+          {
+            'TemplateName': templateName,
+            'Department': department,
+            'Frequency': frequency,
+            'FrequencyName': frequencyName,
+            'NormalVolume': normalVolume,
+            'PeakVolume': peakVolume,
+            'SourceCount': sourceCount,
+            'BenefitType': benefitType,
+            'BenefitAmount': benefitAmount,
+            'BenefitInTat': benefitInTAT,
+            'GoLiveDate': goLiveDate.isEmpty ? null : goLiveDate,
+            'DeactivateDate': deactivateDate.isEmpty ? null : deactivateDate,
+            'SpocPerson': spocPerson,
+            'SpocManager': spocManager,
+            'UnitHead': unitHead,
+            'Priority': priority,
+            'NumberOfOutputs': isDynamic ? numberOfOutputs : null,
+            'SourceList': sourceList.map((m) => m['id']).join(','),
+          },
+        ],
+        'OutputFormats': (() {
+          final formats =
+              isDynamic ? ['Unimailing'] : outputFormats.toSet().toList();
+          return formats
+              .map((f) => {'TemplateTempId': null, 'FormatName': f})
+              .toList();
+        })(),
+        'Approvals': approvals
+            .map(
+              (a) => {
+                'TemplateTempId': null,
+                'Approval_Type': a,
+                'ApprovalFile': approvalFiles[a] ?? '',
+              },
+            )
+            .toList(),
+        'CreatedBy': createdBy,
+        'jsonData': '',
+        'DepartmentName': departmentName,
+        'SourceListNames': sourceListName,
+        'DynamicTemplate': isDynamic
+            ? [
+                {
+                  'SourceList': sourceList.map((m) => m['id']).join(','),
+                  'SourceCount': sourceCount.toString(),
+                  'SourceListNames': sourceList.map((m) => m['name']).join(','),
+                  'SourceType': "1",
+                },
+                ...dynamicOutputs.asMap().entries.map(
+                      (e) => {
+                        'SourceList':
+                            e.value.sourceList.map((m) => m['id']).join(','),
+                        'SourceListNames':
+                            e.value.sourceList.map((m) => m['name']).join(','),
+                        'SourceCount': e.value.sourceCount.toString(),
+                        'SourceType': "3",
+                      },
+                    ),
+              ]
+            : [],
+      };
+
+  // ---------------------------------------------------------------------------
+  // Validation
+  // ---------------------------------------------------------------------------
 
   bool get isGeneralInfoValid =>
       templateName.isNotEmpty &&
       department.isNotEmpty &&
       frequency.isNotEmpty &&
+      benefitType.isNotEmpty &&
       spocPerson.isNotEmpty;
 
+  // bool get isOutputFormatValid =>
+  //     templateType.isNotEmpty &&
+  //     (templateType == '1 - Static' || numberOfOutputs > 0) &&
+  //     outputFormats.isNotEmpty &&
+  //     (isDynamic || (sourceCount > 0 && sourceList.isNotEmpty));
+  TemplateType? selectedTemplateType;
+
   bool get isOutputFormatValid =>
-      templateType.isNotEmpty &&
-      (templateType == '1 - Static' || numberOfOutputs > 0) &&
+      (selectedTemplateType?.id == 2 || numberOfOutputs > 0) &&
       outputFormats.isNotEmpty &&
-      (isDynamic || (sourceCount > 0 && sourceList.isNotEmpty));
+      (!isDynamic || (sourceCount > 0 && sourceList.isNotEmpty));
 
   bool get isDynamicOutputsValid =>
       !isDynamic ||
       (sourceCount > 0 &&
           sourceList.isNotEmpty &&
           dynamicOutputs.every((d) => d.isValid));
-
-  bool get isOnDemandSourceValid {
-    if (frequency.toLowerCase() != 'on-demand') return true;
-    if (isDynamic) {
-      return sourceList.any((s) => s['sourceType'] == 1) ||
-          dynamicOutputs.any(
-            (d) => d.sourceList.any((s) => s['sourceType'] == 1),
-          );
-    }
-    return sourceList.any((s) => s['sourceType'] == 1);
-  }
 
   bool get isApprovalValid => approvals.isNotEmpty;
 
@@ -204,7 +222,6 @@ class TemplateRequest {
       isGeneralInfoValid &&
       isOutputFormatValid &&
       isDynamicOutputsValid &&
-      isOnDemandSourceValid &&
       isApprovalValid &&
       isFileUploaded;
 
@@ -212,7 +229,7 @@ class TemplateRequest {
     templateName = '';
     department = '';
     frequency = '';
-    frequencyId = 0;
+    frequencyName = '';
     normalVolume = 0;
     peakVolume = 0;
     sourceCount = 0;
@@ -227,6 +244,7 @@ class TemplateRequest {
     unitHead = '';
     priority = 'Medium';
     templateType = '';
+    templateTypeName = '';
     createdBy = '';
     outputFormats = [];
     approvals = [];
