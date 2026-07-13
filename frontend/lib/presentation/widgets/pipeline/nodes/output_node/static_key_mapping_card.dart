@@ -199,28 +199,33 @@
 
 
 import 'package:flutter/material.dart';
-import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/uni_mailing_shared.dart';
+import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/uni_mailing_shared.dart' show kMandatoryFields;
+import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node/uni_mapping_row.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
 
 class StaticKeyMappingCard extends StatelessWidget {
   final Map<String, String> workingMandatory;
   final Map<String, String> workingCustom;
+  final Map<String, String> customLabels;
   final int customCount;
   final List<String> availableKeys;
   final Map<String, String> colLabels;
   final void Function(String field, String? val) onMandatoryChanged;
   final void Function(String slot, String? val) onCustomChanged;
+  final void Function(String slot, String name)? onCustomLabelChanged;
   final VoidCallback onAddCustom;
   final VoidCallback onRemoveCustom;
 
   const StaticKeyMappingCard({super.key,
     required this.workingMandatory,
     required this.workingCustom,
+    this.customLabels = const {},
     required this.customCount,
     required this.availableKeys,
     required this.colLabels,
     required this.onMandatoryChanged,
     required this.onCustomChanged,
+    this.onCustomLabelChanged,
     required this.onAddCustom,
     required this.onRemoveCustom,
   });
@@ -288,7 +293,7 @@ class StaticKeyMappingCard extends StatelessWidget {
                 availableKeys: availableKeys,
                 colLabels: colLabels,
                 isLast: isLast,
-                isRequired: false,
+                isRequired: field == 'Mail To',
                 isMapped: isMapped,
                 onChanged: (v) => onMandatoryChanged(field, v),
               );
@@ -358,6 +363,23 @@ class StaticKeyMappingCard extends StatelessWidget {
               ),
           ],
         ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(Icons.edit_outlined, size: 9, color: AppColors.textMuted),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                'Tip: tap a Column name to rename it.',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 9,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 5),
         Container(
           decoration: BoxDecoration(
@@ -372,7 +394,7 @@ class StaticKeyMappingCard extends StatelessWidget {
               final isMapped = cur.isNotEmpty && availableKeys.contains(cur);
               final isLast = slot == customCount;
               return UniMappingRow(
-                label: 'Column $slot',
+                label: customLabels[key] ?? 'Column $slot',
                 labelColor: AppColors.violet,
                 currentKey: isMapped ? cur : null,
                 availableKeys: availableKeys,
@@ -381,7 +403,11 @@ class StaticKeyMappingCard extends StatelessWidget {
                 isRequired: true,
                 isMapped: isMapped,
                 onChanged: (v) => onCustomChanged(key, v),
-                onDelete: isLast && slot > 1 ? onRemoveCustom : null,
+                onLabelChanged: onCustomLabelChanged != null
+                    ? (name) => onCustomLabelChanged!(key, name)
+                    : null,
+                labelHint: 'Column $slot',
+                onDelete: slot == 1 ? null : (isLast ? onRemoveCustom : null),
               );
             }),
           ),

@@ -1,16 +1,16 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
 import 'package:vizualizer/data/models/pipeline_models.dart';
 import 'package:vizualizer/presentation/controllers/pipeline_controller.dart';
-import 'package:vizualizer/data/services/master_data_service.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/edge_painter.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/source_node_body.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/nodes/join_node_body.dart';
+import 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node_body.dart';
 import 'package:vizualizer/presentation/widgets/layout/edit_sidebar.dart';
 import 'package:vizualizer/presentation/widgets/pipeline/config_panel.dart';
 import 'package:vizualizer/presentation/widgets/common/status_bar.dart';
+
 class EditPipelineCanvasPage extends StatefulWidget {
   const EditPipelineCanvasPage({super.key});
 
@@ -23,8 +23,6 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
   final _transformCtrl = TransformationController();
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
-
-  String? _errorMessage;
 
   @override
   void initState() {
@@ -46,81 +44,6 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
     super.dispose();
   }
 
-  Map<String, dynamic>? _extractPayload(Map<String, dynamic> item) {
-    final jsonData = item['jsonData'];
-    if (jsonData is Map<String, dynamic> && jsonData.isNotEmpty) {
-      return jsonData;
-    }
-    if (jsonData is Map && jsonData.isNotEmpty) {
-      return jsonData.map((k, v) => MapEntry(k.toString(), v));
-    }
-    if (jsonData is String && jsonData.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(jsonData);
-        if (decoded is Map<String, dynamic>) return decoded;
-        if (decoded is Map) {
-          return decoded.map((k, v) => MapEntry(k.toString(), v));
-        }
-      } catch (_) {}
-    }
-
-    final responseData = item['responseData'];
-    if (responseData is Map<String, dynamic>) return responseData;
-    if (responseData is Map) {
-      return responseData.map((k, v) => MapEntry(k.toString(), v));
-    }
-
-    final payload = item['payload'];
-    if (payload is Map<String, dynamic>) return payload;
-    if (payload is Map) {
-      return payload.map((k, v) => MapEntry(k.toString(), v));
-    }
-
-    final payloadJson = item['payloadJson']?.toString().trim() ?? '';
-    if (payloadJson.isEmpty) return null;
-    try {
-      final decoded = jsonDecode(payloadJson);
-      if (decoded is Map<String, dynamic>) return decoded;
-      if (decoded is Map) {
-        return decoded.map((k, v) => MapEntry(k.toString(), v));
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  Future<void> _fetchAndLoad(int templateId, int deptId) async {
-    final ctrl = context.read<PipelineController>();
-    final service = context.read<MasterDataService>();
-
-    setState(() => _errorMessage = null);
-
-    final raw = await service.getTemplateConfig(
-      templateId: templateId,
-      deptId: deptId,
-    );
-
-    if (!mounted) return;
-
-    if (raw == null) {
-      setState(
-        () => _errorMessage =
-            'Could not load configuration. Please check the template and try again.',
-      );
-      return;
-    }
-
-    final config = _extractPayload(raw);
-    if (config == null) {
-      setState(
-        () => _errorMessage =
-            'Configuration data is missing or could not be parsed.',
-      );
-      return;
-    }
-
-    ctrl.loadConfiguration(config);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -128,10 +51,7 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
         Expanded(
           child: Row(
             children: [
-              Flexible(
-                flex: 0,
-                child: EditSidebar(onFetchConfig: _fetchAndLoad),
-              ),
+              const Flexible(flex: 0, child: EditSidebar()),
               Expanded(child: _buildCanvas()),
               Consumer<PipelineController>(
                 builder: (_, ctrl, __) =>
@@ -234,15 +154,8 @@ class _EditPipelineCanvasPageState extends State<EditPipelineCanvasPage>
               builder: (_, __) => Stack(children: _buildPortOverlay(ctrl)),
             ),
 
-            // ── Empty state / error banner ──
-            if (ctrl.nodes.isEmpty && _errorMessage == null)
-              _EmptyHint(pulseAnim: _pulseAnim),
-
-            if (_errorMessage != null)
-              _ErrorBanner(
-                message: _errorMessage!,
-                onDismiss: () => setState(() => _errorMessage = null),
-              ),
+            // ── Empty state ──
+            if (ctrl.nodes.isEmpty) _EmptyHint(pulseAnim: _pulseAnim),
 
             // ── Connecting banner ──
             if (isConnecting)
@@ -574,13 +487,6 @@ class _EmptyHint extends StatelessWidget {
               icon: Icons.description_outlined,
               color: AppColors.violet,
             ),
-            const SizedBox(height: 10),
-            _StepRow(
-              step: '3',
-              label: 'Tap Load Configuration',
-              icon: Icons.cloud_download_outlined,
-              color: AppColors.green,
-            ),
           ],
         ),
       ),
@@ -643,50 +549,6 @@ class _StepRow extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Error banner ──
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-  final VoidCallback onDismiss;
-  const _ErrorBanner({required this.message, required this.onDismiss});
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: 12,
-      left: 24,
-      right: 24,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.red.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.red.withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.red, size: 16),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: AppColors.red,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            InkWell(
-              onTap: onDismiss,
-              child: const Icon(Icons.close, color: AppColors.red, size: 14),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -807,7 +669,9 @@ class _CanvasEditNodeState extends State<_CanvasEditNode>
               children: [
                 GestureDetector(
                   onTap: () {
-                    if (!_nodeDragged && node.type != NodeType.join) {
+                    if (!_nodeDragged &&
+                        node.type != NodeType.join &&
+                        node.type != NodeType.output) {
                       ctrl.selectNode(node.id);
                     }
                   },
@@ -901,6 +765,8 @@ class _CanvasEditNodeState extends State<_CanvasEditNode>
     switch (node.type) {
       case NodeType.join:
         return JoinNodeBody(node: node);
+      case NodeType.output:
+        return OutputNodeBody(node: node);
       default:
         return SourceNodeBody(node: node);
     }

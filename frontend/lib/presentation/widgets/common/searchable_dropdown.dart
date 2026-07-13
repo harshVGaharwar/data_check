@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vizualizer/core/theme/app_theme.dart';
+
 /// Styled dropdown that opens an anchored overlay below the field,
 /// matching the pattern used in SourceConfigurationPage.
 class SearchableDropdownField extends StatefulWidget {
@@ -10,6 +11,7 @@ class SearchableDropdownField extends StatefulWidget {
   final bool enabled;
   final double height;
   final Widget Function(String item)? leadingBuilder;
+
   /// Items that are shown but cannot be selected
   final Set<String> disabledItems;
 
@@ -91,7 +93,8 @@ class _SearchableDropdownFieldState extends State<SearchableDropdownField> {
 
   @override
   Widget build(BuildContext context) {
-    final hasValue = widget.value != null && widget.items.contains(widget.value);
+    final hasValue =
+        widget.value != null && widget.items.contains(widget.value);
     return CompositedTransformTarget(
       link: _layerLink,
       child: GestureDetector(
@@ -269,11 +272,15 @@ class _SearchDropdownOverlayState extends State<_SearchDropdownOverlay> {
                           fillColor: AppColors.surface2,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(7),
-                            borderSide: const BorderSide(color: AppColors.border),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(7),
-                            borderSide: const BorderSide(color: AppColors.border),
+                            borderSide: const BorderSide(
+                              color: AppColors.border,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(7),
@@ -321,9 +328,12 @@ class _SearchDropdownOverlayState extends State<_SearchDropdownOverlay> {
                               itemBuilder: (_, i) {
                                 final item = filtered[i];
                                 final isCurrent = item == widget.current;
-                                final isDisabled = widget.disabledItems.contains(item);
+                                final isDisabled = widget.disabledItems
+                                    .contains(item);
                                 return InkWell(
-                                  onTap: isDisabled ? null : () => widget.onSelect(item),
+                                  onTap: isDisabled
+                                      ? null
+                                      : () => widget.onSelect(item),
                                   child: Opacity(
                                     opacity: isDisabled ? 0.45 : 1.0,
                                     child: Padding(
@@ -343,7 +353,8 @@ class _SearchDropdownOverlayState extends State<_SearchDropdownOverlay> {
                                                 : AppColors.textDim,
                                           ),
                                           const SizedBox(width: 8),
-                                          if (widget.leadingBuilder != null) ...[
+                                          if (widget.leadingBuilder !=
+                                              null) ...[
                                             widget.leadingBuilder!(item),
                                             const SizedBox(width: 8),
                                           ],

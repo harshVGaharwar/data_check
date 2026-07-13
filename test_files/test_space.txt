@@ -1,0 +1,5 @@
+CustomerID CustomerName Email Phone City
+101 RahulSharma rahul@email.com 9876543210 Mumbai
+102 PriyaSingh priya@email.com 9812345678 Delhi
+103 AmitVerma amit@email.com 9823456789 Bangalore
+104 NehaGupta neha@email.com 9834567890 Chennai

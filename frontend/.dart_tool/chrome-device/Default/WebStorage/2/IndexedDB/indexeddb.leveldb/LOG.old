@@ -1,2 +1,29 @@
-2026/04/21-10:25:17.656 3ae657 Creating DB /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.Daq5DO/flutter_tools_chrome_device.lzzrWk/Default/WebStorage/2/IndexedDB/indexeddb.leveldb since it was missing.
-2026/04/21-10:25:17.659 3ae657 Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.Daq5DO/flutter_tools_chrome_device.lzzrWk/Default/WebStorage/2/IndexedDB/indexeddb.leveldb/MANIFEST-000001
+2026/07/09-13:35:05.254 5caf89 Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.s9xllp/flutter_tools_chrome_device.6EMzM6/Default/WebStorage/2/IndexedDB/indexeddb.leveldb/MANIFEST-000001
+2026/07/09-13:35:05.254 5caf89 Recovering log #15
+2026/07/09-13:35:05.257 5caf89 Reusing old log /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.s9xllp/flutter_tools_chrome_device.6EMzM6/Default/WebStorage/2/IndexedDB/indexeddb.leveldb/000015.log 
+2026/07/09-13:35:05.258 5caf89 Delete type=0 #7
+2026/07/09-13:35:05.258 5caf89 Delete type=0 #4
+2026/07/09-13:35:05.258 5caf89 Delete type=0 #10
+2026/07/09-13:35:05.258 5caf89 Delete type=0 #3
+2026/07/09-13:35:05.258 5caf89 Delete type=2 #17
+2026/07/09-13:35:05.258 5caf89 Delete type=2 #13
+2026/07/09-14:35:59.025 5caf89 Level-0 table #18: started
+2026/07/09-14:35:59.033 5caf89 Level-0 table #18: 651944 bytes OK
+2026/07/09-14:35:59.038 5caf89 Delete type=0 #15
+2026/07/09-14:35:59.040 5caf89 Manual compaction at level-0 from (begin) .. (end); will stop at '\x00\x05\x01\x1f\x04\x03\x01\x06\x00Q\x00U\x00E\x00U\x00E\x00D\x03\x00\x00\x00\x00\x00\x00L@\x03\x00\x90\xbb\x97\xc1\xe8yB\x00\x03\x00\x00\x00\x00\x00\x00Z@' @ 5174 : 1
+2026/07/09-14:35:59.040 5caf89 Compacting 3@0 + 0@1 files
+2026/07/09-14:35:59.043 5caf89 Generated table #19@0: 588 keys, 14382 bytes
+2026/07/09-14:35:59.043 5caf89 Compacted 3@0 + 0@1 files => 14382 bytes
+2026/07/09-14:35:59.045 5caf89 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/07/09-14:35:59.045 5caf89 Delete type=2 #7
+2026/07/09-14:35:59.045 5caf89 Delete type=2 #8
+2026/07/09-14:35:59.045 5caf89 Delete type=2 #18
+2026/07/09-14:35:59.046 5caf89 Manual compaction at level-0 from '\x00\x05\x01\x1f\x04\x03\x01\x06\x00Q\x00U\x00E\x00U\x00E\x00D\x03\x00\x00\x00\x00\x00\x00L@\x03\x00\x90\xbb\x97\xc1\xe8yB\x00\x03\x00\x00\x00\x00\x00\x00Z@' @ 5174 : 1 .. (end); will stop at (end)
+2026/07/09-14:35:59.046 5caf89 Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x05\x01\x1f\x04\x03\x01\x06\x00Q\x00U\x00E\x00U\x00E\x00D\x03\x00\x00\x00\x00\x00\x00L@\x03\x00\x90\xbb\x97\xc1\xe8yB\x00\x03\x00\x00\x00\x00\x00\x00Z@' @ 5184 : 1
+2026/07/09-14:35:59.046 5caf89 Compacting 1@1 + 1@2 files
+2026/07/09-14:35:59.047 5caf89 Generated table #20@1: 135 keys, 10273 bytes
+2026/07/09-14:35:59.047 5caf89 Compacted 1@1 + 1@2 files => 10273 bytes
+2026/07/09-14:35:59.048 5caf89 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/07/09-14:35:59.048 5caf89 Delete type=2 #5
+2026/07/09-14:35:59.048 5caf89 Delete type=2 #19
+2026/07/09-14:35:59.049 5caf89 Manual compaction at level-1 from '\x00\x05\x01\x1f\x04\x03\x01\x06\x00Q\x00U\x00E\x00U\x00E\x00D\x03\x00\x00\x00\x00\x00\x00L@\x03\x00\x90\xbb\x97\xc1\xe8yB\x00\x03\x00\x00\x00\x00\x00\x00Z@' @ 5184 : 1 .. (end); will stop at (end)

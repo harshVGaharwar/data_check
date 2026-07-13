@@ -17,15 +17,80 @@ const _devUsers = <String, Map<String, dynamic>>{
       'name': 'Admin User',
       'employeeCode': 'ADM001',
       'email': 'admin@hdfcbank.com',
-      'location': '',
+      'password': '',
+      'location': '1131',
       'locationcode': '',
       'city': '',
-      'department': '',
+      'department': 'BPRG-RETAIL',
       'contactNumber': '',
       'role': '1',
       'ipAddress': '127.0.0.1',
-      'profileDescription': '',
-      'profileId': '1',
+      'sessionID': '',
+      'menuList': <dynamic>[
+        {
+          'id': 3,
+          'menuName': 'Template Creation',
+          'profileId': '3',
+          'isActive': 'Y'
+        },
+        {
+          'id': 3,
+          'menuName': 'Template Creation',
+          'profileId': '3',
+          'isActive': 'Y'
+        },
+        {
+          'id': 3,
+          'menuName': 'Template Configuration',
+          'profileId': '3',
+          'isActive': 'Y'
+        },
+        {
+          'id': 3,
+          'menuName': 'Template Edit Configuration',
+          'profileId': '3',
+          'isActive': 'Y'
+        },
+        {
+          'id': 8,
+          'menuName': 'Source Configuration',
+          'profileId': '3',
+          'isActive': 'Y'
+        },
+        {
+          'id': 10,
+          'menuName': 'Checker Module',
+          'profileId': '5,3',
+          'isActive': 'Y'
+        },
+        {
+          'id': 11,
+          'menuName': 'Reviewer Module',
+          'profileId': '5,3',
+          'isActive': 'Y'
+        },
+      ],
+      'templateType': <dynamic>[
+        {'name': 'Static', 'id': 2},
+        {'name': 'Dynamic', 'id': 3},
+      ],
+      'reportDate': {'daycount': 90},
+      'moduleList': <dynamic>[
+        {
+          'id': 1,
+          'name': 'Source Configuration',
+          'profileID': '1',
+          'spflag': '2'
+        },
+        {'id': 2, 'name': 'Template Creation', 'profileID': '1', 'spflag': '1'},
+        {
+          'id': 3,
+          'name': 'Template Configuration',
+          'profileID': '1',
+          'spflag': '3'
+        },
+        {'id': 4, 'name': 'Manual Upload', 'profileID': '5', 'spflag': '7'},
+      ],
     },
     'applist': <dynamic>[
       {

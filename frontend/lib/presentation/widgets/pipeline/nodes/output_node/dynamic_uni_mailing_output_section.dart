@@ -1014,6 +1014,7 @@ class _DynamicUniMailingOutputSectionState
   final Map<String, String> _workingMandatory =
       {}; // field/slot → 'nodeId::col'
   final Map<String, String> _workingCustom = {}; // slot → 'nodeId::col'
+  final Map<String, String> _workingCustomLabels = {}; // slot → user label
   final Map<String, bool> _localUniqueFields =
       {}; // 'nodeId::colName' → isUnique
   int _customCount = 0;
@@ -1134,9 +1135,13 @@ class _DynamicUniMailingOutputSectionState
         final slot = cc['Slot']?.toString() ?? '';
         final sourceName = cc['SourceName']?.toString() ?? '';
         final colName = cc['ColumnName']?.toString() ?? '';
+        final label = cc['Label']?.toString() ?? '';
         if (slot.isNotEmpty && colName.isNotEmpty) {
           final newId = nameToId[sourceName];
           if (newId != null) _workingCustom[slot] = '$newId::$colName';
+        }
+        if (slot.isNotEmpty && label.isNotEmpty) {
+          _workingCustomLabels[slot] = label;
         }
       }
     } else {
@@ -1181,6 +1186,7 @@ class _DynamicUniMailingOutputSectionState
     _localSelected.clear();
     _workingMandatory.clear();
     _workingCustom.clear();
+    _workingCustomLabels.clear();
     _localUniqueFields.clear();
     // Static key: Column 1 shown by default. Dynamic key: no default column.
     _customCount = _isCurrentKeyStatic ? 1 : 0;
@@ -1262,6 +1268,7 @@ class _DynamicUniMailingOutputSectionState
             'ColumnName': resolveCol(e.value),
             'SourceName': resolveSource(e.value),
             'isUniqueField': _localUniqueFields[e.value] ?? false,
+            'Label': _workingCustomLabels[e.key] ?? '',
           },
         )
         .toList()
@@ -1813,6 +1820,7 @@ class _DynamicUniMailingOutputSectionState
             StaticKeyMappingCard(
               workingMandatory: Map.from(_workingMandatory),
               workingCustom: Map.from(_workingCustom),
+              customLabels: Map.from(_workingCustomLabels),
               customCount: _customCount,
               availableKeys: availForMapping,
               colLabels: colLabels,
@@ -1820,8 +1828,11 @@ class _DynamicUniMailingOutputSectionState
                   setState(() => _workingMandatory[f] = v ?? ''),
               onCustomChanged: (s, v) =>
                   setState(() => _workingCustom[s] = v ?? ''),
+              onCustomLabelChanged: (slot, name) =>
+                  setState(() => _workingCustomLabels[slot] = name),
               onAddCustom: () => setState(() => _customCount++),
               onRemoveCustom: () {
+                _workingCustomLabels.remove('C$_customCount');
                 _workingCustom.remove('C$_customCount');
                 setState(() => _customCount--);
               },

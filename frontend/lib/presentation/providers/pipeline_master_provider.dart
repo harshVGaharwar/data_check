@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import 'package:vizualizer/data/models/master_models.dart';
 import 'package:vizualizer/data/services/master_data_service.dart';
+
 class PipelineMasterProvider extends ChangeNotifier {
   final MasterDataService _service;
 

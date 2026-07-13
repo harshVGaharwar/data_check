@@ -29,10 +29,19 @@ Future<Response> onRequest(RequestContext context) async {
   if (kDevMode) {
     final db = Database();
     final all = db.templatesByDept[deptId] ?? [];
-    // Dev mode: return all templates regardless of flag so every created
-    // template (Static or Dynamic) is visible in the sidebar.
-    print('[GetTemplatesDynamic] deptId=$deptId flag=$flagStr → returning ${all.length} templates: ${all.map((t) => '${t['TemplateId'] ?? t['templateId']}:${t['TemplateType'] ?? t['templateType']}').toList()}');
-    return Response.json(body: all);
+    // Include jsonData only for edit-configuration mode (flag=1).
+    // All other callers (template configuration sidebar) receive templates
+    // without the heavy canvas payload.
+    final isEditMode = flagStr == '1';
+    final result = isEditMode
+        ? all
+        : all.map((t) {
+            final copy = Map<String, dynamic>.from(t);
+            copy['jsonData'] = null;
+            return copy;
+          }).toList();
+    print('[GetTemplatesDynamic] deptId=$deptId flag=$flagStr isEditMode=$isEditMode → returning ${result.length} templates');
+    return Response.json(body: result);
   }
 
   try {

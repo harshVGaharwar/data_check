@@ -65,6 +65,10 @@ class TemplateInfo {
   /// PipelineController.loadConfiguration in edit mode.
   final Map<String, dynamic>? jsonData;
 
+  /// Full list of per-key canvas configs from the API jsonData array.
+  /// Index 0 = static key (DymanicId=0), index 1+ = dynamic keys in order.
+  final List<Map<String, dynamic>> jsonDataList;
+
   TemplateInfo({
     required this.templateId,
     required this.templateName,
@@ -92,6 +96,7 @@ class TemplateInfo {
     this.approvals = const [],
     this.dynamicTemplates = const [],
     this.jsonData,
+    this.jsonDataList = const [],
   });
 
   /// Parses the nested response shape returned by GetTemplates?deptId=&flag=:
@@ -125,12 +130,22 @@ class TemplateInfo {
 
     // Parse jsonData — the API returns it as a List; take element [0] as the config map.
     Map<String, dynamic>? parsedJsonData;
+    List<Map<String, dynamic>> parsedJsonDataList = [];
     final rawJsonData =
         json['jsonData'] ??
         json['JsonData'] ??
         tpl['jsonData'] ??
         tpl['JsonData'];
     if (rawJsonData is List && rawJsonData.isNotEmpty) {
+      // Preserve all per-key configs (index 0 = static, 1+ = dynamic)
+      parsedJsonDataList = rawJsonData
+          .map((e) {
+            if (e is Map<String, dynamic>) return e;
+            if (e is Map) return Map<String, dynamic>.from(e);
+            return null;
+          })
+          .whereType<Map<String, dynamic>>()
+          .toList();
       final first = rawJsonData.first;
       if (first is Map<String, dynamic>) {
         parsedJsonData = first;
@@ -139,14 +154,20 @@ class TemplateInfo {
       }
     } else if (rawJsonData is Map<String, dynamic>) {
       parsedJsonData = rawJsonData;
+      parsedJsonDataList = [rawJsonData];
     } else if (rawJsonData is Map) {
       parsedJsonData = rawJsonData.map((k, v) => MapEntry(k.toString(), v));
+      parsedJsonDataList = [parsedJsonData!];
     } else if (rawJsonData is String && rawJsonData.trim().isNotEmpty) {
       try {
         final decoded = jsonDecode(rawJsonData);
-        if (decoded is Map<String, dynamic>) parsedJsonData = decoded;
+        if (decoded is Map<String, dynamic>) {
+          parsedJsonData = decoded;
+          parsedJsonDataList = [decoded];
+        }
         if (decoded is Map) {
           parsedJsonData = decoded.map((k, v) => MapEntry(k.toString(), v));
+          parsedJsonDataList = [parsedJsonData!];
         }
       } catch (_) {}
     }
@@ -224,6 +245,7 @@ class TemplateInfo {
       approvals: parsedApprovals,
       dynamicTemplates: parsedDynamicTemplates,
       jsonData: parsedJsonData,
+      jsonDataList: parsedJsonDataList,
     );
   }
 

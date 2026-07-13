@@ -2,7 +2,7 @@ part of 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node_body
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OUTPUT COLUMN SELECTOR
-// ─────────────────────────────────────────────────────────────────────────────
+// ─
 
 class _OutputColumnSelector extends StatefulWidget {
   final PipelineNode node;
@@ -11,7 +11,9 @@ class _OutputColumnSelector extends StatefulWidget {
   final bool hideAlias;
 
   const _OutputColumnSelector({
+    super.key,
     required this.node,
+    
     required this.ctrl,
     this.hidePriority = false,
     this.hideAlias = false,
@@ -28,6 +30,15 @@ class _OutputColumnSelectorState extends State<_OutputColumnSelector> {
   void initState() {
     super.initState();
     widget.ctrl.addListener(_onCtrlChange);
+  }
+
+  @override
+  void didUpdateWidget(_OutputColumnSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.ctrl != widget.ctrl) {
+      oldWidget.ctrl.removeListener(_onCtrlChange);
+      widget.ctrl.addListener(_onCtrlChange);
+    }
   }
 
   void _onCtrlChange() => setState(() {});

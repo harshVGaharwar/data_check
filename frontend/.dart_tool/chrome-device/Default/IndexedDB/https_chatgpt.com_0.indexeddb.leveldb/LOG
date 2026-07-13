@@ -1,0 +1,8 @@
+2026/06/14-14:04:06.159 4ba40d Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.DMVUmt/flutter_tools_chrome_device.vasLqJ/Default/IndexedDB/https_chatgpt.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/06/14-14:04:06.159 4ba40d Recovering log #3
+2026/06/14-14:04:06.159 4ba40d Level-0 table #3: started
+2026/06/14-14:04:06.161 4ba40d Level-0 table #3: 2487 bytes OK
+2026/06/14-14:04:06.161 4ba40d Recovering log #4
+2026/06/14-14:04:06.161 4ba40d Reusing old log /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.DMVUmt/flutter_tools_chrome_device.vasLqJ/Default/IndexedDB/https_chatgpt.com_0.indexeddb.leveldb/000004.log 
+2026/06/14-14:04:06.163 4ba40d Delete type=0 #3
+2026/06/14-14:04:06.163 4ba40d Delete type=2 #5

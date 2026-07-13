@@ -1,0 +1,5 @@
+CustomerID#CustomerName#Email#Phone#City
+101#Rahul Sharma#rahul@email.com#9876543210#Mumbai
+102#Priya Singh#priya@email.com#9812345678#Delhi
+103#Amit Verma#amit@email.com#9823456789#Bangalore
+104#Neha Gupta#neha@email.com#9834567890#Chennai

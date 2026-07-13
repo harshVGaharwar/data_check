@@ -1,0 +1,293 @@
+[
+  {
+    "templateType": "3",
+    "templateId": 9,
+    "templateName": "9 - template dynnic",
+    "department": null,
+    "frequency": "1",
+    "normalVolume": 0,
+    "peakVolume": 0,
+    "sourceCount": 2,
+    "numberOfOutputs": 0,
+    "benefitType": 0,
+    "benefitAmount": 0,
+    "benefitInTAT": null,
+    "goLiveDate": null,
+    "deactivateDate": null,
+    "spocPerson": null,
+    "spocManager": null,
+    "unitHead": null,
+    "priority": 0,
+    "template": null,
+    "outputFormats": [
+      {
+        "templateTempId": 9,
+        "formatName": "Unimailing"
+      }
+    ],
+    "approvals": null,
+    "dynamicTemplate": [
+      {
+        "srno": 1,
+        "id": 3,
+        "sourceList": "1",
+        "sourceCount": "2",
+        "sourceListName": null,
+        "templateId": 9,
+        "sourceMasterList": [
+          {
+            "id": 1,
+            "name": "1 - Manual",
+            "sourceType": "1",
+            "appName": null,
+            "itgrc": 0,
+            "dbVault": null,
+            "createdBy": null,
+            "createdOn": "0001-01-01T00:00:00",
+            "svalues": null,
+            "department_id": "7",
+            "type": "3",
+            "template_id": null,
+            "typeId": "1"
+          },
+          {
+            "id": 3,
+            "name": "3 - Flexcube",
+            "sourceType": "3",
+            "appName": null,
+            "itgrc": 0,
+            "dbVault": null,
+            "createdBy": null,
+            "createdOn": "0001-01-01T00:00:00",
+            "svalues": null,
+            "department_id": "7",
+            "type": "3",
+            "template_id": null,
+            "typeId": "3"
+          }
+        ],
+        "sourceType": "3"
+      },
+      {
+        "srno": 2,
+        "id": 4,
+        "sourceList": "1,3",
+        "sourceCount": "2",
+        "sourceListName": null,
+        "templateId": 9,
+        "sourceMasterList": [
+          {
+            "id": 1,
+            "name": "1 - Manual",
+            "sourceType": "1",
+            "appName": null,
+            "itgrc": 0,
+            "dbVault": null,
+            "createdBy": null,
+            "createdOn": "0001-01-01T00:00:00",
+            "svalues": null,
+            "department_id": "7",
+            "type": "3",
+            "template_id": null,
+            "typeId": "1"
+          },
+          {
+            "id": 3,
+            "name": "3 - Flexcube",
+            "sourceType": "3",
+            "appName": null,
+            "itgrc": 0,
+            "dbVault": null,
+            "createdBy": null,
+            "createdOn": "0001-01-01T00:00:00",
+            "svalues": null,
+            "department_id": "7",
+            "type": "3",
+            "template_id": null,
+            "typeId": "3"
+          }
+        ],
+        "sourceType": "3"
+      },
+      {
+        "srno": 0,
+        "id": 0,
+        "sourceList": "1",
+        "sourceCount": "2",
+        "sourceListName": null,
+        "templateId": 9,
+        "sourceMasterList": [],
+        "sourceType": "1"
+      }
+    ],
+    "jsonData": null,
+    "departmentName": null,
+    "sourceListNames": null,
+    "sourceList": "1"
+  },
+  {
+    "templateType": "2",
+    "templateId": 3,
+    "templateName": "3 - template 1 static",
+    "department": null,
+    "frequency": "1",
+    "normalVolume": 0,
+    "peakVolume": 0,
+    "sourceCount": 2,
+    "numberOfOutputs": 0,
+    "benefitType": 0,
+    "benefitAmount": 0,
+    "benefitInTAT": null,
+    "goLiveDate": null,
+    "deactivateDate": null,
+    "spocPerson": null,
+    "spocManager": null,
+    "unitHead": null,
+    "priority": 0,
+    "template": null,
+    "outputFormats": [
+      {
+        "templateTempId": 3,
+        "formatName": "Unimailing"
+      }
+    ],
+    "approvals": null,
+    "dynamicTemplate": [
+      {
+        "srno": 0,
+        "id": 0,
+        "sourceList": "1,2",
+        "sourceCount": "2",
+        "sourceListName": null,
+        "templateId": 3,
+        "sourceMasterList": [],
+        "sourceType": "1"
+      }
+    ],
+    "jsonData":
+
+[
+
+{
+      'TemplateId': 216,
+      ‘TemplateType’:2,
+       ‘DynamicId’:0,
+       ‘templateMode’:0,
+       
+       'createdBy': 'ADM001',
+      'Sources': [
+        {
+          'TemplateId': 2,
+          'SourceId': '10',
+          'SourceName': 'S1',
+          'SourceType': '1',
+          'Department': '1',
+          'Template': 'P&L Report',
+          'Separator': ‘,’ ,
+          'ColumnFile': 'dummy_data.csv',
+          'QueryFile': '',
+          'Columns': 'id,template_name,department,source_type,operation,'
+              'approval_status,config_file,pipeline_format,token,'
+              'created_at,updated_at',
+          'SelectedColumns': 'approval_status',
+          'SourceSeqNo': “”,
+          ‘uniquefield’:””,
+        },
+        {
+          'TemplateId': 2,
+          'SourceId': '13',
+          'SourceName': 'S2',
+          'SourceType': '2',
+          'Department': '1',
+          'Template': 'P&L Report',
+          'Separator': ',',
+          'ColumnFile': 'dummy_data.csv',
+          'QueryFile': 'valid_query_with.txt',
+          'Columns': 'id,template_name,department,source_type,operation,'
+              'approval_status,config_file,pipeline_format,token,'
+              'created_at,updated_at',
+          'SelectedColumns': 'created_at',
+          'SourceSeqNo': null,
+ ‘uniquefield’:””,
+        },
+      ],
+      'JoinMappings': [
+        {
+          'Id': 0,
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'LeftSourceId': 'n1',
+          'LeftSourceName': 'S1',
+          'LeftColumn': 'template_name',
+          'JoinType': 'left_join',
+          'RightSourceId': 'n3',
+          'RightSourceName': 'S2',
+          'RightColumn': 'template_name',
+          'CreatedOn': '2026-04-29T00:00:00',
+        },
+        {
+          'Id': 1,
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'LeftSourceId': 'n3',
+          'LeftSourceName': 'S2',
+          'LeftColumn': 'template_name',
+          'JoinType': 'left_join',
+          'RightSourceId': 'n1',
+          'RightSourceName': 'S1',
+          'RightColumn': 'template_name',
+          'CreatedOn': '2026-04-29T00:00:00',
+        },
+      ],
+      'Edges': [
+        {'template_id': 2, 'department': '1', 'From': 'n1', 'To': 'n4'},
+        {'template_id': 2, 'department': '1', 'From': 'n3', 'To': 'n4'},
+      ],
+      'connectedSources': [
+        {
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n1'
+        },
+        {
+          'TemplateId': 2,
+          'Department': '1',
+          'JoinNodeId': 'n4',
+          'SourceId': 'n3'
+        },
+      ],
+      'outputColumns': [
+        {
+          'template_id': 2,
+          'department': '1',
+          'sourceid': '1',
+          'sourceName': 'S1',
+          'SourceColName': 'approval_status',
+          'ColumnName': 'ASD',
+           ‘Priority’:0,
+        },
+        {
+          'template_id': 2,
+          'department': '1',
+          'sourceid': '2',
+          'sourceName': 'S2',
+          'SourceColName': 'created_at',
+          'ColumnName': 'ASD',
+           ‘Priority’:0,
+        },
+      ],
+    }
+
+] ,
+    "departmentName": null,
+    "sourceListNames": null,
+    "sourceList": "1,2"
+  }
+]
+
+
+
+
