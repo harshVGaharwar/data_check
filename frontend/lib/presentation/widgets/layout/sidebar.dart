@@ -2139,8 +2139,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     final dynEntry0 = info.dynamicTemplates.isNotEmpty
         ? info.dynamicTemplates[0]
         : null;
-    final dynSourceCount =
-        int.tryParse(dynEntry0?.sourceCount ?? '') ?? 0;
+    final dynSourceCount = int.tryParse(dynEntry0?.sourceCount ?? '') ?? 0;
     ctrl.setSidebarTemplate(
       v,
       sourceCount: dynSourceCount > 0
