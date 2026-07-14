@@ -33,13 +33,37 @@ Future<Response> onRequest(RequestContext context) async {
     // All other callers (template configuration sidebar) receive templates
     // without the heavy canvas payload.
     final isEditMode = flagStr == '1';
-    final result = isEditMode
-        ? all
-        : all.map((t) {
-            final copy = Map<String, dynamic>.from(t);
-            copy['jsonData'] = null;
-            return copy;
-          }).toList();
+    final result = all.map((t) {
+      final copy = Map<String, dynamic>.from(t);
+      if (!isEditMode) copy['jsonData'] = null;
+
+      // Enrich dynamicTemplate entries with sourceMasterList if not already set.
+      // AddTemplate saves only SourceList IDs; GetTemplatesDynamic must resolve them.
+      final dynKey = copy.containsKey('DynamicTemplate') ? 'DynamicTemplate' : 'dynamicTemplate';
+      final dynTemplates = copy[dynKey] as List?;
+      if (dynTemplates != null) {
+        copy[dynKey] = dynTemplates.map((entry) {
+          final e = Map<String, dynamic>.from(entry as Map);
+          if (e['sourceMasterList'] == null) {
+            final sourceListStr =
+                (e['SourceList'] ?? e['sourceList'])?.toString() ?? '';
+            final ids = sourceListStr
+                .split(',')
+                .map((s) => int.tryParse(s.trim()))
+                .whereType<int>()
+                .toSet();
+            e['sourceMasterList'] = db.sourceMasterList
+                .where((item) {
+                  final itemId = item['id'];
+                  return itemId is int && ids.contains(itemId);
+                })
+                .toList();
+          }
+          return e;
+        }).toList();
+      }
+      return copy;
+    }).toList();
     print('[GetTemplatesDynamic] deptId=$deptId flag=$flagStr isEditMode=$isEditMode → returning ${result.length} templates');
     return Response.json(body: result);
   }

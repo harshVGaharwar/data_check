@@ -1366,23 +1366,25 @@ class _EditSidebarState extends State<EditSidebar>
       orElse: () => TemplateInfo(
         templateId: 0,
         templateName: v,
-        department: '',
+        department: null,
         frequency: '',
         sourceCount: 0,
         numberOfOutputs: 0,
         normalVolume: 0,
         peakVolume: 0,
-        priority: '',
-        benefitType: '',
+        priority: 0,
+        benefitType: 0,
         benefitAmount: 0,
         outputFormats: [],
+        dynamicTemplates: [],
+        templateType: '',
       ),
     );
     final dynEntry0 = info.dynamicTemplates.isNotEmpty
         ? info.dynamicTemplates[0]
         : null;
     final dynSourceCount =
-        int.tryParse(dynEntry0?['sourceCount']?.toString() ?? '') ?? 0;
+        int.tryParse(dynEntry0?.sourceCount ?? '') ?? 0;
     ctrl.setSidebarTemplate(
       v,
       sourceCount: dynSourceCount > 0
@@ -1392,7 +1394,7 @@ class _EditSidebarState extends State<EditSidebar>
       templateType: info.templateType,
       outputFormats: info.outputFormats,
       numberOfOutputs: info.numberOfOutputs,
-      dynamicTemplates: info.dynamicTemplates,
+      dynamicTemplates: info.dynamicTemplates.map((e) => e.toJson()).toList(),
       frequency: info.frequency,
     );
 
@@ -1400,15 +1402,15 @@ class _EditSidebarState extends State<EditSidebar>
     _templatePulse.value = 0;
 
     // Store all per-key configs for use in _onOutputKeySelected
-    _jsonDataList = info.jsonDataList;
+    _jsonDataList = info.editConfig?.jsonDataList ?? [];
     ctrl.setEditJsonDataKeyCount(_jsonDataList.length);
 
     // Load canvas configuration from embedded jsonData
     debugPrint(
-      '[EditSidebar] jsonData=${info.jsonData == null ? "NULL" : "keys=${info.jsonData!.keys.toList()}"}, jsonDataList.length=${info.jsonDataList.length}',
+      '[EditSidebar] jsonData=${info.editConfig?.jsonData == null ? "NULL" : "keys=${info.editConfig!.jsonData!.keys.toList()}"}, jsonDataList.length=${_jsonDataList.length}',
     );
-    if (info.jsonData != null && info.jsonData!.isNotEmpty) {
-      context.read<PipelineController>().loadConfiguration(info.jsonData!);
+    if (info.editConfig?.jsonData?.isNotEmpty == true) {
+      context.read<PipelineController>().loadConfiguration(info.editConfig!.jsonData!);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

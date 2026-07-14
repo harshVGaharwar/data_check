@@ -319,7 +319,7 @@ class MasterDataService {
             .toList();
         for (final t in list) {
           debugPrint(
-            '[DYN_TEMPLATE] id=${t.templateId} name="${t.templateName}" jsonData=${t.jsonData == null ? "NULL" : "keys=${t.jsonData!.keys.toList()}"}',
+            '[DYN_TEMPLATE] id=${t.templateId} name="${t.templateName}" jsonData=${t.editConfig?.jsonData == null ? "NULL" : "keys=${t.editConfig!.jsonData!.keys.toList()}"}',
           );
         }
         return list;
