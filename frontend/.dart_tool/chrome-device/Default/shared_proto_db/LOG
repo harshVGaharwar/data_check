@@ -1,3 +1,35 @@
-2026/07/12-13:31:26.317 65d040 Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.0g7B35/flutter_tools_chrome_device.7mehPT/Default/shared_proto_db/MANIFEST-000001
-2026/07/12-13:31:26.318 65d040 Recovering log #38
-2026/07/12-13:31:26.319 65d040 Reusing old log /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.0g7B35/flutter_tools_chrome_device.7mehPT/Default/shared_proto_db/000038.log 
+2026/07/13-16:51:48.103 313e5 Reusing MANIFEST /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.ebkhT4/flutter_tools_chrome_device.fHr2vM/Default/shared_proto_db/MANIFEST-000001
+2026/07/13-16:51:48.104 313e5 Recovering log #38
+2026/07/13-16:51:48.105 313e5 Reusing old log /private/var/folders/sy/96sr7_pd2knb97z09409zkx40000gn/T/flutter_tools.ebkhT4/flutter_tools_chrome_device.fHr2vM/Default/shared_proto_db/000038.log 
+2026/07/13-16:51:48.106 313e5 Delete type=0 #7
+2026/07/13-16:51:48.106 313e5 Delete type=0 #12
+2026/07/13-16:51:48.106 313e5 Delete type=0 #4
+2026/07/13-16:51:48.106 313e5 Delete type=0 #10
+2026/07/13-16:51:48.106 313e5 Delete type=0 #15
+2026/07/13-16:51:48.106 313e5 Delete type=0 #28
+2026/07/13-16:51:48.106 313e5 Delete type=0 #3
+2026/07/13-16:51:48.106 313e5 Delete type=2 #17
+2026/07/13-16:51:48.106 313e5 Delete type=2 #7
+2026/07/13-16:51:48.106 313e5 Delete type=2 #13
+2026/07/13-16:51:48.106 313e5 Delete type=2 #11
+2026/07/13-16:51:48.106 313e5 Delete type=2 #8
+2026/07/13-16:51:48.106 313e5 Delete type=2 #20
+2026/07/13-16:51:48.106 313e5 Delete type=2 #23
+2026/07/13-16:51:48.106 313e5 Delete type=2 #26
+2026/07/13-16:51:48.106 313e5 Delete type=0 #32
+2026/07/13-16:51:48.106 313e5 Delete type=0 #25
+2026/07/13-16:51:48.106 313e5 Delete type=0 #19
+2026/07/13-16:51:48.106 313e5 Delete type=0 #35
+2026/07/13-16:51:48.106 313e5 Delete type=0 #22
+2026/07/13-16:52:30.707 313d0 Level-0 table #42: started
+2026/07/13-16:52:30.713 313d0 Level-0 table #42: 123209 bytes OK
+2026/07/13-16:52:30.722 313d0 Delete type=0 #38
+2026/07/13-16:52:30.723 313d0 Compacting 4@0 + 1@1 files
+2026/07/13-16:52:30.730 313d0 Generated table #43@0: 3096 keys, 137585 bytes
+2026/07/13-16:52:30.730 313d0 Compacted 4@0 + 1@1 files => 137585 bytes
+2026/07/13-16:52:30.731 313d0 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/07/13-16:52:30.732 313d0 Delete type=2 #39
+2026/07/13-16:52:30.732 313d0 Delete type=2 #36
+2026/07/13-16:52:30.732 313d0 Delete type=2 #33
+2026/07/13-16:52:30.732 313d0 Delete type=2 #30
+2026/07/13-16:52:30.732 313d0 Delete type=2 #42
