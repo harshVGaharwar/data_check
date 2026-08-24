@@ -1525,31 +1525,55 @@ class PipelineController extends ChangeNotifier {
     pendingFocusNodeId = null;
   }
 
-  // ── Dynamic UniMailing (3rd case) getters & methods ──
+  // ── Scenario getters (templateType × outputFormat) ──
+  //
+  // `templateType` holds the login master id — "2" = Static, "3" = Dynamic —
+  // NOT the 1/2/3/4 config code. The output format lives in `outputFormats`.
+  // The four combinations map to the config codes sent to AddTemplateConfig:
+  //   Static  + User Defined → 1      Dynamic + UniMailing   → 3
+  //   Static  + UniMailing   → 2      Dynamic + User Defined → 4
 
-  /// True when: templateType = Static (code "2") AND outputFormats contains UniMailing.
-  bool get isStaticUniMailing {
-    final isStatic =
-        templateType == '2' ||
-        (templateType.toLowerCase().contains('static') &&
-            outputFormats.any((f) => f.toLowerCase().contains('unimailing')));
-    return isStatic &&
-        outputFormats.any((f) => f.toLowerCase().contains('unimailing'));
-  }
+  /// True when the template is Dynamic, regardless of output format.
+  bool get isDynamicTemplate =>
+      templateType == '3' || templateType.toLowerCase().contains('dynamic');
+
+  /// True when outputFormats explicitly says User Defined.
+  ///
+  /// UniMailing is the *default* — a template whose outputFormats is missing or
+  /// unrecognised keeps the pre-existing UniMailing behaviour, and this single
+  /// predicate is what every scenario getter below (and the 1/2/3/4 code sent
+  /// to AddTemplateConfig) branches on, so the UI and the payload can never
+  /// disagree about which case a template is.
+  bool get isUserDefinedFormat => outputFormats.any(
+        (f) => f.toLowerCase().replaceAll(' ', '').contains('userdefined'),
+      );
+
+  /// True when a Static template is selected. False before the user picks one,
+  /// so none of the scenario getters below fire on an empty canvas.
+  bool get isStaticTemplate => templateType.isNotEmpty && !isDynamicTemplate;
+
+  /// True when: templateType = Static AND output format is UniMailing.
+  bool get isStaticUniMailing => isStaticTemplate && !isUserDefinedFormat;
+
+  /// True when: templateType = Dynamic AND output format is UniMailing.
+  bool get isDynamicUniMailing => isDynamicTemplate && !isUserDefinedFormat;
+
+  /// True when: templateType = Static AND output format is User Defined.
+  bool get isStaticUserDefined => isStaticTemplate && isUserDefinedFormat;
+
+  /// True when: templateType = Dynamic AND output format is User Defined.
+  bool get isDynamicUserDefined => isDynamicTemplate && isUserDefinedFormat;
 
   /// True for any UniMailing pipeline — either static or dynamic.
   bool get isAnyUniMailing => isStaticUniMailing || isDynamicUniMailing;
 
-  /// True when: templateType = Dynamic (code "3" or label contains "dynamic")
-  /// AND outputFormats contains UniMailing.
-  bool get isDynamicUniMailing {
-    final isDynamic =
-        templateType == '3' || templateType.toLowerCase().contains('dynamic');
-    final hasUnimailing = outputFormats.any(
-      (f) => f.toLowerCase().contains('unimailing'),
-    );
-    return isDynamic && hasUnimailing;
-  }
+  /// Cases 3 and 4 share the per-output-key sequential configuration flow.
+  bool get isPerOutputKeyFlow => isDynamicTemplate;
+
+  /// The 1/2/3/4 code sent as `TemplateType` to AddTemplateConfig.
+  int get configTemplateType => isDynamicTemplate
+      ? (isUserDefinedFormat ? 4 : 3)
+      : (isUserDefinedFormat ? 1 : 2);
 
   /// Safe srno reader — Flutter Web returns JSON ints as num/double.
   static int _srno(Map<String, dynamic> dt) =>
@@ -1984,7 +2008,7 @@ class PipelineController extends ChangeNotifier {
     // Clear saved configs for a new template before computing auto-select.
     if (!isSameTemplate) savedOutputKeyConfigs.clear();
     // Auto-select the first unconfigured output key for sequential flow.
-    if (isDynamicUniMailing) {
+    if (isPerOutputKeyFlow) {
       final keys = dynamicUniMailingOutputKeys;
       selectedOutputKey = keys.firstWhere(
         (k) => !savedOutputKeyConfigs.containsKey(k),
@@ -2016,7 +2040,7 @@ class PipelineController extends ChangeNotifier {
     }
 
     // New (unconfigured) key: clear canvas so the user starts fresh.
-    if (isDynamicUniMailing && nodes.isNotEmpty) {
+    if (isPerOutputKeyFlow && nodes.isNotEmpty) {
       nodes.clear();
       edges.clear();
       selectedNodeId = null;
@@ -2706,11 +2730,9 @@ class PipelineController extends ChangeNotifier {
       'SMS To',
       'Barcode',
     ];
-    final isUniMailing = templateType == '2' ||
-        (templateType.toLowerCase().contains('static') &&
-            outputFormats.any(
-              (f) => f.toLowerCase().contains('unimailing'),
-            ));
+    // Both static cases store their output as C1..Cn slots; any ColumnName that
+    // is not one of the 7 mail fields lands in a custom slot below.
+    final isUniMailing = isStaticUniMailing || isStaticUserDefined;
 
     uniMailingMandatory.clear();
     uniMailingCustom.clear();

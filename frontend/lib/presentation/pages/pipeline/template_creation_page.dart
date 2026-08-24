@@ -82,10 +82,7 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
     'Other',
   ];
   static const _priorities = ['Low', 'Medium', 'High', 'Critical'];
-  static const _outputFormats = [
-    'Unimailing',
-    //  'User Defined'
-  ];
+  static const _outputFormats = ['Unimailing', 'User Defined'];
   static const _sourceCountOptions = [
     // '1',
     '2',
@@ -278,13 +275,6 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                 .toList();
             _model.sourceList = filterd.map((s) => s.toJson()).toList();
             _model.sourceListName = filterd.map((s) => s.name).join(',');
-            if (!_model.isDynamic) {
-              _model.templateType = '1 - Static';
-              selectedFormat = null;
-              _model.outputFormats = [];
-              _model.numberOfOutputs = 0;
-              _model.dynamicOutputs = [];
-            }
           });
           _closeSourceDropdown();
         },
@@ -704,22 +694,23 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                               _model.selectedTemplateType = selected;
                               _model.templateType = selected.id.toString();
                               _model.templateTypeName = selected.name;
-                            });
 
-                            if (selected.id == 3) {
-                              // ✅ Dynamic
-                              selectedFormat = 'Unimailing';
-                              _model.outputFormats = ['Unimailing'];
-                              _model.sourceCount = 0;
-                              _model.sourceList = [];
-                              _model.sourceListName = '';
-                            } else if (selected.id == 2) {
-                              // ✅ Static
+                              // Output format is picked separately below and
+                              // is offered for both Static and Dynamic, so
+                              // reset it whenever the template type changes.
                               selectedFormat = null;
                               _model.outputFormats = [];
-                              _model.numberOfOutputs = 0;
-                              _model.dynamicOutputs = [];
-                            }
+                              if (selected.id == 3) {
+                                // ✅ Dynamic — sources are chosen per output
+                                _model.sourceCount = 0;
+                                _model.sourceList = [];
+                                _model.sourceListName = '';
+                              } else if (selected.id == 2) {
+                                // ✅ Static — no dynamic outputs
+                                _model.numberOfOutputs = 0;
+                                _model.dynamicOutputs = [];
+                              }
+                            });
                           },
                         ),
                         if (_selectedTemplateType?.id == 3)
@@ -912,113 +903,68 @@ class _TemplateCreationPageState extends State<TemplateCreationPage>
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (_selectedTemplateType?.id == 3)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: _outputFormats.map((f) {
+                            final sel = selectedFormat == f;
+                            return InkWell(
+                              onTap: () => setState(() {
+                                selectedFormat = f;
+                                _model.outputFormats = [f];
+                              }),
                               borderRadius: BorderRadius.circular(10),
-                              color: const Color(
-                                0xFF004C8F,
-                              ).withValues(alpha: 0.08),
-                              border: Border.all(
-                                color: const Color(0xFF004C8F),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.radio_button_checked,
-                                  size: 18,
-                                  color: Color(0xFF004C8F),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
                                 ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Unimailing',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF004C8F),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Icon(
-                                  Icons.lock_outline_rounded,
-                                  size: 13,
-                                  color: const Color(
-                                    0xFF004C8F,
-                                  ).withValues(alpha: 0.6),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: _outputFormats.map((f) {
-                              final sel = selectedFormat == f;
-                              return InkWell(
-                                onTap: () => setState(() {
-                                  selectedFormat = f;
-                                  _model.outputFormats = [f];
-                                }),
-                                borderRadius: BorderRadius.circular(10),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: sel
+                                      ? const Color(
+                                          0xFF004C8F,
+                                        ).withValues(alpha: 0.08)
+                                      : AppColors.surface2,
+                                  border: Border.all(
                                     color: sel
-                                        ? const Color(
-                                            0xFF004C8F,
-                                          ).withValues(alpha: 0.08)
-                                        : AppColors.surface2,
-                                    border: Border.all(
+                                        ? const Color(0xFF004C8F)
+                                        : AppColors.border,
+                                    width: sel ? 1.5 : 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      sel
+                                          ? Icons.radio_button_checked
+                                          : Icons.radio_button_off,
+                                      size: 18,
                                       color: sel
                                           ? const Color(0xFF004C8F)
-                                          : AppColors.border,
-                                      width: sel ? 1.5 : 1,
+                                          : AppColors.textDim,
                                     ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        sel
-                                            ? Icons.radio_button_checked
-                                            : Icons.radio_button_off,
-                                        size: 18,
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      f,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: sel
+                                            ? FontWeight.w700
+                                            : FontWeight.w300,
                                         color: sel
                                             ? const Color(0xFF004C8F)
-                                            : AppColors.textDim,
+                                            : AppColors.text,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        f,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: sel
-                                              ? FontWeight.w700
-                                              : FontWeight.w300,
-                                          color: sel
-                                              ? const Color(0xFF004C8F)
-                                              : AppColors.text,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            }).toList(),
-                          ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
                         if (_submitted && _model.outputFormats.isEmpty)
                           _err('Please select at least one output format'),
                       ],

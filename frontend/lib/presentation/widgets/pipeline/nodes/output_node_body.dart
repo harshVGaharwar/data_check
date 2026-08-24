@@ -1568,18 +1568,12 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         ? sourceNodes
         : ctrl.nodes.where((n) => n.type.isSource).toList();
 
-    final isStaticUserDefined = ctrl.templateType == '1' ||
-        (ctrl.templateType.toLowerCase().contains('static') &&
-            ctrl.outputFormats.any(
-              (f) =>
-                  f.toLowerCase().replaceAll(' ', '').contains('userdefined'),
-            ));
-    final isStaticUniMailing = ctrl.templateType == '2' ||
-        (ctrl.templateType.toLowerCase().contains('static') &&
-            ctrl.outputFormats.any(
-              (f) => f.toLowerCase().contains('unimailing'),
-            ));
+    final isStaticUserDefined = ctrl.isStaticUserDefined;
+    final isStaticUniMailing = ctrl.isStaticUniMailing;
     final isDynamicUniMailing = ctrl.isDynamicUniMailing;
+    final isDynamicUserDefined = ctrl.isDynamicUserDefined;
+    // Cases 3 and 4 share the per-output-key sequential flow.
+    final isPerOutputKeyFlow = ctrl.isPerOutputKeyFlow;
 
     final sourcesWithCols =
         allSourceNodes.where((n) => n.cols.isNotEmpty).toList();
@@ -1593,20 +1587,23 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     // ✅ NEW: Mail To must be required
     final mailTo = ctrl.uniMailingMandatory['Mail To'] ?? '';
     final mailToSelected = mailTo.isNotEmpty;
-    // final uniMailingComplete =
-    //     !isStaticUniMailing || customCount == 0 || customFilled >= customCount;
-    final uniMailingComplete = !isStaticUniMailing ||
-        (mailToSelected && // ✅ Required Mail To
-            (customCount == 0 || customFilled >= customCount));
-    // 3rd case overrides canSubmit entirely
+    // Both static cases map their output through the CUSTOM COLUMNS slots;
+    // only UniMailing additionally requires Mail To.
+    final needsCustomColumns = isStaticUniMailing || isStaticUserDefined;
+    final customsComplete = !needsCustomColumns ||
+        customCount == 0 ||
+        customFilled >= customCount;
+    final mailToOk = !isStaticUniMailing || mailToSelected;
+    // Per-output-key cases (3 and 4) override canSubmit entirely.
     final bool canSubmit;
     final String validationMessage;
-    if (isDynamicUniMailing) {
+    if (isPerOutputKeyFlow) {
       //TODO
       // canSubmit = ctrl.allDynamicUniMailingKeysConfigured && !_submitting;
       canSubmit = allPrioritiesProvided &&
-          mailToSelected && // ✅ Mail To required
-          uniMailingComplete &&
+          // ✅ Mail To required — UniMailing only
+          (!isDynamicUniMailing || mailToSelected) &&
+          customsComplete &&
           !_submitting;
       if (!ctrl.allDynamicUniMailingKeysConfigured) {
         final done = ctrl.savedOutputKeyConfigs.length;
@@ -1616,12 +1613,13 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         validationMessage = '';
       }
     } else {
-      canSubmit = allPrioritiesProvided && uniMailingComplete && !_submitting;
+      canSubmit =
+          allPrioritiesProvided && customsComplete && mailToOk && !_submitting;
       if (!allPrioritiesProvided) {
         validationMessage = 'Select at least one output column';
-      } else if (!mailToSelected) {
+      } else if (!mailToOk) {
         validationMessage = 'Please select a value for Mail To';
-      } else if (!uniMailingComplete) {
+      } else if (!customsComplete) {
         validationMessage =
             'All added custom columns must be mapped ($customFilled / $customCount filled)';
       } else {
@@ -1773,7 +1771,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                       children: [
                         // ── Template / dept info ──
                         if (ctrl.sidebarTemplate.isNotEmpty &&
-                            !isDynamicUniMailing) ...[
+                            !isPerOutputKeyFlow) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -1849,7 +1847,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                         ],
 
                         // ── Column Selection (hidden for 3rd case – per-key selection used instead) ──
-                        if (!isDynamicUniMailing &&
+                        if (!isPerOutputKeyFlow &&
                             sourcesWithCols.isNotEmpty) ...[
                           _sectionHeader(
                             'COLUMN SELECTION',
@@ -1879,7 +1877,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                           _sectionHeader(
                             'UNIMAILING FORMAT',
                             Icons.email_rounded,
-                            uniMailingComplete
+                            customsComplete && mailToOk
                                 ? AppColors.blue
                                 : AppColors.amber,
                             '$mandatoryFilled / 7 mapped',
@@ -1892,8 +1890,27 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                           const SizedBox(height: 12),
                         ],
 
-                        // ── Dynamic UniMailing section (3rd case) ──
-                        if (isDynamicUniMailing) ...[
+                        // ── Static User Defined section (case 1) ──
+                        // Same CUSTOM COLUMNS block as UniMailing, without the
+                        // 7 mandatory mail fields.
+                        if (isStaticUserDefined) ...[
+                          _sectionHeader(
+                            'CUSTOM COLUMNS',
+                            Icons.view_column_rounded,
+                            customsComplete ? AppColors.blue : AppColors.amber,
+                            '$customFilled / $customCount mapped',
+                          ),
+                          const SizedBox(height: 8),
+                          UniMailingSection(
+                            ctrl: ctrl,
+                            sourceNodes: allSourceNodes,
+                            showMandatoryFields: false,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+
+                        // ── Per-output-key section (cases 3 and 4) ──
+                        if (isPerOutputKeyFlow) ...[
                           DynamicUniMailingOutputSection(
                             ctrl: ctrl,
                             sourceNodes: allSourceNodes,
@@ -1903,15 +1920,17 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                               master,
                               allSourceNodes,
                               isDynamicUniMailing: true,
-                              caseTitle: 'Dynamic & Unimailing',
+                              caseTitle: isDynamicUserDefined
+                                  ? 'Dynamic & User Defined'
+                                  : 'Dynamic & Unimailing',
                               lastKey: lastKey,
                             ),
                           ),
                           const SizedBox(height: 12),
                         ],
 
-                        // ── Submit button (hidden for Dynamic UniMailing — preview shown inline) ──
-                        if (!isDynamicUniMailing)
+                        // ── Submit button (hidden for the per-key flow — preview shown inline) ──
+                        if (!isPerOutputKeyFlow)
                           AnimatedOpacity(
                             duration: const Duration(milliseconds: 200),
                             opacity: canSubmit ? 1.0 : 0.55,
@@ -1958,6 +1977,8 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                                     ctrl,
                                     master,
                                     allSourceNodes,
+                                    isUniMailing: true,
+                                    showMandatoryFields: false,
                                     caseTitle: 'Static & User Defined',
                                   );
                                 } else if (isStaticUniMailing) {
@@ -1969,14 +1990,16 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                                     isUniMailing: true,
                                     caseTitle: 'static & Unimaling ',
                                   );
-                                } else if (isDynamicUniMailing) {
+                                } else if (isPerOutputKeyFlow) {
                                   _showConfigPreview(
                                     context,
                                     ctrl,
                                     master,
                                     allSourceNodes,
                                     isDynamicUniMailing: true,
-                                    caseTitle: 'Dynamic & Unimailing',
+                                    caseTitle: isDynamicUserDefined
+                                        ? 'Dynamic & User Defined'
+                                        : 'Dynamic & Unimailing',
                                   );
                                 } else {
                                   _submit(context, ctrl, master);
@@ -2112,6 +2135,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     List<PipelineNode> sourceNodes, {
     bool isUniMailing = false,
     bool isDynamicUniMailing = false,
+    bool showMandatoryFields = true,
     String caseTitle = '',
     String lastKey = '',
   }) async {
@@ -2133,6 +2157,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
         joinNodes: joinNodes,
         isUniMailing: isUniMailing,
         isDynamicUniMailing: isDynamicUniMailing,
+        showMandatoryFields: showMandatoryFields,
         caseTitle: caseTitle,
         onConfirm: () {
           Navigator.of(ctx, rootNavigator: true).pop();
@@ -2264,61 +2289,59 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     }
 
     // ── 5. Output Columns ──
-    final isStaticUserDefined = (ctrl.templateType == '1' ||
-        (ctrl.templateType.toLowerCase().contains('static') &&
-            ctrl.outputFormats.any(
-              (f) =>
-                  f.toLowerCase().replaceAll(' ', '').contains('userdefined'),
-            )));
-    final isStaticUniMailing = ctrl.templateType == '2' ||
-        (ctrl.templateType.toLowerCase().contains('static') &&
-            ctrl.outputFormats.any(
-              (f) => f.toLowerCase().contains('unimailing'),
-            ));
-    final isDynamicUniMailing = ctrl.isDynamicUniMailing;
+    // Cases 3 and 4 build per-key output columns from snapshots further below.
+    final isStaticUserDefined = ctrl.isStaticUserDefined;
+    final isStaticUniMailing = ctrl.isStaticUniMailing;
+    final isPerOutputKeyFlow = ctrl.isPerOutputKeyFlow;
 
     final deptIdInt = int.tryParse(deptId) ?? 0;
     final outputColumns = <Map<String, dynamic>>[];
-    // Dynamic UniMailing uses per-key snapshot-based output columns built in payload section.
-    if (!isStaticUniMailing && !isDynamicUniMailing) {
-      int autoRank = 1;
-      for (final s in sourceNodes) {
-        for (final col in s.selectedCols) {
-          final outputName = (s.columnAliases[col] ?? '').isNotEmpty
-              ? s.columnAliases[col]!
-              : col;
-          final priority = isStaticUserDefined
-              ? (s.columnPriorities[col] ?? autoRank)
-              : autoRank;
-          outputColumns.add({
-            'template_id': templateId,
-            'department': deptIdInt.toString(),
-            'sourceid': s.typeId,
-            'sourceName': s.name,
-            'SourceColName': col,
-            'ColumnName': outputName,
-            'Priority': priority,
-          });
-          autoRank++;
-        }
-      }
-      if (isStaticUserDefined) {
-        outputColumns.sort(
-          (a, b) => (a['Priority'] as int).compareTo(b['Priority'] as int),
-        );
+
+    String resolveCol(String key) =>
+        key.contains('::') ? key.split('::')[1] : key;
+    PipelineNode? resolveNode(String key) {
+      if (!key.contains('::')) return null;
+      final nodeId = key.split('::')[0];
+      return sourceNodes.where((n) => n.id == nodeId).firstOrNull;
+    }
+
+    /// Emits one row per mapped CUSTOM COLUMNS slot, in C1..Cn order.
+    /// Static + User Defined ranks them by slot number; Static + UniMailing
+    /// sends Priority 0 because the mail fields already fix the order.
+    void addCustomSlotColumns({required bool priorityFromSlot}) {
+      final sortedCustom = ctrl.uniMailingCustom.entries
+          .where((e) => e.value.isNotEmpty)
+          .toList()
+        ..sort((a, b) {
+          final ai = int.tryParse(a.key.substring(1)) ?? 0;
+          final bi = int.tryParse(b.key.substring(1)) ?? 0;
+          return ai.compareTo(bi);
+        });
+      for (final e in sortedCustom) {
+        final node = resolveNode(e.value);
+        final slotNo = int.tryParse(e.key.substring(1)) ?? 0;
+        outputColumns.add({
+          'template_id': templateId,
+          'department': deptIdInt.toString(),
+          'sourceid': node?.typeId ?? '0',
+          'sourceName': node?.name ?? '',
+          'SourceColName': resolveCol(e.value),
+          'ColumnName':
+              (ctrl.uniMailingCustomLabels[e.key]?.trim().isNotEmpty ?? false)
+                  ? ctrl.uniMailingCustomLabels[e.key]!.trim()
+                  : _slotLabel(e.key),
+          'Priority': priorityFromSlot ? slotNo : 0,
+        });
       }
     }
 
-    // ── 6. UniMailing config (Static case) → outputColumns entries ──
-    if (isStaticUniMailing) {
-      String resolveCol(String key) =>
-          key.contains('::') ? key.split('::')[1] : key;
-      PipelineNode? resolveNode(String key) {
-        if (!key.contains('::')) return null;
-        final nodeId = key.split('::')[0];
-        return sourceNodes.where((n) => n.id == nodeId).firstOrNull;
-      }
+    // Case 1 — Static + User Defined: the CUSTOM COLUMNS slots are the output.
+    if (isStaticUserDefined) {
+      addCustomSlotColumns(priorityFromSlot: true);
+    }
 
+    // Case 2 — Static + UniMailing: all 7 mail fields, then the custom slots.
+    if (isStaticUniMailing) {
       // Always send all 7 UniMailing fields; use empty strings for unmapped ones
       for (final field in kMandatoryFields) {
         final val = ctrl.uniMailingMandatory[field] ?? '';
@@ -2334,31 +2357,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
           'Priority': 0,
         });
       }
-
-      final sortedCustom = ctrl.uniMailingCustom.entries
-          .where((e) => e.value.isNotEmpty)
-          .toList()
-        ..sort((a, b) {
-          final ai = int.tryParse(a.key.substring(1)) ?? 0;
-          final bi = int.tryParse(b.key.substring(1)) ?? 0;
-          return ai.compareTo(bi);
-        });
-      for (final e in sortedCustom) {
-        final node = resolveNode(e.value);
-        final srcCol = resolveCol(e.value);
-        outputColumns.add({
-          'template_id': templateId,
-          'department': deptIdInt.toString(),
-          'sourceid': node?.typeId ?? '0',
-          'sourceName': node?.name ?? '',
-          'SourceColName': srcCol,
-          'ColumnName':
-              (ctrl.uniMailingCustomLabels[e.key]?.trim().isNotEmpty ?? false)
-                  ? ctrl.uniMailingCustomLabels[e.key]!.trim()
-                  : _slotLabel(e.key),
-          'Priority': 0,
-        });
-      }
+      addCustomSlotColumns(priorityFromSlot: false);
     }
 
     // Build ordered list of dynamicTemplate ids matching dynamicUniMailingOutputKeys order:
@@ -2387,11 +2386,9 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
       }
     }
 
-    final templateTypeInt = isDynamicUniMailing
-        ? 3
-        : isStaticUniMailing
-            ? 2
-            : 1;
+    // 1 = Static + User Defined, 2 = Static + UniMailing,
+    // 3 = Dynamic + UniMailing,   4 = Dynamic + User Defined
+    final templateTypeInt = ctrl.configTemplateType;
 
     final singlePayload = {
       'TemplateId': templateId,
@@ -2408,7 +2405,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
     };
 
     // Always an array: static → [{...}], dynamic → one element per output key with its own canvas data
-    final dynamic payload = isDynamicUniMailing
+    final dynamic payload = isPerOutputKeyFlow
         ? ctrl.dynamicUniMailingOutputKeys.asMap().entries.map((entry) {
             final key = entry.value;
             final config = ctrl.savedOutputKeyConfigs[key];
@@ -2588,7 +2585,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
                 : entry.key;
             return {
               'TemplateId': templateId,
-              'TemplateType': 3,
+              'TemplateType': templateTypeInt,
               'DymanicId': dymanicId,
               'createdBy': userName,
               'templateMode': ctrl.templateMode.value,
@@ -2604,7 +2601,7 @@ class _OutputNodeBodyState extends State<OutputNodeBody> {
 
     // Collect file entries: per-key snapshots for Dynamic, current canvas for Static.
     final fileEntries = <({String key, List<int> bytes, String filename})>[];
-    if (isDynamicUniMailing) {
+    if (isPerOutputKeyFlow) {
       for (final k in ctrl.dynamicUniMailingOutputKeys) {
         final cfg = ctrl.savedOutputKeyConfigs[k];
         for (final s

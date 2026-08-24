@@ -254,8 +254,17 @@ part of 'package:vizualizer/presentation/widgets/pipeline/nodes/output_node_body
 class UniMailingSection extends StatefulWidget {
   final PipelineController ctrl;
   final List<PipelineNode> sourceNodes;
-  const UniMailingSection(
-      {super.key, required this.ctrl, required this.sourceNodes});
+
+  /// When false the 7 UNIMAILING FIELDS rows are hidden and only the
+  /// CUSTOM COLUMNS block renders — used by Static + User Defined.
+  final bool showMandatoryFields;
+
+  const UniMailingSection({
+    super.key,
+    required this.ctrl,
+    required this.sourceNodes,
+    this.showMandatoryFields = true,
+  });
 
   @override
   State<UniMailingSection> createState() => UniMailingSectionState();
@@ -323,52 +332,57 @@ class UniMailingSectionState extends State<UniMailingSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // UniMailing fields (all optional)
-        Row(
-          children: [
-            const Icon(Icons.email_outlined, size: 10, color: AppColors.violet),
-            const SizedBox(width: 4),
-            const Text(
-              'UNIMAILING FIELDS',
-              style: TextStyle(
+        // UniMailing fields (all optional) — hidden for Static + User Defined
+        if (widget.showMandatoryFields) ...[
+          Row(
+            children: [
+              const Icon(
+                Icons.email_outlined,
+                size: 10,
                 color: AppColors.violet,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.7,
               ),
+              const SizedBox(width: 4),
+              const Text(
+                'UNIMAILING FIELDS',
+                style: TextStyle(
+                  color: AppColors.violet,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
             ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+            child: Column(
+              children: kMandatoryFields.asMap().entries.map((e) {
+                final idx = e.key;
+                final field = e.value;
+                final isLast = idx == kMandatoryFields.length - 1;
+                final current = ctrl.uniMailingMandatory[field] ?? '';
+                final isMapped = avail.keys.contains(current);
+                return UniMappingRow(
+                  label: field,
+                  labelColor: AppColors.violet,
+                  currentKey: isMapped ? current : null,
+                  availableKeys: avail.keys,
+                  colLabels: avail.labels,
+                  isLast: isLast,
+                  // ✅ Only "Mail To" is required
+                  isRequired: field == "Mail To",
+                  isMapped: isMapped,
+                  onChanged: (v) => ctrl.setUniMailingMandatory(field, v ?? ''),
+                );
+              }).toList(),
+            ),
           ),
-          child: Column(
-            children: kMandatoryFields.asMap().entries.map((e) {
-              final idx = e.key;
-              final field = e.value;
-              final isLast = idx == kMandatoryFields.length - 1;
-              final current = ctrl.uniMailingMandatory[field] ?? '';
-              final isMapped = avail.keys.contains(current);
-              return UniMappingRow(
-                label: field,
-                labelColor: AppColors.violet,
-                currentKey: isMapped ? current : null,
-                availableKeys: avail.keys,
-                colLabels: avail.labels,
-                isLast: isLast,
-                // ✅ Only "Mail To" is required
-                isRequired: field == "Mail To",
-                isMapped: isMapped,
-                onChanged: (v) => ctrl.setUniMailingMandatory(field, v ?? ''),
-              );
-            }).toList(),
-          ),
-        ),
-
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
+        ],
 
         // Custom columns
         Row(

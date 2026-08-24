@@ -1420,12 +1420,8 @@ class _EditSidebarState extends State<EditSidebar>
       );
     }
 
-    final isDynUni =
-        (info.templateType == '3' ||
-            info.templateType.toLowerCase().contains('dynamic')) &&
-        info.outputFormats.any((f) => f.toLowerCase().contains('unimailing'));
-
-    if (isDynUni) {
+    // Cases 3 and 4 both use the per-output-key sequential flow.
+    if (ctrl.isPerOutputKeyFlow) {
       if (ctrl.selectedOutputKey.isNotEmpty) {
         _onOutputKeySelected(ctrl.selectedOutputKey, ctrl);
       } else {
@@ -1553,7 +1549,7 @@ class _EditSidebarState extends State<EditSidebar>
       // Skip in edit mode: _onOutputKeySelected is called directly by OutputKeySelector.onChanged.
       // Calling it again from here would re-invoke loadConfiguration → canvasVersion++ → infinite loop.
       final isDynUniCanvasChange =
-          ctrl.isDynamicUniMailing &&
+          ctrl.isPerOutputKeyFlow &&
           ctrl.selectedOutputKey.isNotEmpty &&
           ctrl.templateMode != TemplateMode.edit;
       if (isDynUniCanvasChange) {
@@ -1721,7 +1717,7 @@ class _EditSidebarState extends State<EditSidebar>
 
                     // ── Output Key selector (Dynamic + UniMailing) ──
                     if (ctrl.sidebarTemplate.isNotEmpty &&
-                        ctrl.isDynamicUniMailing) ...[
+                        ctrl.isPerOutputKeyFlow) ...[
                       const SizedBox(height: 8),
                       OutputKeySelector(
                         ctrl: ctrl,
@@ -1924,7 +1920,7 @@ class _EditSidebarState extends State<EditSidebar>
   }
 
   Widget _buildRequiredSourcesBox(PipelineController ctrl) {
-    final isDynUni = ctrl.isDynamicUniMailing;
+    final isDynUni = ctrl.isPerOutputKeyFlow;
     if (ctrl.sidebarTemplate.isNotEmpty &&
         ctrl.requiredSourceCount == 0 &&
         !isDynUni) {

@@ -1720,6 +1720,10 @@ class ConfigPreviewSheet extends StatelessWidget {
   final List<PipelineNode> joinNodes;
   final bool isUniMailing;
   final bool isDynamicUniMailing;
+
+  /// When false the 7 UniMailing field rows are omitted and only the mapped
+  /// CUSTOM COLUMNS slots are listed — used by Static + User Defined.
+  final bool showMandatoryFields;
   final String caseTitle;
   final VoidCallback onConfirm;
   final bool readOnly;
@@ -1733,6 +1737,7 @@ class ConfigPreviewSheet extends StatelessWidget {
     required this.onConfirm,
     this.isUniMailing = false,
     this.isDynamicUniMailing = false,
+    this.showMandatoryFields = true,
     this.caseTitle = '',
     this.readOnly = false,
   });
@@ -2047,8 +2052,9 @@ class ConfigPreviewSheet extends StatelessWidget {
       return node?.columnUniqueFields[col] ?? false;
     }
 
-    // Mandatory fields
-    final mandatoryRows = kMandatoryFields.map((f) {
+    // Mandatory fields — omitted entirely for Static + User Defined
+    final mandatoryRows = (showMandatoryFields ? kMandatoryFields : <String>[])
+        .map((f) {
       final val = ctrl.uniMailingMandatory[f] ?? '';
       return (
         field: f,
@@ -2853,14 +2859,18 @@ class ConfigPreviewSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         _tile(
-                          icon: isUniMailing
-                              ? Icons.email_rounded
-                              : Icons.table_chart_rounded,
+                          icon: !isUniMailing
+                              ? Icons.table_chart_rounded
+                              : showMandatoryFields
+                                  ? Icons.email_rounded
+                                  : Icons.view_column_rounded,
                           color: AppColors.green,
                           title: 'Output Configuration',
-                          subtitle: isUniMailing
-                              ? '${ctrl.uniMailingMandatory.values.where((v) => v.isNotEmpty).length} / ${kMandatoryFields.length} UniMailing fields mapped'
-                              : '$totalSelected column${totalSelected == 1 ? '' : 's'} selected',
+                          subtitle: !isUniMailing
+                              ? '$totalSelected column${totalSelected == 1 ? '' : 's'} selected'
+                              : showMandatoryFields
+                                  ? '${ctrl.uniMailingMandatory.values.where((v) => v.isNotEmpty).length} / ${kMandatoryFields.length} UniMailing fields mapped'
+                                  : '${ctrl.uniMailingCustom.values.where((v) => v.isNotEmpty).length} custom column${ctrl.uniMailingCustom.values.where((v) => v.isNotEmpty).length == 1 ? '' : 's'} mapped',
                           initiallyExpanded: true,
                           child: isUniMailing
                               ? _uniMailingOutputSection()

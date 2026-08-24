@@ -3,15 +3,17 @@ import 'dart:convert';
 enum TemplateConfigType {
   staticUserDefined, // 1 entry, DymanicId=0, TemplateType=1
   staticUnimailing, // 1 entry, DymanicId=0, TemplateType=2
-  dynamicUnimailing, // multiple entries, sequential DymanicIds, TemplateType=3
+  dynamicUnimailing, // one entry per output key, sequential DymanicIds, TemplateType=3
+  dynamicUserDefined, // one entry per output key, sequential DymanicIds, TemplateType=4
 }
 
 /// Parses the jsonData array from Template Configuration checker tray API.
 ///
-/// Detection rules:
-///   configs.length == 1, TemplateType=1 → staticUserDefined
-///   configs.length == 1, TemplateType=2 → staticUnimailing
-///   configs.length > 1 (sequential DymanicIds) → dynamicUnimailing
+/// Detection rules — TemplateType is authoritative:
+///   TemplateType=1 → staticUserDefined     TemplateType=3 → dynamicUnimailing
+///   TemplateType=2 → staticUnimailing      TemplateType=4 → dynamicUserDefined
+/// Falls back to configs.length > 1 (sequential DymanicIds) → dynamicUnimailing
+/// for older payloads that carry no TemplateType.
 class TemplateConfigurationResponseModel {
   final List<Map<String, dynamic>> configs;
 
@@ -54,14 +56,22 @@ class TemplateConfigurationResponseModel {
 
   /// Determine template config type from the configs list.
   TemplateConfigType get type {
-    if (configs.length == 1) {
+    if (configs.isNotEmpty) {
       final t = configs.first['TemplateType'];
       final typeInt = t is int ? t : int.tryParse(t?.toString() ?? '') ?? 0;
-      if (typeInt == 1) return TemplateConfigType.staticUserDefined;
-      if (typeInt == 2) return TemplateConfigType.staticUnimailing;
-    } else if (configs.length > 1) {
-      return TemplateConfigType.dynamicUnimailing;
+      switch (typeInt) {
+        case 1:
+          return TemplateConfigType.staticUserDefined;
+        case 2:
+          return TemplateConfigType.staticUnimailing;
+        case 3:
+          return TemplateConfigType.dynamicUnimailing;
+        case 4:
+          return TemplateConfigType.dynamicUserDefined;
+      }
     }
+    // No usable TemplateType — infer from the number of output-key entries.
+    if (configs.length > 1) return TemplateConfigType.dynamicUnimailing;
     return TemplateConfigType.staticUserDefined;
   }
 
@@ -69,7 +79,9 @@ class TemplateConfigurationResponseModel {
       type == TemplateConfigType.staticUserDefined ||
       type == TemplateConfigType.staticUnimailing;
 
-  bool get isDynamic => type == TemplateConfigType.dynamicUnimailing;
+  bool get isDynamic =>
+      type == TemplateConfigType.dynamicUnimailing ||
+      type == TemplateConfigType.dynamicUserDefined;
 
   /// For static (1 entry): returns as-is.
   /// For dynamic (N entries): merges Sources, JoinMappings, Edges,

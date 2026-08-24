@@ -909,6 +909,647 @@ class Database {
         'sourceListNames': null,
         'sourceList': '1',
       },
+      // ── Case 1: Static + User Defined ──
+      {
+        "templateType": "1",
+        "templateId": 101,
+        "templateName": "101 - static + user defined",
+        "department": null,
+        "frequency": "1",
+        "normalVolume": 0,
+        "peakVolume": 0,
+        "sourceCount": 2,
+        "numberOfOutputs": 0,
+        "benefitType": 0,
+        "benefitAmount": 0,
+        "benefitInTAT": null,
+        "goLiveDate": null,
+        "deactivateDate": null,
+        "spocPerson": null,
+        "spocManager": null,
+        "unitHead": null,
+        "priority": 0,
+        "template": null,
+        "outputFormats": [
+          {"templateTempId": 101, "formatName": "User Defined"}
+        ],
+        "approvals": null,
+        "dynamicTemplate": [
+          {
+            "srno": 0,
+            "id": 0,
+            "sourceList": "1,2",
+            "sourceCount": "2",
+            "sourceListName": null,
+            "templateId": 101,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+            ],
+            "sourceType": "1"
+          }
+        ],
+        "jsonData": [
+          {
+            "TemplateId": 216,
+            "TemplateType": 2,
+            "DynamicId": 0,
+            "templateMode": 0,
+            "createdBy": "ADM001",
+            "Sources": [
+              {
+                "TemplateId": 2,
+                "SourceId": "10",
+                "SourceName": "S1",
+                "SourceType": "1",
+                "Department": "1",
+                "Template": "P&L Report",
+                "Separator": ",",
+                "ColumnFile": "dummy_data.csv",
+                "QueryFile": "",
+                "Columns":
+                    "id,template_name,department,source_type,operation,approval_status,config_file,pipeline_format,token,created_at,updated_at",
+                "SelectedColumns": "approval_status",
+                "SourceSeqNo": "",
+                "uniquefield": "true"
+              },
+              {
+                "TemplateId": 2,
+                "SourceId": "13",
+                "SourceName": "S2",
+                "SourceType": "2",
+                "Department": "1",
+                "Template": "P&L Report",
+                "Separator": ",",
+                "ColumnFile": "dummy_data.csv",
+                "QueryFile": "valid_query_with.txt",
+                "Columns":
+                    "id,template_name,department,source_type,operation,approval_status,config_file,pipeline_format,token,created_at,updated_at",
+                "SelectedColumns": "created_at",
+                "SourceSeqNo": null,
+                "uniquefield": ""
+              }
+            ],
+            "JoinMappings": [
+              {
+                "Id": 0,
+                "TemplateId": 2,
+                "Department": "1",
+                "JoinNodeId": "n4",
+                "LeftSourceId": "n1",
+                "LeftSourceName": "S1",
+                "LeftColumn": "template_name",
+                "JoinType": "left_join",
+                "RightSourceId": "n3",
+                "RightSourceName": "S2",
+                "RightColumn": "template_name",
+                "CreatedOn": "2026-04-29T00:00:00"
+              },
+              {
+                "Id": 1,
+                "TemplateId": 2,
+                "Department": "1",
+                "JoinNodeId": "n4",
+                "LeftSourceId": "n3",
+                "LeftSourceName": "S2",
+                "LeftColumn": "template_name",
+                "JoinType": "left_join",
+                "RightSourceId": "n1",
+                "RightSourceName": "S1",
+                "RightColumn": "template_name",
+                "CreatedOn": "2026-04-29T00:00:00"
+              }
+            ],
+            "Edges": [
+              {"template_id": 2, "department": "1", "From": "n1", "To": "n4"},
+              {"template_id": 2, "department": "1", "From": "n3", "To": "n4"}
+            ],
+            "connectedSources": [
+              {
+                "TemplateId": 2,
+                "Department": "1",
+                "JoinNodeId": "n4",
+                "SourceId": "n1"
+              },
+              {
+                "TemplateId": 2,
+                "Department": "1",
+                "JoinNodeId": "n4",
+                "SourceId": "n3"
+              }
+            ],
+            "outputColumns": [
+              {
+                "template_id": 2,
+                "department": "1",
+                "sourceid": "1",
+                "sourceName": "S1",
+                "SourceColName": "approval_status",
+                "ColumnName": "Mail To",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "1",
+                "sourceid": "2",
+                "sourceName": "S2",
+                "SourceColName": "created_at",
+                "ColumnName": "Mail CC",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "1",
+                "sourceid": "2",
+                "sourceName": "S2",
+                "SourceColName": "created_at",
+                "ColumnName": "Mail BCC",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "1",
+                "sourceid": "2",
+                "sourceName": "S2",
+                "SourceColName": "created_at",
+                "ColumnName": "Subject",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "1",
+                "sourceid": "2",
+                "sourceName": "S2",
+                "SourceColName": "created_at",
+                "ColumnName": "Attachment",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "1",
+                "sourceid": "2",
+                "sourceName": "S2",
+                "SourceColName": "created_at",
+                "ColumnName": "SMS To",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "1",
+                "sourceid": "2",
+                "sourceName": "S2",
+                "SourceColName": "Barcode",
+                "ColumnName": "Barcode",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "1",
+                "sourceid": "2",
+                "sourceName": "S2",
+                "SourceColName": "asd",
+                "ColumnName": "asr",
+                "Priority": 0
+              },
+            ]
+          }
+        ],
+        "departmentName": null,
+        "sourceListNames": null,
+        "sourceList": "1,2"
+      },
+      // ── Case 4: Dynamic + User Defined ──
+      {
+        'TemplateType': '3',
+        'TemplateId': 102,
+        'TemplateName': '102 - dynamic + user defined',
+        'Department': null,
+        'Frequency': '3',
+        'NormalVolume': 0,
+        'PeakVolume': 0,
+        'SourceCount': 0,
+        'NumberOfOutputs': 0,
+        'BenefitType': 0,
+        'BenefitAmount': 0,
+        'BenefitInTAT': null,
+        'GoLiveDate': null,
+        'DeactivateDate': null,
+        'SpocPerson': null,
+        'SpocManager': null,
+        'UnitHead': null,
+        'Priority': 0,
+        // camelCase keys below match what the real external API returns
+        'templateType': '3',
+        'templateId': 102,
+        'templateName': '102 - dynamic + user defined',
+        'outputFormats': [
+          {'templateTempId': 102, 'formatName': 'User Defined'},
+        ],
+        'dynamicTemplate': [
+          {
+            'srno': 0,
+            'id': 0,
+            'sourceList': '1',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 102,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '1',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '1',
+          },
+          {
+            'srno': 10,
+            'id': 21,
+            'sourceList': '1,2',
+            'sourceCount': '2',
+            'sourceListName': null,
+            'templateId': 102,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+              {
+                'id': 2,
+                'name': '2 - Oracle GL',
+                'sourceType': '2',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '3',
+          },
+          {
+            'srno': 11,
+            'id': 22,
+            'sourceList': '1',
+            'sourceCount': '1',
+            'sourceListName': null,
+            'templateId': 102,
+            'sourceMasterList': [
+              {
+                'id': 1,
+                'name': '1 - Finacle Core',
+                'sourceType': '1',
+                'appName': null,
+                'itgrc': 0,
+                'dbVault': null,
+                'createdBy': null,
+                'createdOn': '0001-01-01T00:00:00',
+                'svalues': null,
+                'department_id': '1',
+                'type': '3',
+                'template_id': null,
+              },
+            ],
+            'sourceType': '3',
+          },
+        ],
+        'jsonData': [
+          {
+            "TemplateId": 2,
+            "TemplateType": 3,
+            "DymanicId": 0,
+            "createdBy": "P2308",
+            "templateMode": 0,
+            "Sources": [
+              {
+                "TemplateId": 2,
+                "SourceId": "1",
+                "SourceName": "M1",
+                "SourceType": "1",
+                "Department": "7",
+                "Template": "2 - Test Dynamic Temp",
+                "Separator": ",",
+                "ColumnFile": "manualfileheader.txt",
+                "QueryFile": "",
+                "Columns": "Account_Number",
+                "SelectedColumns": "Account_Number",
+                "SourceSeqNo": "1",
+                "uniquefield": ""
+              },
+              {
+                "TemplateId": 2,
+                "SourceId": "3",
+                "SourceName": "F1",
+                "SourceType": "3",
+                "Department": "7",
+                "Template": "2 - Test Dynamic Temp",
+                "Separator": ",",
+                "ColumnFile": "queryfileheader.txt",
+                "QueryFile": "queryfileinnerjoin.txt",
+                "Columns":
+                    "MAIL_TO,MAIL_CC,SUBJECT,ATTACHMENT,SMS_TO,BARCODE,Account_Number,Customer_Name,Column_3",
+                "SelectedColumns":
+                    "MAIL_TO,MAIL_CC,SUBJECT,ATTACHMENT,SMS_TO,BARCODE,Account_Number,Customer_Name,Column_3",
+                "SourceSeqNo": "2",
+                "uniquefield": ""
+              }
+            ],
+            "JoinMappings": [
+              {
+                "Id": 0,
+                "TemplateId": 2,
+                "Department": "7",
+                "JoinNodeId": "n3",
+                "LeftSourceId": "n1",
+                "LeftSourceName": "M1",
+                "LeftColumn": "Account_Number",
+                "JoinType": "inner_join",
+                "RightSourceId": "n2",
+                "RightSourceName": "F1",
+                "RightColumn": "Column_3",
+                "CreatedOn": "2026-07-06T00:00:00"
+              }
+            ],
+            "Edges": [
+              {"template_id": 2, "department": "7", "From": "n1", "To": "n3"},
+              {"template_id": 2, "department": "7", "From": "n2", "To": "n3"},
+              {"template_id": 2, "department": "7", "From": "n3", "To": "n6"}
+            ],
+            "connectedSources": [
+              {
+                "TemplateId": 2,
+                "Department": "7",
+                "JoinNodeId": "n3",
+                "SourceId": "n1"
+              },
+              {
+                "TemplateId": 2,
+                "Department": "7",
+                "JoinNodeId": "n3",
+                "SourceId": "n2"
+              }
+            ],
+            "outputColumns": [
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "MAIL_TO",
+                "ColumnName": "Mail To",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "MAIL_CC",
+                "ColumnName": "Mail CC",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "MAIL_CC",
+                "ColumnName": "Mail BCC",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "SUBJECT",
+                "ColumnName": "Subject",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "ATTACHMENT",
+                "ColumnName": "Attachment",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "SMS_TO",
+                "ColumnName": "SMS To",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "BARCODE",
+                "ColumnName": "Barcode",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "Account_Number",
+                "ColumnName": "Column 1",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "Customer_Name",
+                "ColumnName": "Column 2",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F1",
+                "SourceColName": "Column_3",
+                "ColumnName": "Column 3",
+                "Priority": 0
+              }
+            ],
+            "Jsondata": null
+          },
+          {
+            "TemplateId": 2,
+            "TemplateType": 3,
+            "DymanicId": 2,
+            "createdBy": "P2308",
+            "templateMode": 0,
+            "Sources": [
+              {
+                "TemplateId": 2,
+                "SourceId": "1",
+                "SourceName": "M2",
+                "SourceType": "1",
+                "Department": "7",
+                "Template": "2 - Test Dynamic Temp",
+                "Separator": ",",
+                "ColumnFile": "manualfileheader.txt",
+                "QueryFile": "",
+                "Columns": "Account_Number",
+                "SelectedColumns": "Account_Number",
+                "SourceSeqNo": "1",
+                "uniquefield": ""
+              },
+              {
+                "TemplateId": 2,
+                "SourceId": "3",
+                "SourceName": "F2",
+                "SourceType": "3",
+                "Department": "7",
+                "Template": "2 - Test Dynamic Temp",
+                "Separator": ",",
+                "ColumnFile": "queryfileheader.txt",
+                "QueryFile": "queryfile-in.txt",
+                "Columns":
+                    "MAIL_TO,MAIL_CC,SUBJECT,ATTACHMENT,SMS_TO,BARCODE,Account_Number,Customer_Name,Column_3",
+                "SelectedColumns":
+                    "MAIL_TO,MAIL_CC,SUBJECT,ATTACHMENT,SMS_TO,BARCODE,Account_Number,Customer_Name,Column_3",
+                "SourceSeqNo": "2",
+                "uniquefield": ""
+              }
+            ],
+            "JoinMappings": [
+              {
+                "Id": 0,
+                "TemplateId": 2,
+                "Department": "7",
+                "JoinNodeId": "n3",
+                "LeftSourceId": "n1",
+                "LeftSourceName": "M2",
+                "LeftColumn": "Account_Number",
+                "JoinType": null,
+                "RightSourceId": "n2",
+                "RightSourceName": "F2",
+                "RightColumn": "Column_3",
+                "CreatedOn": "2026-07-06T00:00:00"
+              }
+            ],
+            "Edges": [
+              {"template_id": 2, "department": "7", "From": "n1", "To": "n3"},
+              {"template_id": 2, "department": "7", "From": "n2", "To": "n3"},
+              {"template_id": 2, "department": "7", "From": "n3", "To": "n6"}
+            ],
+            "connectedSources": [
+              {
+                "TemplateId": 2,
+                "Department": "7",
+                "JoinNodeId": "n3",
+                "SourceId": "n1"
+              },
+              {
+                "TemplateId": 2,
+                "Department": "7",
+                "JoinNodeId": "n3",
+                "SourceId": "n2"
+              }
+            ],
+            "outputColumns": [
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "1",
+                "sourceName": "M2",
+                "SourceColName": "Account_Number",
+                "ColumnName": "Column 0",
+                "Priority": 0
+              },
+              {
+                "template_id": 2,
+                "department": "7",
+                "sourceid": "3",
+                "sourceName": "F2",
+                "SourceColName": "Column_3",
+                "ColumnName": "Column 1",
+                "Priority": 0
+              }
+            ],
+            "Jsondata": null
+          }
+        ],
+        'DepartmentName': 'Finance',
+        'departmentName': null,
+        'SourceListNames': null,
+        'sourceListNames': null,
+        'sourceList': '1',
+      },
     ],
     // depts 2–8 intentionally empty — all test cases are in dept 1
     // 2: [

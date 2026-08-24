@@ -110,14 +110,6 @@ class TemplateRequest {
 
   bool get isDynamic => selectedTemplateType?.id == 3;
 
-  // String get templateTypeCode {
-  //   if (isDynamic) return '3';
-  //   if (outputFormats.any((f) => f.toLowerCase().contains('unimailing'))) {
-  //     return '2';
-  //   }
-  //   return '1';
-  // }
-
   Map<String, dynamic> toJson() => {
         'TemplateType': selectedTemplateType?.id.toString(),
         'TemplateTypeName': selectedTemplateType?.name,
@@ -143,13 +135,13 @@ class TemplateRequest {
             'SourceList': sourceList.map((m) => m['id']).join(','),
           },
         ],
-        'OutputFormats': (() {
-          final formats =
-              isDynamic ? ['Unimailing'] : outputFormats.toSet().toList();
-          return formats
-              .map((f) => {'TemplateTempId': null, 'FormatName': f})
-              .toList();
-        })(),
+        // Both Static and Dynamic can be Unimailing or User Defined; the
+        // combination is what AddTemplateConfig later turns into a 1/2/3/4
+        // TemplateType (see PipelineController.configTemplateType).
+        'OutputFormats': outputFormats
+            .toSet()
+            .map((f) => {'TemplateTempId': null, 'FormatName': f})
+            .toList(),
         'Approvals': approvals
             .map(
               (a) => {

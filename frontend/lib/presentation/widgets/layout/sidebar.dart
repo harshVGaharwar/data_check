@@ -2156,12 +2156,8 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
     _templatePulse.stop();
     _templatePulse.value = 0;
 
-    final isDynUni =
-        (info.templateType == '3' ||
-            info.templateType.toLowerCase().contains('dynamic')) &&
-        info.outputFormats.any((f) => f.toLowerCase().contains('unimailing'));
-
-    if (isDynUni) {
+    // Cases 3 and 4 both use the per-output-key sequential flow.
+    if (ctrl.isPerOutputKeyFlow) {
       if (ctrl.selectedOutputKey.isNotEmpty) {
         _onOutputKeySelected(ctrl.selectedOutputKey, ctrl);
       } else {
@@ -2294,7 +2290,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
       // In both cases we must NOT reset the sidebar — instead reload source
       // types for whichever key is now selected.
       final isDynUniCanvasChange =
-          ctrl.isDynamicUniMailing && ctrl.selectedOutputKey.isNotEmpty;
+          ctrl.isPerOutputKeyFlow && ctrl.selectedOutputKey.isNotEmpty;
       if (isDynUniCanvasChange) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -2425,7 +2421,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
 
                     // Output Key selector (Dynamic + UniMailing)
                     if (ctrl.sidebarTemplate.isNotEmpty &&
-                        ctrl.isDynamicUniMailing) ...[
+                        ctrl.isPerOutputKeyFlow) ...[
                       const SizedBox(height: 8),
                       OutputKeySelector(
                         ctrl: ctrl,
@@ -2628,7 +2624,7 @@ class _SidebarState extends State<Sidebar> with TickerProviderStateMixin {
 
   Widget _buildRequiredSourcesBox(PipelineController ctrl) {
     // Dynamic+UniMailing: sourceCount is 0 until an output key is selected — not an error
-    final isDynUni = ctrl.isDynamicUniMailing;
+    final isDynUni = ctrl.isPerOutputKeyFlow;
     // Template selected but sourceCount is 0 — not configured (only for non-dynamic)
     if (ctrl.sidebarTemplate.isNotEmpty &&
         ctrl.requiredSourceCount == 0 &&
